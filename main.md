@@ -67,15 +67,15 @@ We are building a tablet/mobile app that:
 
 ## Implementation Roadmap (Demo, proof-of-concept)
 
-1. **ARASAAC pictograms integration**:  
-   - Download and integrate a basic set of ARASAAC symbols (20-30 most common symbols for demo).  
-   - Build simple word → symbol ID mapping.
-
-2. **Basic UI with React Native**:  
+1. **Basic UI with React Native**:  
    - Main screen with large symbol grid (PCS selection).  
    - Text input field for caregiver.  
    - Display area showing translated output (text or PCS sequence).  
    - Simple navigation.
+
+2. **ARASAAC pictograms integration**:  
+   - Download and integrate a basic set of ARASAAC symbols (20-30 most common symbols for demo).  
+   - Build simple word → symbol ID mapping.
 
 3. **LLM integration (prototype)**:  
    - Connect to LLM API (GPT-4o-mini or Gemini 1.5 Flash for cost efficiency).  
