@@ -6,135 +6,229 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  Image,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Speech from 'expo-speech';
+import { generatePhrases, generateMorePhrases } from './services/geminiService';
 
-// Símbolos de ejemplo para el demo
-const DEMO_SYMBOLS = [
-  { id: 1, text: 'Hola', emoji: '👋' },
-  { id: 2, text: 'Gracias', emoji: '🙏' },
-  { id: 3, text: 'Comer', emoji: '🍎' },
-  { id: 4, text: 'Beber', emoji: '🥤' },
-  { id: 5, text: 'Jugar', emoji: '⚽' },
-  { id: 6, text: 'Dormir', emoji: '😴' },
-  { id: 7, text: 'Ayuda', emoji: '🆘' },
-  { id: 8, text: 'Mamá', emoji: '👩' },
-  { id: 9, text: 'Papá', emoji: '👨' },
-  { id: 10, text: 'Baño', emoji: '🚽' },
-  { id: 11, text: 'Sí', emoji: '✅' },
-  { id: 12, text: 'No', emoji: '❌' },
+// Palabras del prototipo con sus imágenes
+const WORD_SYMBOLS = [
+  { id: 1, text: 'I', image: require('./assets/placeholder.png') },
+  { id: 2, text: 'You', image: require('./assets/placeholder.png') },
+  { id: 3, text: 'Not', image: require('./assets/placeholder.png') },
+  { id: 4, text: 'Like', image: require('./assets/placeholder.png') },
+  { id: 5, text: 'Want', image: require('./assets/placeholder.png') },
+  { id: 6, text: 'Play', image: require('./assets/placeholder.png') },
+  { id: 7, text: 'Football', image: require('./assets/placeholder.png') },
+  { id: 8, text: 'Pizza', image: require('./assets/placeholder.png') },
+  { id: 9, text: 'School', image: require('./assets/placeholder.png') },
 ];
 
+type Screen = 'word-selection' | 'phrase-selection';
+
 export default function App() {
-  const [selectedSymbols, setSelectedSymbols] = useState<any[]>([]);
+  const [screen, setScreen] = useState<Screen>('word-selection');
+  const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  const [phrases, setPhrases] = useState<string[]>([]);
+  const [allPhrases, setAllPhrases] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [caregiverInput, setCaregiverInput] = useState('');
-  const [translatedOutput, setTranslatedOutput] = useState('');
 
-  // Función para cuando el niño selecciona un símbolo
-  const handleSymbolPress = (symbol: any) => {
-    const newSymbols = [...selectedSymbols, symbol];
-    setSelectedSymbols(newSymbols);
-    
-    // Simulación simple de traducción: concatenar textos
-    const translation = newSymbols.map(s => s.text).join(' ');
-    setTranslatedOutput(translation);
-  };
-
-  // Función para cuando el cuidador envía texto
-  const handleCaregiverSubmit = () => {
-    if (caregiverInput.trim()) {
-      setTranslatedOutput(`[Modo Cuidador] → "${caregiverInput}"`);
-      // Aquí más adelante se conectará con el LLM para traducir a símbolos PCS
+  // Función para seleccionar/deseleccionar palabras
+  const handleWordPress = (word: string) => {
+    if (selectedWords.includes(word)) {
+      setSelectedWords(selectedWords.filter(w => w !== word));
+    } else {
+      setSelectedWords([...selectedWords, word]);
     }
   };
 
-  // Limpiar todo
-  const handleClear = () => {
-    setSelectedSymbols([]);
-    setCaregiverInput('');
-    setTranslatedOutput('');
+  // Generar frases con Gemini
+  const handleGeneratePhrases = async () => {
+    if (selectedWords.length === 0) {
+      Alert.alert('Error', 'Por favor selecciona al menos una palabra');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const generatedPhrases = await generatePhrases(selectedWords);
+      setPhrases(generatedPhrases);
+      setAllPhrases(generatedPhrases);
+      setScreen('phrase-selection');
+    } catch (error: any) {
+      Alert.alert(
+        'Error',
+        error.message || 'No se pudieron generar las frases. Verifica tu API key de Gemini.'
+      );
+      console.error('Error generating phrases:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  // Generar más frases
+  const handleGenerateMorePhrases = async () => {
+    if (selectedWords.length === 0) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const morePhrases = await generateMorePhrases(selectedWords, allPhrases);
+      setPhrases(morePhrases);
+      setAllPhrases([...allPhrases, ...morePhrases]);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudieron generar más frases');
+      console.error('Error generating more phrases:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Reproducir frase con text-to-speech
+  const handleSpeakPhrase = (phrase: string) => {
+    Speech.speak(phrase, {
+      language: 'en',
+      pitch: 1.0,
+      rate: 0.9,
+    });
+  };
+
+  // Volver a selección de palabras
+  const handleBackToWords = () => {
+    setScreen('word-selection');
+    setSelectedWords([]);
+    setPhrases([]);
+  };
+
+  // Limpiar selección
+  const handleClear = () => {
+    setSelectedWords([]);
+    setPhrases([]);
+    setAllPhrases([]);
+    setScreen('word-selection');
+  };
+
+  // Pantalla de selección de palabras
+  if (screen === 'word-selection') {
+    return (
+      <View style={styles.container}>
+        <StatusBar style="auto" />
+        
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>AAC App - Selección de Palabras</Text>
+          <Text style={styles.headerSubtitle}>Selecciona palabras para crear frases</Text>
+        </View>
+
+        {/* Palabras seleccionadas */}
+        <View style={styles.outputArea}>
+          <Text style={styles.outputLabel}>
+            Palabras seleccionadas: {selectedWords.length > 0 ? selectedWords.join(', ') : 'Ninguna'}
+          </Text>
+        </View>
+
+        {/* Grilla de palabras */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Selecciona Palabras</Text>
+          <ScrollView 
+            style={styles.symbolGrid}
+            contentContainerStyle={styles.gridContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            {WORD_SYMBOLS.map((symbol) => {
+              const isSelected = selectedWords.includes(symbol.text);
+              return (
+                <TouchableOpacity
+                  key={symbol.id}
+                  style={[
+                    styles.symbolButton,
+                    isSelected && styles.symbolButtonSelected
+                  ]}
+                  onPress={() => handleWordPress(symbol.text)}
+                  activeOpacity={0.7}
+                >
+                  <Image 
+                    source={symbol.image} 
+                    style={styles.symbolImage}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.symbolText}>{symbol.text}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Botones de acción */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            style={[styles.generateButton, isLoading && styles.buttonDisabled]}
+            onPress={handleGeneratePhrases}
+            disabled={isLoading || selectedWords.length === 0}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.generateButtonText}>Generar Frases</Text>
+            )}
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.clearButton} onPress={handleClear}>
+            <Text style={styles.clearButtonText}>Limpiar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Pantalla de selección de frases
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>AAC App - Demo</Text>
-        <Text style={styles.headerSubtitle}>Comunicación Aumentativa</Text>
+        <Text style={styles.headerTitle}>AAC App - Frases Generadas</Text>
+        <Text style={styles.headerSubtitle}>Elige una frase para reproducir</Text>
       </View>
 
-      {/* Área de Salida / Display */}
-      <View style={styles.outputArea}>
-        <Text style={styles.outputLabel}>Traducción:</Text>
-        <View style={styles.outputBox}>
-          <Text style={styles.outputText}>
-            {translatedOutput || 'Selecciona símbolos o escribe texto...'}
-          </Text>
-        </View>
-        
-        {/* Símbolos seleccionados */}
-        {selectedSymbols.length > 0 && (
-          <View style={styles.selectedSymbolsContainer}>
-            <Text style={styles.selectedLabel}>Símbolos seleccionados:</Text>
-            <View style={styles.selectedSymbols}>
-              {selectedSymbols.map((symbol, index) => (
-                <View key={`${symbol.id}-${index}`} style={styles.miniSymbol}>
-                  <Text style={styles.miniEmoji}>{symbol.emoji}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-      </View>
-
-      {/* Grilla de Símbolos PCS (para el niño) */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Selección de Símbolos (Niño)</Text>
-        <ScrollView 
-          style={styles.symbolGrid}
-          contentContainerStyle={styles.gridContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {DEMO_SYMBOLS.map((symbol) => (
-            <TouchableOpacity
-              key={symbol.id}
-              style={styles.symbolButton}
-              onPress={() => handleSymbolPress(symbol)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.symbolEmoji}>{symbol.emoji}</Text>
-              <Text style={styles.symbolText}>{symbol.text}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Input de Texto (para el cuidador) */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Entrada de Texto (Cuidador)</Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Escribe aquí..."
-            value={caregiverInput}
-            onChangeText={setCaregiverInput}
-            onSubmitEditing={handleCaregiverSubmit}
-          />
-          <TouchableOpacity 
-            style={styles.submitButton}
-            onPress={handleCaregiverSubmit}
+      {/* Frases generadas */}
+      <ScrollView style={styles.phrasesContainer} contentContainerStyle={styles.phrasesContent}>
+        {phrases.map((phrase, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.phraseButton}
+            onPress={() => handleSpeakPhrase(phrase)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.submitButtonText}>Enviar</Text>
+            <Text style={styles.phraseText}>{phrase}</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        ))}
+      </ScrollView>
 
-      {/* Botón de limpiar */}
-      <TouchableOpacity style={styles.clearButton} onPress={handleClear}>
-        <Text style={styles.clearButtonText}>Limpiar Todo</Text>
-      </TouchableOpacity>
+      {/* Botones de acción */}
+      <View style={styles.actionButtons}>
+        <TouchableOpacity 
+          style={[styles.generateButton, isLoading && styles.buttonDisabled]}
+          onPress={handleGenerateMorePhrases}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.generateButtonText}>Generar Más Frases</Text>
+          )}
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.backButton} onPress={handleBackToWords}>
+          <Text style={styles.backButtonText}>Volver</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -151,12 +245,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: 'white',
     marginTop: 4,
   },
@@ -175,46 +269,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
-  },
-  outputBox: {
-    backgroundColor: '#f9f9f9',
-    padding: 16,
-    borderRadius: 8,
-    minHeight: 60,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-  },
-  outputText: {
-    fontSize: 20,
-    color: '#333',
-    fontWeight: '500',
-  },
-  selectedSymbolsContainer: {
-    marginTop: 12,
-  },
-  selectedLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  selectedSymbols: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  miniSymbol: {
-    backgroundColor: '#E3F2FD',
-    padding: 8,
-    borderRadius: 6,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  miniEmoji: {
-    fontSize: 24,
   },
   section: {
     marginHorizontal: 12,
     marginBottom: 12,
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 18,
@@ -224,7 +283,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   symbolGrid: {
-    maxHeight: 220,
+    maxHeight: 400,
   },
   gridContainer: {
     flexDirection: 'row',
@@ -248,8 +307,14 @@ const styles = StyleSheet.create({
     marginRight: 10,
     marginBottom: 10,
   },
-  symbolEmoji: {
-    fontSize: 40,
+  symbolButtonSelected: {
+    borderColor: '#4A90E2',
+    backgroundColor: '#E3F2FD',
+    borderWidth: 3,
+  },
+  symbolImage: {
+    width: 50,
+    height: 50,
     marginBottom: 4,
   },
   symbolText: {
@@ -258,33 +323,54 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'center',
   },
-  inputContainer: {
-    flexDirection: 'row',
-  },
-  textInput: {
+  phrasesContainer: {
     flex: 1,
+    padding: 12,
+  },
+  phrasesContent: {
+    paddingBottom: 20,
+  },
+  phraseButton: {
     backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 14,
-    fontSize: 16,
+    padding: 20,
+    marginBottom: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
     borderWidth: 2,
     borderColor: '#e0e0e0',
-    marginRight: 10,
   },
-  submitButton: {
+  phraseText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#333',
+    textAlign: 'center',
+  },
+  actionButtons: {
+    padding: 12,
+    gap: 10,
+  },
+  generateButton: {
     backgroundColor: '#4CAF50',
-    paddingHorizontal: 24,
+    padding: 16,
     borderRadius: 8,
+    alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 50,
   },
-  submitButtonText: {
+  generateButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
   clearButton: {
     backgroundColor: '#FF6B6B',
-    margin: 12,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -294,5 +380,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  backButton: {
+    backgroundColor: '#9E9E9E',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
-

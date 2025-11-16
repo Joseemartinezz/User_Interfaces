@@ -8,13 +8,49 @@ Aplicación de comunicación aumentativa usando React Native y Expo para ayudar 
 
 - Node.js (v18 o superior)
 - npm o yarn
+- API Key de Google Gemini (obtén una en [Google AI Studio](https://makersuite.google.com/app/apikey))
 
 ### Instalación
 
-1. Instala las dependencias:
+1. Instala las dependencias del frontend:
 ```bash
 npm install
 ```
+
+2. Instala las dependencias del backend:
+```bash
+cd server
+npm install
+cd ..
+```
+
+3. Configura tu API Key de Gemini:
+   - El archivo `.env` en la raíz ya tiene tu API key configurada
+   - El archivo `server/.env` también tiene la misma clave
+   - **IMPORTANTE**: La API key está en `.env` que está en `.gitignore` (no se subirá al repositorio)
+
+### ⚡ Inicio Rápido
+
+**Paso 1: Inicia el servidor backend** (en una terminal):
+```bash
+npm run server
+# O para desarrollo con auto-reload:
+npm run server:dev
+```
+
+El servidor se ejecutará en `http://localhost:3000`
+
+**Paso 2: Inicia la app React Native** (en otra terminal):
+```bash
+npm start
+```
+
+**Paso 3: Configura la URL del backend según tu plataforma:**
+
+- **Web/Navegador**: Ya está configurado para `http://localhost:3000` ✅
+- **Android Emulator**: Edita `services/geminiService.ts` línea 6 y cambia a `http://10.0.2.2:3000`
+- **iOS Simulator**: Ya está configurado para `http://localhost:3000` ✅
+- **Dispositivo Físico**: Cambia a `http://TU_IP_LOCAL:3000` (ej: `http://192.168.1.100:3000`)
 
 ### Ejecución
 
@@ -36,7 +72,7 @@ Esto abrirá Expo Dev Tools. Desde ahí puedes:
 npm run web
 ```
 
-## ✨ Características Implementadas (v1.0)
+## ✨ Características Implementadas
 
 ✅ **Interfaz Básica** (Punto 1 del Roadmap)
 - Pantalla principal con grilla de símbolos grandes para selección PCS
@@ -44,40 +80,86 @@ npm run web
 - Área de visualización mostrando la salida traducida
 - Navegación simple y clara
 
+✅ **Integración con Gemini AI** (Basado en prototype.py)
+- Selección de palabras mediante símbolos
+- Generación de frases naturales usando Gemini 2.0 Flash
+- Text-to-Speech para reproducir las frases generadas
+- Generación de más frases sin repetir las existentes
+
 ### Componentes Principales
 
-1. **Grilla de Símbolos (Niño)**: 12 símbolos de comunicación básicos con emojis
-2. **Entrada de Texto (Cuidador)**: Campo de texto para que los cuidadores escriban
-3. **Área de Traducción**: Muestra el resultado en tiempo real
-4. **Símbolos Seleccionados**: Visualización de la secuencia de símbolos elegidos
+1. **Selección de Palabras**: 9 palabras básicas (I, You, Not, Like, Want, Play, Football, Pizza, School) con imágenes placeholder
+2. **Generación de Frases**: Usa Gemini AI para crear frases naturales y gramaticalmente correctas
+3. **Reproducción de Voz**: Text-to-speech integrado con expo-speech
+4. **Interfaz Dual**: Dos pantallas - selección de palabras y selección de frases
 
 ## 🎯 Próximos Pasos
 
-- [ ] Integración con pictogramas ARASAAC
-- [ ] Conexión con LLM (GPT-4o-mini/Gemini)
+- [ ] Integración con pictogramas ARASAAC reales
 - [ ] Backend con Node.js y Firebase
 - [ ] Entrada de voz con Whisper
 - [ ] Procesamiento de imágenes
+- [ ] Perfiles de usuario personalizados
 
 ## 🛠️ Tecnologías
 
-- **React Native** con Expo
+- **React Native** con Expo SDK 54
 - **TypeScript**
+- **Google Gemini AI** (@google/generative-ai)
+- **Expo Speech** para text-to-speech
 - Diseño con componentes nativos para máximo rendimiento
 
 ## 📱 Uso de la App
 
-### Para el Niño:
-1. Toca los símbolos grandes de la grilla
-2. La traducción aparece en tiempo real arriba
-3. Continúa seleccionando símbolos para formar frases
+### Flujo Principal:
 
-### Para el Cuidador:
-1. Escribe texto en el campo de entrada
-2. Presiona "Enviar" 
-3. (Próximamente: verás los símbolos PCS correspondientes)
+1. **Selección de Palabras**:
+   - Toca los símbolos para seleccionar palabras
+   - Las palabras seleccionadas aparecen en la parte superior
+   - Presiona "Generar Frases" para crear frases naturales
+
+2. **Selección de Frases**:
+   - Se muestran las frases generadas por Gemini
+   - Toca una frase para reproducirla con text-to-speech
+   - Presiona "Generar Más Frases" para obtener alternativas
+
+3. **Navegación**:
+   - Usa "Volver" para regresar a la selección de palabras
+   - Usa "Limpiar" para resetear todo
+
+## ⚙️ Configuración
+
+### API Key de Gemini
+
+La API key ya está configurada en:
+- `.env` (raíz del proyecto) - para el frontend
+- `server/.env` - para el backend
+
+Si necesitas cambiarla, edita ambos archivos.
+
+### URL del Backend
+
+Por defecto, la app está configurada para usar `http://localhost:3000`. 
+
+**Para cambiar la URL del backend según tu plataforma:**
+
+Edita `services/geminiService.ts` línea 6:
+
+```typescript
+// Para Android Emulator:
+const API_BASE_URL = 'http://10.0.2.2:3000';
+
+// Para iOS Simulator o Web:
+const API_BASE_URL = 'http://localhost:3000';
+
+// Para dispositivo físico (reemplaza con tu IP local):
+const API_BASE_URL = 'http://192.168.1.100:3000';
+```
+
+**Para encontrar tu IP local:**
+- Windows: Ejecuta `ipconfig` y busca "IPv4"
+- Mac/Linux: Ejecuta `ifconfig` o `ip addr`
 
 ## 📄 Licencia
 
 Este proyecto es un prototipo académico para Advanced User Interfaces - Polimi.
-
