@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const fetch = require('node-fetch');
 require('dotenv').config();
 
 const app = express();
@@ -73,13 +74,32 @@ Guidelines:
 `;
 
     console.log('🔄 Llamando a Gemini API con palabras:', words);
-    // Usar gemini-1.5-pro
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-    console.log('📡 Enviando prompt a Gemini con modelo gemini-1.5-pro...');
-    const result = await model.generateContent(basePrompt);
-    const response = await result.response;
-    const text = response.text();
-    console.log('✅ Respuesta recibida de Gemini:', text.substring(0, 100) + '...');
+    
+    // Intentar con diferentes modelos en orden de preferencia
+    const modelsToTry = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-pro'];
+    let text = null;
+    let lastError = null;
+    
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`📡 Intentando con modelo: ${modelName}...`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(basePrompt);
+        const response = await result.response;
+        text = response.text();
+        console.log(`✅ Respuesta recibida de Gemini con modelo: ${modelName}`);
+        console.log('📄 Texto completo:', text);
+        break; // Si funciona, salir del loop
+      } catch (modelError) {
+        console.log(`❌ ${modelName} falló:`, modelError.message?.substring(0, 100));
+        lastError = modelError;
+        continue; // Intentar siguiente modelo
+      }
+    }
+    
+    if (!text) {
+      throw lastError || new Error('Todos los modelos fallaron');
+    }
 
     const phrases = extractPhrases(text);
 
@@ -88,13 +108,29 @@ Guidelines:
     console.error('❌ Error generating phrases:', error);
     console.error('Error details:', {
       message: error.message,
-      stack: error.stack,
-      name: error.name
+      status: error.status,
+      statusText: error.statusText,
+      name: error.name,
+      stack: error.stack?.split('\n').slice(0, 5).join('\n')
     });
+    
+    // Mensaje de error más útil
+    let errorMessage = error.message || 'Error desconocido';
+    if (error.message?.includes('404') || error.message?.includes('not found')) {
+      errorMessage = 'El modelo de Gemini no está disponible. Verifica tu API key y los modelos disponibles.';
+    } else if (error.message?.includes('API_KEY') || error.message?.includes('API key')) {
+      errorMessage = 'API Key de Gemini inválida o sin permisos. Verifica tu API key.';
+    } else if (error.message?.includes('quota') || error.message?.includes('limit')) {
+      errorMessage = 'Se ha excedido la cuota de la API de Gemini. Verifica tu plan.';
+    }
+    
     res.status(500).json({ 
       error: 'Error al generar frases',
-      message: error.message || 'Error desconocido',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      message: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? {
+        originalError: error.message,
+        status: error.status
+      } : undefined
     });
   }
 });
@@ -134,10 +170,31 @@ Guidelines:
 
     const promptMore = basePrompt + '\nDo NOT repeat any of these phrases:\n' + existingPhrases.join('\n');
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-    const result = await model.generateContent(promptMore);
-    const response = await result.response;
-    const text = response.text();
+    // Intentar con diferentes modelos en orden de preferencia
+    const modelsToTry = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-pro'];
+    let text = null;
+    let lastError = null;
+    
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`📡 Intentando con modelo: ${modelName} para generar más frases...`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(promptMore);
+        const response = await result.response;
+        text = response.text();
+        console.log(`✅ Respuesta recibida de Gemini con modelo: ${modelName}`);
+        console.log('📄 Texto completo:', text);
+        break; // Si funciona, salir del loop
+      } catch (modelError) {
+        console.log(`❌ ${modelName} falló:`, modelError.message?.substring(0, 100));
+        lastError = modelError;
+        continue; // Intentar siguiente modelo
+      }
+    }
+    
+    if (!text) {
+      throw lastError || new Error('Todos los modelos fallaron');
+    }
 
     const phrases = extractPhrases(text);
 
@@ -146,13 +203,297 @@ Guidelines:
     console.error('❌ Error generating more phrases:', error);
     console.error('Error details:', {
       message: error.message,
-      stack: error.stack,
-      name: error.name
+      status: error.status,
+      statusText: error.statusText,
+      name: error.name,
+      stack: error.stack?.split('\n').slice(0, 5).join('\n')
     });
+    
+    // Mensaje de error más útil
+    let errorMessage = error.message || 'Error desconocido';
+    if (error.message?.includes('404') || error.message?.includes('not found')) {
+      errorMessage = 'El modelo de Gemini no está disponible. Verifica tu API key y los modelos disponibles.';
+    } else if (error.message?.includes('API_KEY') || error.message?.includes('API key')) {
+      errorMessage = 'API Key de Gemini inválida o sin permisos. Verifica tu API key.';
+    } else if (error.message?.includes('quota') || error.message?.includes('limit')) {
+      errorMessage = 'Se ha excedido la cuota de la API de Gemini. Verifica tu plan.';
+    }
+    
     res.status(500).json({ 
       error: 'Error al generar más frases',
-      message: error.message || 'Error desconocido',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      message: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? {
+        originalError: error.message,
+        status: error.status
+      } : undefined
+    });
+  }
+});
+
+// ==========================================
+// ENDPOINTS DE ARASAAC
+// ==========================================
+
+/**
+ * Base URL de la API de ARASAAC
+ */
+const ARASAAC_BASE_URL = 'https://api.arasaac.org/api';
+
+/**
+ * Endpoint para servir imágenes de pictogramas como proxy
+ * GET /api/arasaac/image/:idPictogram
+ * 
+ * IMPORTANTE: Esta ruta debe ir ANTES de otras rutas de ARASAAC
+ * para evitar conflictos de enrutamiento
+ */
+app.get('/api/arasaac/image/:idPictogram', async (req, res) => {
+  try {
+    const { idPictogram } = req.params;
+    const { color, backgroundColor, plural, skin, hair, action } = req.query;
+
+    if (!idPictogram) {
+      return res.status(400).json({ error: 'Se requiere un ID de pictograma' });
+    }
+
+    console.log(`🖼️ Sirviendo imagen de pictograma ID: ${idPictogram}`);
+    console.log(`   Request desde: ${req.headers['user-agent'] || 'Unknown'}`);
+
+    // Construir URL de ARASAAC con parámetros opcionales
+    let url = `${ARASAAC_BASE_URL}/pictograms/${idPictogram}`;
+    const params = [];
+    
+    if (color !== undefined) {
+      params.push(`color=${color}`);
+    }
+    if (backgroundColor) {
+      params.push(`backgroundColor=${encodeURIComponent(backgroundColor)}`);
+    }
+    if (plural === 'true') {
+      params.push('plural=true');
+    }
+    if (skin) {
+      params.push(`skin=${encodeURIComponent(skin)}`);
+    }
+    if (hair) {
+      params.push(`hair=${encodeURIComponent(hair)}`);
+    }
+    if (action) {
+      params.push(`action=${encodeURIComponent(action)}`);
+    }
+    
+    if (params.length > 0) {
+      url += '?' + params.join('&');
+    }
+
+    console.log(`📡 URL de ARASAAC: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'image/png,image/*,*/*',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`❌ Error de ARASAAC: ${response.status} ${response.statusText}`);
+      
+      if (response.status === 404) {
+        return res.status(404).json({ 
+          error: 'Pictograma no encontrado',
+          message: `No se encontró el pictograma con ID ${idPictogram}`
+        });
+      }
+      
+      return res.status(response.status).json({ 
+        error: 'Error al obtener la imagen de ARASAAC',
+        message: `Status ${response.status}: ${response.statusText}`
+      });
+    }
+
+    // Obtener el buffer de la imagen
+    // node-fetch v2 usa .buffer(), v3 usa .arrayBuffer()
+    let imageBuffer;
+    try {
+      imageBuffer = await response.buffer();
+    } catch (error) {
+      // Si buffer() no está disponible, usar arrayBuffer()
+      const arrayBuffer = await response.arrayBuffer();
+      imageBuffer = Buffer.from(arrayBuffer);
+    }
+    
+    const contentType = response.headers.get('content-type') || 'image/png';
+
+    console.log(`✅ Imagen obtenida: ${imageBuffer.length} bytes, tipo: ${contentType}`);
+
+    // Enviar la imagen con los headers correctos para React Native
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Length', imageBuffer.length);
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache por 1 año
+    res.setHeader('Access-Control-Allow-Origin', '*'); // CORS para React Native
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.send(imageBuffer);
+  } catch (error) {
+    console.error('❌ Error obteniendo imagen de ARASAAC:', error);
+    res.status(500).json({ 
+      error: 'Error al obtener la imagen',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Busca pictogramas de ARASAAC por término de búsqueda
+ * GET /api/arasaac/search/:language/:searchTerm
+ */
+app.get('/api/arasaac/search/:language/:searchTerm', async (req, res) => {
+  try {
+    const { language, searchTerm } = req.params;
+
+    if (!searchTerm || searchTerm.trim() === '') {
+      return res.status(400).json({ error: 'Se requiere un término de búsqueda' });
+    }
+
+    console.log(`🔍 Buscando pictogramas ARASAAC: "${searchTerm}" en idioma: ${language}`);
+
+    const url = `${ARASAAC_BASE_URL}/pictograms/${language}/search/${encodeURIComponent(searchTerm)}`;
+    console.log(`📡 URL de ARASAAC: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`❌ Error de ARASAAC: ${response.status} ${response.statusText}`);
+      return res.status(response.status).json({ 
+        error: 'Error al buscar en ARASAAC',
+        message: `Status ${response.status}: ${response.statusText}`
+      });
+    }
+
+    const pictograms = await response.json();
+    console.log(`✅ Se encontraron ${pictograms.length} pictogramas en ARASAAC`);
+
+    res.json(pictograms);
+  } catch (error) {
+    console.error('❌ Error buscando pictogramas en ARASAAC:', error);
+    res.status(500).json({ 
+      error: 'Error al buscar pictogramas',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Obtiene información de un pictograma específico por ID
+ * GET /api/arasaac/pictogram/:language/:idPictogram
+ */
+app.get('/api/arasaac/pictogram/:language/:idPictogram', async (req, res) => {
+  try {
+    const { language, idPictogram } = req.params;
+
+    if (!idPictogram) {
+      return res.status(400).json({ error: 'Se requiere un ID de pictograma' });
+    }
+
+    console.log(`🔍 Obteniendo pictograma ARASAAC ID: ${idPictogram} en idioma: ${language}`);
+
+    const url = `${ARASAAC_BASE_URL}/pictograms/${language}/${idPictogram}`;
+    console.log(`📡 URL de ARASAAC: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`❌ Error de ARASAAC: ${response.status} ${response.statusText}`);
+      
+      if (response.status === 404) {
+        return res.status(404).json({ 
+          error: 'Pictograma no encontrado',
+          message: `No se encontró el pictograma con ID ${idPictogram}`
+        });
+      }
+      
+      return res.status(response.status).json({ 
+        error: 'Error al obtener el pictograma de ARASAAC',
+        message: `Status ${response.status}: ${response.statusText}`
+      });
+    }
+
+    const pictogram = await response.json();
+    console.log(`✅ Pictograma obtenido: ${pictogram._id}`);
+
+    res.json(pictogram);
+  } catch (error) {
+    console.error('❌ Error obteniendo pictograma de ARASAAC:', error);
+    res.status(500).json({ 
+      error: 'Error al obtener el pictograma',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Endpoint para buscar pictogramas para múltiples palabras
+ * POST /api/arasaac/search-multiple
+ */
+app.post('/api/arasaac/search-multiple', async (req, res) => {
+  try {
+    const { words, language = 'es' } = req.body;
+
+    if (!words || !Array.isArray(words) || words.length === 0) {
+      return res.status(400).json({ error: 'Se requiere un array de palabras' });
+    }
+
+    console.log(`🔍 Buscando pictogramas para ${words.length} palabras en idioma: ${language}`);
+
+    // Buscar pictogramas para cada palabra en paralelo
+    const searchPromises = words.map(async (word) => {
+      try {
+        const url = `${ARASAAC_BASE_URL}/pictograms/${language}/search/${encodeURIComponent(word)}`;
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          console.error(`❌ Error buscando "${word}": ${response.status}`);
+          return { word, pictograms: [], error: true };
+        }
+
+        const pictograms = await response.json();
+        return { word, pictograms, error: false };
+      } catch (error) {
+        console.error(`❌ Error buscando "${word}":`, error.message);
+        return { word, pictograms: [], error: true };
+      }
+    });
+
+    const results = await Promise.all(searchPromises);
+    
+    // Convertir a objeto para facilitar el acceso
+    const resultsMap = {};
+    results.forEach(({ word, pictograms, error }) => {
+      resultsMap[word] = { pictograms, error };
+    });
+
+    console.log(`✅ Búsqueda completada para ${words.length} palabras`);
+
+    res.json(resultsMap);
+  } catch (error) {
+    console.error('❌ Error en búsqueda múltiple:', error);
+    res.status(500).json({ 
+      error: 'Error al buscar múltiples pictogramas',
+      message: error.message
     });
   }
 });
@@ -167,7 +508,11 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/api/health',
       generatePhrases: 'POST /api/generate-phrases',
-      generateMorePhrases: 'POST /api/generate-more-phrases'
+      generateMorePhrases: 'POST /api/generate-more-phrases',
+      arasaacSearch: 'GET /api/arasaac/search/:language/:searchTerm',
+      arasaacPictogram: 'GET /api/arasaac/pictogram/:language/:idPictogram',
+      arasaacImage: 'GET /api/arasaac/image/:idPictogram',
+      arasaacSearchMultiple: 'POST /api/arasaac/search-multiple'
     },
     hasApiKey: !!GEMINI_API_KEY 
   });

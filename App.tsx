@@ -13,18 +13,174 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import * as Speech from 'expo-speech';
 import { generatePhrases, generateMorePhrases } from './services/geminiService';
+import { getPictogramImageUrl } from './services/arasaacService';
 
-// Palabras del prototipo con sus imágenes
+// Componente para mostrar pictogramas con manejo de errores y carga
+interface PictogramImageProps {
+  arasaacId: number;
+  style?: any;
+}
+
+const PictogramImage: React.FC<PictogramImageProps> = ({ arasaacId, style }) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Generar URL del pictograma
+  const imageUrl = getPictogramImageUrl(arasaacId, { 
+    color: true, 
+    backgroundColor: 'white' 
+  });
+  
+  // Log para debug
+  React.useEffect(() => {
+    console.log(`🖼️ Pictograma ID ${arasaacId}`);
+    console.log(`   URL: ${imageUrl}`);
+    // Resetear error cuando cambia el ID o la URL
+    setImageError(false);
+    setErrorMessage(null);
+    setImageLoading(true);
+  }, [arasaacId, imageUrl]);
+  
+  if (imageError) {
+    // Mostrar un placeholder si hay error con información de debug
+    return (
+      <View style={[style, styles.errorContainer]}>
+        <Text style={styles.errorText}>❓</Text>
+        <Text style={styles.errorSubtext}>ID: {arasaacId}</Text>
+        {errorMessage && (
+          <Text style={styles.errorSubtext} numberOfLines={2}>
+            {errorMessage.substring(0, 50)}...
+          </Text>
+        )}
+      </View>
+    );
+  }
+  
+  return (
+    <View style={[style, { overflow: 'hidden' }]}>
+      {imageLoading && (
+        <View style={[StyleSheet.absoluteFill, styles.loadingContainer]}>
+          <ActivityIndicator size="small" color="#4A90E2" />
+        </View>
+      )}
+      <Image
+        source={{ 
+          uri: imageUrl,
+          // No usar cache forzado para evitar problemas
+          cache: 'default'
+        }}
+        style={style}
+        resizeMode="contain"
+        onLoadStart={() => {
+          console.log(`⏳ Iniciando carga: ID ${arasaacId}`);
+          console.log(`   URL completa: ${imageUrl}`);
+          setImageLoading(true);
+          setImageError(false);
+        }}
+        onLoad={(event) => {
+          console.log(`✅ Imagen cargada exitosamente: ID ${arasaacId}`);
+          console.log(`   Dimensiones: ${event.nativeEvent.source.width}x${event.nativeEvent.source.height}`);
+          setImageLoading(false);
+        }}
+        onLoadEnd={() => {
+          setImageLoading(false);
+        }}
+        onError={(error) => {
+          const errorDetails = error.nativeEvent || error;
+          
+          console.error(`❌ Error cargando pictograma ID ${arasaacId}`);
+          console.error(`   URL: ${imageUrl}`);
+          console.error(`   Error tipo:`, typeof errorDetails);
+          console.error(`   Error keys:`, Object.keys(errorDetails));
+          console.error(`   Error completo:`, errorDetails);
+          
+          // Intentar extraer el mensaje de error
+          // En React Native, el error puede estar en diferentes propiedades
+          let finalErrorMessage = 'Error al cargar';
+          
+          if (errorDetails.error) {
+            finalErrorMessage = String(errorDetails.error);
+          } else if (typeof errorDetails === 'string') {
+            finalErrorMessage = errorDetails;
+          } else if (errorDetails && typeof errorDetails === 'object') {
+            // Intentar extraer cualquier propiedad que contenga el mensaje
+            const errorString = JSON.stringify(errorDetails);
+            if (errorString.length < 200) {
+              finalErrorMessage = errorString;
+            } else {
+              finalErrorMessage = 'Error desconocido (ver logs)';
+            }
+          }
+          
+          console.error(`   Mensaje final: ${finalErrorMessage}`);
+          
+          setErrorMessage(finalErrorMessage);
+          setImageError(true);
+          setImageLoading(false);
+        }}
+      />
+    </View>
+  );
+};
+
+// Palabras del prototipo con pictogramas de ARASAAC
+// Los IDs corresponden a pictogramas verificados en ARASAAC para cada palabra en inglés
 const WORD_SYMBOLS = [
-  { id: 1, text: 'I', image: require('./assets/placeholder.png') },
-  { id: 2, text: 'You', image: require('./assets/placeholder.png') },
-  { id: 3, text: 'Not', image: require('./assets/placeholder.png') },
-  { id: 4, text: 'Like', image: require('./assets/placeholder.png') },
-  { id: 5, text: 'Want', image: require('./assets/placeholder.png') },
-  { id: 6, text: 'Play', image: require('./assets/placeholder.png') },
-  { id: 7, text: 'Football', image: require('./assets/placeholder.png') },
-  { id: 8, text: 'Pizza', image: require('./assets/placeholder.png') },
-  { id: 9, text: 'School', image: require('./assets/placeholder.png') },
+  { 
+    id: 1, 
+    text: 'I', 
+    arasaacId: 6632, // "I" (yo) - pronombre personal
+    imageUrl: getPictogramImageUrl(6632, { color: true, backgroundColor: 'white' })
+  },
+  { 
+    id: 2, 
+    text: 'You', 
+    arasaacId: 6625, // "you" (tú) - pronombre personal
+    imageUrl: getPictogramImageUrl(6625, { color: true, backgroundColor: 'white' })
+  },
+  { 
+    id: 3, 
+    text: 'Not', 
+    arasaacId: 32308, // "not" (no) - negación
+    imageUrl: getPictogramImageUrl(32308, { color: true, backgroundColor: 'white' })
+  },
+  { 
+    id: 4, 
+    text: 'Like', 
+    arasaacId: 37826, // "like" (gustar) - verbo
+    imageUrl: getPictogramImageUrl(37826, { color: true, backgroundColor: 'white' })
+  },
+  { 
+    id: 5, 
+    text: 'Want', 
+    arasaacId: 5441, // "want" (querer) - verbo
+    imageUrl: getPictogramImageUrl(5441, { color: true, backgroundColor: 'white' })
+  },
+  { 
+    id: 6, 
+    text: 'Play', 
+    arasaacId: 23392, // "play" (jugar) - verbo
+    imageUrl: getPictogramImageUrl(23392, { color: true, backgroundColor: 'white' })
+  },
+  { 
+    id: 7, 
+    text: 'Football', 
+    arasaacId: 16743, // "football" (fútbol) - deporte
+    imageUrl: getPictogramImageUrl(16743, { color: true, backgroundColor: 'white' })
+  },
+  { 
+    id: 8, 
+    text: 'Pizza', 
+    arasaacId: 2527, // "pizza" - comida
+    imageUrl: getPictogramImageUrl(2527, { color: true, backgroundColor: 'white' })
+  },
+  { 
+    id: 9, 
+    text: 'School', 
+    arasaacId: 32446, // "school" (escuela) - lugar
+    imageUrl: getPictogramImageUrl(32446, { color: true, backgroundColor: 'white' })
+  },
 ];
 
 type Screen = 'word-selection' | 'phrase-selection';
@@ -125,11 +281,34 @@ export default function App() {
           <Text style={styles.headerSubtitle}>Selecciona palabras para crear frases</Text>
         </View>
 
-        {/* Palabras seleccionadas */}
+        {/* Palabras seleccionadas con pictogramas */}
         <View style={styles.outputArea}>
-          <Text style={styles.outputLabel}>
-            Palabras seleccionadas: {selectedWords.length > 0 ? selectedWords.join(', ') : 'Ninguna'}
-          </Text>
+          {selectedWords.length > 0 ? (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={true}
+              contentContainerStyle={styles.selectedWordsContainer}
+              style={styles.selectedWordsScrollView}
+              nestedScrollEnabled={true}
+            >
+              {selectedWords.map((word) => {
+                const symbol = WORD_SYMBOLS.find(s => s.text === word);
+                if (!symbol) return null;
+                
+                return (
+                  <View key={word} style={styles.selectedWordItem}>
+                    <PictogramImage 
+                      arasaacId={symbol.arasaacId}
+                      style={styles.selectedWordImage}
+                    />
+                    <Text style={styles.selectedWordText}>{word}</Text>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          ) : (
+            <Text style={styles.emptySelectionText}>Ninguna palabra seleccionada</Text>
+          )}
         </View>
 
         {/* Grilla de palabras */}
@@ -152,10 +331,9 @@ export default function App() {
                   onPress={() => handleWordPress(symbol.text)}
                   activeOpacity={0.7}
                 >
-                  <Image 
-                    source={symbol.image} 
+                  <PictogramImage 
+                    arasaacId={symbol.arasaacId}
                     style={styles.symbolImage}
-                    resizeMode="contain"
                   />
                   <Text style={styles.symbolText}>{symbol.text}</Text>
                 </TouchableOpacity>
@@ -269,6 +447,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+  },
+  selectedWordsScrollView: {
+    maxHeight: 90,
+  },
+  selectedWordsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 12,
+    paddingVertical: 4,
+  },
+  selectedWordItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 70,
+    marginRight: 12,
+  },
+  selectedWordImage: {
+    width: 50,
+    height: 50,
+    marginBottom: 4,
+  },
+  selectedWordText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+  },
+  emptySelectionText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 8,
   },
   section: {
     marginHorizontal: 12,
@@ -390,5 +601,24 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  errorContainer: {
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 30,
+    color: '#999',
+  },
+  errorSubtext: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: 4,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
 });
