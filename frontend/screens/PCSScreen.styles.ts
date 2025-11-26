@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
 
 export const styles = StyleSheet.create({
   rootWrapper: {
@@ -58,6 +58,7 @@ export const styles = StyleSheet.create({
     marginHorizontal: 12,
     marginBottom: 12,
     flex: 1,
+    minHeight: 0, // Importante para que el ScrollView funcione dentro de flex
   },
   sectionTitle: {
     fontSize: 18,
@@ -65,17 +66,40 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 4,
   },
-  symbolGrid: {
-    maxHeight: 400,
+  categoryGridContainer: {
+    width: Dimensions.get('window').width - 24, // Ancho de pantalla menos márgenes del section (12*2)
+    paddingHorizontal: 8,
+    flex: 1,
   },
-  gridContainer: {
+  categoryHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  categoryEmoji: {
+    fontSize: 24,
+    marginRight: 8,
+  },
+  categoryName: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  categoryScrollView: {
+    flex: 1,
+    minHeight: 0, // Importante para que el ScrollView funcione dentro de flex
+  },
+  grid4x4Container: {
     paddingBottom: 10,
   },
+  grid4x4: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
   symbolButton: {
-    width: 100,
-    height: 100,
+    width: '23%', // 4 columnas con espacio entre ellas (100% / 4 - espacio)
+    aspectRatio: 1,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -85,8 +109,18 @@ export const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     borderWidth: 2,
-    marginRight: 10,
     marginBottom: 10,
+  },
+  emptyCategoryContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyCategoryText: {
+    fontSize: 16,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
   symbolImage: {
     width: 50,

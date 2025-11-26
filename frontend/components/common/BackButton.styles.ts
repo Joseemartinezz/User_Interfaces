@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   arrow: {
-    width: 30,
+    width: 70,
     height: 30,
   },
 });

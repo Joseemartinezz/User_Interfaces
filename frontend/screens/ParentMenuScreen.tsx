@@ -33,13 +33,6 @@ const ParentMenuScreen: React.FC = () => {
     navigation.navigate('Profile' as never);
   }, [navigation]);
 
-  const handleWelcome = useCallback(() => {
-    navigation.navigate('Welcome' as never);
-  }, [navigation]);
-
-  const handleNewSentence = useCallback(() => {
-    navigation.navigate('SentenceType' as never);
-  }, [navigation]);
 
   const handleLogout = useCallback(() => {
     Alert.alert(
@@ -64,6 +57,13 @@ const ParentMenuScreen: React.FC = () => {
       ]
     );
   }, [logout]);
+
+  // Navegar a categorías (Categories)
+  const handleCategories = useCallback(() => {
+    (navigation as any).navigate('Categories', { 
+      selectedColor: theme.primary
+    });
+  }, [navigation, theme.primary]);
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
@@ -130,37 +130,18 @@ const ParentMenuScreen: React.FC = () => {
             <Text style={[styles.sectionTitle, { color: theme.primary }]}>🧭 Navigation</Text>
             
             <TouchableOpacity
-              style={[styles.menuButton, { borderColor: theme.secondary }]}
-              onPress={handleWelcome}
+              style={[styles.menuButton, { borderColor: theme.secondary, marginTop: 0 }]}
+              onPress={handleCategories}
               activeOpacity={0.7}
             >
               <View style={styles.menuButtonContent}>
-                <Text style={styles.menuIcon}>🏠</Text>
+                <Text style={styles.menuIcon}>📂</Text>
                 <View style={styles.menuTextContainer}>
                   <Text style={[styles.menuButtonText, { color: theme.primary }]}>
-                    Home Screen
+                    Categories
                   </Text>
                   <Text style={[styles.menuButtonSubtext, { color: theme.primary }]}>
-                    Favorites, history, and more
-                  </Text>
-                </View>
-                <Text style={[styles.menuArrow, { color: theme.primary }]}>›</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.menuButton, { borderColor: theme.tertiary }]}
-              onPress={handleNewSentence}
-              activeOpacity={0.7}
-            >
-              <View style={styles.menuButtonContent}>
-                <Text style={styles.menuIcon}>➕</Text>
-                <View style={styles.menuTextContainer}>
-                  <Text style={[styles.menuButtonText, { color: theme.primary }]}>
-                    Guided Mode
-                  </Text>
-                  <Text style={[styles.menuButtonSubtext, { color: theme.primary }]}>
-                    Step-by-step sentence creation
+                    Manage categories and symbols
                   </Text>
                 </View>
                 <Text style={[styles.menuArrow, { color: theme.primary }]}>›</Text>

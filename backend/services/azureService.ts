@@ -7,10 +7,10 @@
 // Helper function to get env vars (reads them at runtime, not module load time)
 function getAzureConfig() {
   return {
-    url: process.env.AZURE_OPENAI_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_URL || '',
-    key: process.env.AZURE_OPENAI_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_KEY || '',
-    deployment: process.env.AZURE_OPENAI_DEPLOYMENT || process.env.EXPO_PUBLIC_AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini',
-    apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2023-03-15-preview'
+    url: process.env.AZURE_OPENAI_PHRASE_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_URL || '',
+    key: process.env.AZURE_OPENAI_PHRASE_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_KEY || '',
+    deployment: process.env.AZURE_OPENAI_PHRASE_DEPLOYMENT || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_DEPLOYMENT || 'gpt-4o-mini',
+    apiVersion: process.env.AZURE_OPENAI_PHRASE_API_VERSION || '2023-03-15-preview'
   };
 }
 
@@ -49,7 +49,7 @@ async function generateAzurePhrases(words) {
 
   const config = getAzureConfig();
   if (!config.url || !config.key) {
-    throw new Error('Azure OpenAI no está configurado. Verifica las variables de entorno AZURE_OPENAI_URL y AZURE_OPENAI_KEY.');
+    throw new Error('Azure OpenAI no está configurado. Verifica las variables de entorno AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY.');
   }
 
   try {
@@ -120,7 +120,7 @@ async function generateMoreAzurePhrases(words, existingPhrases) {
 
   const config = getAzureConfig();
   if (!config.url || !config.key) {
-    throw new Error('Azure OpenAI no está configurado. Verifica las variables de entorno AZURE_OPENAI_URL y AZURE_OPENAI_KEY.');
+    throw new Error('Azure OpenAI no está configurado. Verifica las variables de entorno AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY.');
   }
 
   try {
@@ -129,12 +129,18 @@ You are helping a child who uses an Augmentative and Alternative Communication (
 Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
 ${words.join(', ')}
 
+IMPORTANT: You MUST generate EXACTLY 3 phrases. No more, no less. Generate exactly 3 phrases.
+
 Guidelines:
 - The phrases must be short but contain ALL information provided.
 - They should sound natural when spoken aloud.
 - They must be grammatically correct and easy for a child.
-- Return one phrase per line, numbered starting from 1.
-Don't repeat these already generated phrases: ${existingPhrases.join(', ')}.`;
+- Generate EXACTLY 3 different phrases. Do not generate 4, 5, or any other number. Only 3.
+- Return exactly 3 phrases, one per line, numbered starting from 1.
+
+Do NOT repeat these already generated phrases: ${existingPhrases.join(', ')}.
+
+Remember: Generate EXACTLY 3 new phrases, no more, no less.`;
 
     const response = await fetch(`${config.url}/openai/deployments/${config.deployment}/chat/completions?api-version=${config.apiVersion}`, {
       method: 'POST',
@@ -174,7 +180,9 @@ Don't repeat these already generated phrases: ${existingPhrases.join(', ')}.`;
       }
     }
 
-    return phrases.length > 0 ? phrases : [output.trim()];
+    const extractedPhrases = phrases.length > 0 ? phrases : [output.trim()];
+    // Limitar a exactamente 3 frases como medida de seguridad
+    return extractedPhrases.slice(0, 3);
   } catch (error) {
     console.error('❌ Error generating more phrases with Azure OpenAI:', error);
     throw new Error(error.message || 'Error al generar más frases con Azure OpenAI.');

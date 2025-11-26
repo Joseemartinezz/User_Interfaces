@@ -6,6 +6,7 @@ const cors = require('cors');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fetch = require('node-fetch');
 const { generateAzurePhrases, generateMoreAzurePhrases, testAzureConnection } = require('./services/azureService.ts');
+const { generateAacImage, generateAacImagesForPhrases } = require('./services/imageService.ts');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,13 +42,13 @@ app.use((req, res, next) => {
 });
 
 
-// Configuración de Azure OpenAI (Proveedor Principal)
-const AZURE_OPENAI_URL = process.env.AZURE_OPENAI_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_URL;
-const AZURE_OPENAI_KEY = process.env.AZURE_OPENAI_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_KEY;
+// Configuración de Azure OpenAI (Proveedor Principal) - Para generación de frases
+const AZURE_OPENAI_PHRASE_URL = process.env.AZURE_OPENAI_PHRASE_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_URL;
+const AZURE_OPENAI_PHRASE_KEY = process.env.AZURE_OPENAI_PHRASE_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_KEY;
 
-if (!AZURE_OPENAI_URL || !AZURE_OPENAI_KEY) {
-  console.warn('⚠️ ADVERTENCIA: Azure OpenAI no está configurado en las variables de entorno');
-  console.warn('   Agrega AZURE_OPENAI_URL y AZURE_OPENAI_KEY al archivo backend/.env');
+if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
+  console.warn('⚠️ ADVERTENCIA: Azure OpenAI para frases no está configurado en las variables de entorno');
+  console.warn('   Agrega AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY al archivo backend/.env');
   console.warn('   Azure OpenAI es el proveedor principal de IA');
 } else {
   console.log('✅ Azure OpenAI configurado (Proveedor Principal)');
@@ -122,7 +123,7 @@ app.post('/api/generate-phrases', async (req, res) => {
     }
 
     // Intentar primero con Azure OpenAI (Proveedor Principal)
-    if (AZURE_OPENAI_URL && AZURE_OPENAI_KEY) {
+    if (AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) {
       try {
         console.log('🔄 Intentando generar frases con Azure OpenAI (Proveedor Principal)...');
         const phrases = await generateAzurePhrases(words);
@@ -140,7 +141,7 @@ app.post('/api/generate-phrases', async (req, res) => {
     if (!GEMINI_API_KEY) {
       return res.status(500).json({ 
         error: 'Ningún proveedor de IA está configurado',
-        message: 'Configura AZURE_OPENAI_URL y AZURE_OPENAI_KEY, o GEMINI_API_KEY en backend/.env'
+        message: 'Configura AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY, o GEMINI_API_KEY en backend/.env'
       });
     }
 
@@ -153,8 +154,7 @@ Guidelines:
 - The phrases must be short but contain ALL information provided.
 - They should sound natural when spoken aloud.
 - They must be grammatically correct and easy for a child.
-- If one phrase is enough, return one.
-- If more than one makes sense, return multiple (up to 5).
+- Generate exactly 3 different phrases.
 - Return one phrase per line, numbered starting from 1.
 `;
 
@@ -240,12 +240,18 @@ app.post('/api/generate-more-phrases', async (req, res) => {
     }
 
     // Intentar primero con Azure OpenAI (Proveedor Principal)
-    if (AZURE_OPENAI_URL && AZURE_OPENAI_KEY) {
+    if (AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) {
       try {
         console.log('🔄 Intentando generar más frases con Azure OpenAI (Proveedor Principal)...');
         const phrases = await generateMoreAzurePhrases(words, existingPhrases);
+        // Limitar a exactamente 3 frases como medida de seguridad (doble verificación)
+        const limitedPhrases = phrases.slice(0, 3);
+        console.log(`📊 Frases de Azure: ${phrases.length}, limitadas a: ${limitedPhrases.length}`);
+        if (limitedPhrases.length !== 3) {
+          console.warn(`⚠️ Advertencia: Se esperaban 3 frases pero se obtuvieron ${limitedPhrases.length}`);
+        }
         console.log('✅ Frases generadas exitosamente con Azure OpenAI');
-        return res.json({ phrases });
+        return res.json({ phrases: limitedPhrases });
       } catch (azureError) {
         console.error('❌ Azure OpenAI falló:', azureError.message);
         console.log('⚠️ Intentando con Gemini como fallback...');
@@ -258,7 +264,7 @@ app.post('/api/generate-more-phrases', async (req, res) => {
     if (!GEMINI_API_KEY) {
       return res.status(500).json({ 
         error: 'Ningún proveedor de IA está configurado',
-        message: 'Configura AZURE_OPENAI_URL y AZURE_OPENAI_KEY, o GEMINI_API_KEY en backend/.env'
+        message: 'Configura AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY, o GEMINI_API_KEY en backend/.env'
       });
     }
 
@@ -267,16 +273,17 @@ You are helping a child who uses an Augmentative and Alternative Communication (
 Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
 ${words.join(', ')}
 
+IMPORTANT: You MUST generate EXACTLY 3 phrases. No more, no less. Generate exactly 3 phrases.
+
 Guidelines:
 - The phrases must be short but contain ALL information provided.
 - They should sound natural when spoken aloud.
 - They must be grammatically correct and easy for a child.
-- If one phrase is enough, return one.
-- If more than one makes sense, return multiple (up to 5).
-- Return one phrase per line, numbered starting from 1.
+- Generate EXACTLY 3 different phrases. Do not generate 4, 5, or any other number. Only 3.
+- Return exactly 3 phrases, one per line, numbered starting from 1.
 `;
 
-    const promptMore = basePrompt + '\nDo NOT repeat any of these phrases:\n' + existingPhrases.join('\n');
+    const promptMore = basePrompt + '\n\nDo NOT repeat any of these phrases:\n' + existingPhrases.join('\n') + '\n\nRemember: Generate EXACTLY 3 new phrases, no more, no less.';
 
     // Intentar con diferentes modelos de Gemini en orden de preferencia
     const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro'];
@@ -309,7 +316,13 @@ Guidelines:
     }
 
     const phrases = extractPhrases(text);
-    res.json({ phrases });
+    // Limitar a exactamente 3 frases como medida de seguridad
+    const limitedPhrases = phrases.slice(0, 3);
+    console.log(`📊 Frases extraídas: ${phrases.length}, limitadas a: ${limitedPhrases.length}`);
+    if (limitedPhrases.length !== 3) {
+      console.warn(`⚠️ Advertencia: Se esperaban 3 frases pero se obtuvieron ${limitedPhrases.length}`);
+    }
+    res.json({ phrases: limitedPhrases });
   } catch (error) {
     console.error('❌ Error generating more phrases:', error);
     console.error('Error details:', {
@@ -342,6 +355,105 @@ Guidelines:
 });
 
 // ==========================================
+// ENDPOINT DE GENERACIÓN DE IMÁGENES
+// ==========================================
+
+/**
+ * Endpoint para generar una imagen con DALL-E para una frase AAC
+ * POST /api/generate-image
+ * Body: { phrase: string }
+ */
+app.post('/api/generate-image', async (req, res) => {
+  try {
+    const { phrase } = req.body;
+
+    if (!phrase || typeof phrase !== 'string' || phrase.trim().length === 0) {
+      return res.status(400).json({ 
+        error: 'Se requiere una frase válida',
+        message: 'El campo "phrase" es obligatorio y debe ser un string no vacío'
+      });
+    }
+
+    const imageBase64 = await generateAacImage(phrase.trim());
+    
+    res.json({ 
+      imageBase64, 
+      phrase: phrase.trim() 
+    });
+  } catch (error) {
+    console.error('❌ Error generating image:', error);
+    
+    let statusCode = 500;
+    let errorMessage = error.message || 'Error desconocido al generar imagen';
+    
+    if (error.message?.includes('API key') || error.message?.includes('API Key') || error.message?.includes('no está configurada')) {
+      statusCode = 500;
+      errorMessage = 'Azure OpenAI API Key no configurada. Configura AZURE_OPENAI_IMAGE_API_KEY en backend/.env';
+    } else if (error.message?.includes('quota') || error.message?.includes('limit')) {
+      statusCode = 429;
+      errorMessage = 'Se ha excedido la cuota de Azure OpenAI. Verifica tu plan.';
+    }
+    
+    res.status(statusCode).json({ 
+      error: 'Error al generar imagen',
+      message: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? {
+        originalError: error.message,
+        stack: error.stack?.split('\n').slice(0, 3)
+      } : undefined
+    });
+  }
+});
+
+/**
+ * Endpoint para generar múltiples imágenes en paralelo
+ * POST /api/generate-images
+ * Body: { phrases: string[] }
+ */
+app.post('/api/generate-images', async (req, res) => {
+  try {
+    const { phrases } = req.body;
+
+    if (!phrases || !Array.isArray(phrases) || phrases.length === 0) {
+      return res.status(400).json({ 
+        error: 'Se requiere un array de frases',
+        message: 'El campo "phrases" debe ser un array no vacío'
+      });
+    }
+
+    // Validar que todas las frases sean strings
+    const validPhrases = phrases
+      .filter(p => typeof p === 'string' && p.trim().length > 0)
+      .map(p => p.trim());
+
+    if (validPhrases.length === 0) {
+      return res.status(400).json({ 
+        error: 'No hay frases válidas',
+        message: 'Todas las frases deben ser strings no vacíos'
+      });
+    }
+
+    const results = await generateAacImagesForPhrases(validPhrases);
+    
+    res.json({ 
+      images: results,
+      total: results.length,
+      successful: results.filter(r => r.imageBase64 !== '').length
+    });
+  } catch (error) {
+    console.error('❌ Error generating images:', error);
+    
+    res.status(500).json({ 
+      error: 'Error al generar imágenes',
+      message: error.message || 'Error desconocido',
+      details: process.env.NODE_ENV === 'development' ? {
+        originalError: error.message
+      } : undefined
+    });
+  }
+});
+
+// ==========================================
 // ENDPOINTS DE AZURE OPENAI (Directos - no usados por los endpoints principales)
 // ==========================================
 
@@ -358,10 +470,10 @@ app.post('/api/azure/generate-phrases', async (req, res) => {
       return res.status(400).json({ error: 'Se requiere un array de palabras' });
     }
 
-    if (!AZURE_OPENAI_URL || !AZURE_OPENAI_KEY) {
-      return res.status(500).json({ 
+    if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
+      return res.status(500).json({
         error: 'Azure OpenAI no está configurado',
-        message: 'Agrega AZURE_OPENAI_URL y AZURE_OPENAI_KEY al archivo backend/.env'
+        message: 'Agrega AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY al archivo backend/.env'
       });
     }
 
@@ -417,10 +529,10 @@ app.post('/api/azure/generate-phrases', async (req, res) => {
       return res.status(400).json({ error: 'Se requiere un array de palabras' });
     }
 
-    if (!AZURE_OPENAI_URL || !AZURE_OPENAI_KEY) {
-      return res.status(500).json({ 
+    if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
+      return res.status(500).json({
         error: 'Azure OpenAI no está configurado',
-        message: 'Agrega AZURE_OPENAI_URL y AZURE_OPENAI_KEY al archivo backend/.env'
+        message: 'Agrega AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY al archivo backend/.env'
       });
     }
 
@@ -475,10 +587,10 @@ app.post('/api/azure/generate-more-phrases', async (req, res) => {
       return res.status(400).json({ error: 'Se requiere un array de frases existentes' });
     }
 
-    if (!AZURE_OPENAI_URL || !AZURE_OPENAI_KEY) {
-      return res.status(500).json({ 
+    if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
+      return res.status(500).json({
         error: 'Azure OpenAI no está configurado',
-        message: 'Agrega AZURE_OPENAI_URL y AZURE_OPENAI_KEY al archivo backend/.env'
+        message: 'Agrega AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY al archivo backend/.env'
       });
     }
 
@@ -815,7 +927,7 @@ app.get('/', (req, res) => {
       userInitials: 'GET /api/user/initials'
     },
     hasGeminiApiKey: !!GEMINI_API_KEY,
-    hasAzureOpenAI: !!(AZURE_OPENAI_URL && AZURE_OPENAI_KEY)
+    hasAzureOpenAI: !!(AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY)
   });
 });
 
@@ -965,7 +1077,7 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok',
     hasGeminiApiKey: !!GEMINI_API_KEY,
-    hasAzureOpenAI: !!(AZURE_OPENAI_URL && AZURE_OPENAI_KEY)
+    hasAzureOpenAI: !!(AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY)
   });
 });
 
@@ -975,7 +1087,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor backend ejecutándose en http://localhost:${PORT}`);
   console.log(`🌐 También disponible en http://127.0.0.1:${PORT}`);
   console.log(`\n📡 API Keys configuradas:`);
-  console.log(`   - Azure OpenAI (Principal): ${(AZURE_OPENAI_URL && AZURE_OPENAI_KEY) ? '✅ Sí' : '❌ No'}`);
+  console.log(`   - Azure OpenAI (Principal): ${(AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) ? '✅ Sí' : '❌ No'}`);
   console.log(`   - Gemini (Secundario/Fallback): ${GEMINI_API_KEY ? '✅ Sí' : '❌ No'}`);
   console.log(`\n💡 Para conectar desde:`);
   console.log(`   - Web/Navegador: http://localhost:${PORT} o http://127.0.0.1:${PORT}`);

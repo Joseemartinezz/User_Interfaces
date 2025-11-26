@@ -24,7 +24,7 @@ type SettingsScreenProps = {
  */
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { theme, currentPalette, setTheme } = useTheme();
-  const { user, updatePreferences, logout } = useUser();
+  const { user, updatePreferences } = useUser();
   const [isSaving, setIsSaving] = useState(false);
 
   const handleThemeChange = async (paletteNumber: number) => {
@@ -60,26 +60,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Error signing out');
-            }
-          },
-        },
-      ]
-    );
-  };
+
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
@@ -97,21 +78,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           style={[styles.content, { backgroundColor: theme.background }]} 
           contentContainerStyle={styles.contentContainer}
         >
-          {/* Section: Account */}
-          <View style={[styles.section, { backgroundColor: theme.white }]}>
-            <Text style={[styles.sectionTitle, { color: theme.primary }]}>👤 Account</Text>
-            <Text style={[styles.sectionDescription, { color: theme.primary }]}>
-              User: {user?.email}
-            </Text>
-            
-            <TouchableOpacity
-              style={[styles.logoutButton, { backgroundColor: '#ff3b30', borderColor: '#ff3b30' }]}
-              onPress={handleLogout}
-            >
-              <Text style={styles.logoutButtonText}>Sign Out</Text>
-            </TouchableOpacity>
-          </View>
-
           {/* Section: Color Theme */}
           <View style={[styles.section, { backgroundColor: theme.white }]}>
             <Text style={[styles.sectionTitle, { color: theme.primary }]}>🎨 Color Theme</Text>
@@ -242,23 +208,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
-
-          {/* Section: Custom PCS Symbols */}
-          <View style={[styles.section, { backgroundColor: theme.white }]}>
-            <Text style={[styles.sectionTitle, { color: theme.primary }]}>🖼️ Custom Symbols</Text>
-            <Text style={[styles.sectionDescription, { color: theme.primary }]}>
-              {user?.preferences.customPCSSymbols?.length || 0} symbols added
-            </Text>
-            
-            <TouchableOpacity
-              style={[styles.secondaryButton, { borderColor: theme.primary }]}
-              onPress={() => Alert.alert('Coming Soon', 'Feature to add custom symbols')}
-            >
-              <Text style={[styles.secondaryButtonText, { color: theme.primary }]}>
-                Manage Symbols
-              </Text>
-            </TouchableOpacity>
           </View>
 
           {/* App Information */}

@@ -26,7 +26,7 @@ const BackButton: React.FC = () => {
       activeOpacity={0.7}
     >
       <Image
-        source={require('../../assets/back-arrow.png')}
+        source={require('../../assets/WhiteBackArrow.png')}
         style={styles.arrow}
         resizeMode="contain"
       />

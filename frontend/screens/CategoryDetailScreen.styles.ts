@@ -12,83 +12,111 @@ export const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 20,
-    paddingBottom: 40,
   },
-  section: {
-    padding: 20,
-    borderRadius: 12,
+  // Category info card
+  categoryInfoCard: {
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  categoryEmojiLarge: {
+    fontSize: 80,
+    marginBottom: 16,
+  },
+  categoryNameLarge: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  categoryType: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  visibilityStatus: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 8,
+  },
+  // Section
+  section: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  // Symbols grid
+  symbolsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  symbolCard: {
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    borderWidth: 2,
+    padding: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    backgroundColor: 'white',
+  },
+  symbolImage: {
+    width: '70%',
+    height: '70%',
+    marginBottom: 8,
+  },
+  symbolText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 16,
+    fontStyle: 'italic',
+  },
+  // Action buttons
+  actionButton: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  menuButton: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  menuButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuIcon: {
-    fontSize: 32,
-    marginRight: 16,
-  },
-  menuTextContainer: {
-    flex: 1,
-  },
-  menuButtonText: {
+  actionButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 4,
+    color: 'white',
   },
-  menuButtonSubtext: {
-    fontSize: 14,
-    opacity: 0.7,
+  deleteButton: {
+    marginTop: 16,
   },
-  menuArrow: {
-    fontSize: 32,
-    fontWeight: '300',
-  },
-  featureList: {
-    marginTop: 8,
-  },
-  featureItem: {
-    fontSize: 16,
-    marginBottom: 8,
-    lineHeight: 24,
-  },
-  infoBox: {
-    padding: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 20,
-  },
-  infoTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  infoText: {
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  // Estilos para modal
+  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -110,8 +138,14 @@ export const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 16,
     marginBottom: 20,
     textAlign: 'center',
+    fontStyle: 'italic',
   },
   modalInput: {
     borderWidth: 2,
@@ -126,23 +160,22 @@ export const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     marginBottom: 16,
+    backgroundColor: 'white',
   },
   imagePickerText: {
     fontSize: 16,
     fontWeight: '600',
   },
   imagePreviewContainer: {
-    width: '100%',
-    height: 200,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: '#ddd',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   imagePreview: {
-    width: '100%',
-    height: '100%',
+    width: 150,
+    height: 150,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#ddd',
   },
   modalButtons: {
     flexDirection: 'row',

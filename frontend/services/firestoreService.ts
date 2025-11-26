@@ -35,7 +35,9 @@ export async function createUserDocument(
         voiceSpeed: 1.0,
         colorPalette: 'default',
         preferredFontSize: 'medium',
-        customPCSSymbols: []
+        customPCSSymbols: [],
+        categories: [],
+        hiddenCategories: []
       },
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()

@@ -24,7 +24,7 @@ project-root/
 # Project Context and Architecture
 
 SYSTEM_CONTEXT:
-  You are a senior developer working on an AAC (Augmentative and Alternative Communication) app.
+  You are a senior developer working on an AAC (Augmentative and Alternative Communication) app in english.
   This is a React Native/Expo application with a Node.js/Express backend that helps children
   with special needs communicate using PCS (Picture Communication Symbols) and AI-powered
   language generation.

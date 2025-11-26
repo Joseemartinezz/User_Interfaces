@@ -6,9 +6,8 @@ import { enableScreens } from 'react-native-screens';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 
 // Import screens
-import WelcomeScreen from './screens/WelcomeScreen';
-import SentenceTypeScreen from './screens/SentenceTypeScreen';
-import TopicSelectionScreen from './screens/TopicSelectionScreen';
+import CategoriesScreen from './screens/CategoriesScreen';
+import CategoryDetailScreen from './screens/CategoryDetailScreen';
 import PCSScreen from './screens/PCSScreen';
 import PhraseSelectionScreen from './screens/PhraseSelectionScreen';
 import SettingsScreen from './screens/SettingsScreen';
@@ -69,27 +68,16 @@ function AppNavigator() {
         freezeOnBlur: false,
       }}
     >
-      {/* Welcome screen */}
+      {/* Categories management screen */}
       <Stack.Screen 
-        name="Welcome" 
-        component={WelcomeScreen}
-        options={{
-          animation: 'fade',
-          animationDuration: 250,
-          gestureEnabled: false,
-        }}
+        name="Categories" 
+        component={CategoriesScreen}
       />
 
-      {/* Sentence type selection screen */}
+      {/* Category detail screen */}
       <Stack.Screen 
-        name="SentenceType" 
-        component={SentenceTypeScreen}
-      />
-
-      {/* Topic selection screen */}
-      <Stack.Screen 
-        name="TopicSelection" 
-        component={TopicSelectionScreen}
+        name="CategoryDetail" 
+        component={CategoryDetailScreen}
       />
 
       {/* Word selection screen (PCS) - MAIN SCREEN FOR CHILDREN */}

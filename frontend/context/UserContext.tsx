@@ -73,7 +73,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         voiceSpeed: 1.0,
         colorPalette: 'default',
         preferredFontSize: 'medium',
-        customPCSSymbols: []
+        customPCSSymbols: [],
+        categories: [],
+        hiddenCategories: []
       }
     };
   };

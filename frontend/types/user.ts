@@ -1,6 +1,16 @@
 import { Timestamp } from 'firebase/firestore';
 
 /**
+ * Categoría de usuario
+ */
+export interface UserCategory {
+  id: string;
+  name: string;
+  emoji: string;
+  createdAt: Timestamp;
+}
+
+/**
  * Símbolo PCS personalizado
  */
 export interface CustomPCSSymbol {
@@ -23,6 +33,8 @@ export interface UserPreferences {
   colorPalette: 'default' | 'high-contrast' | 'pastel' | 'vibrant';
   preferredFontSize: 'small' | 'medium' | 'large' | 'extra-large';
   customPCSSymbols: CustomPCSSymbol[];
+  categories: UserCategory[];
+  hiddenCategories?: string[]; // Nombres de categorías por defecto que el usuario ha ocultado
 }
 
 /**

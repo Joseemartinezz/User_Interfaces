@@ -1,25 +1,25 @@
-import { SentenceType } from '../screens/SentenceTypeScreen';
-
 /**
  * Definición de tipos para los parámetros de navegación
  * Esto mejora el autocompletado y la seguridad de tipos en TypeScript
  */
 export type RootStackParamList = {
-  Welcome: undefined;
-  SentenceType: undefined;
-  TopicSelection: {
-    sentenceType: SentenceType;
+  Categories: {
+    selectedColor?: string;
+  };
+  CategoryDetail: {
+    categoryId: string;
+    categoryName: string;
+    categoryEmoji: string;
+    isCustom: boolean;
     selectedColor?: string;
   };
   PCS: {
-    sentenceType?: SentenceType;
     topic?: string;
   };
   PhraseSelection: {
     phrases: string[];
     words: string[];
-    sentenceType: SentenceType;
-    topic: string;
+    topic?: string;
   };
   Settings: undefined;
   ParentMenu: undefined;
