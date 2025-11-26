@@ -1,0 +1,65 @@
+graph TB
+    subgraph "Frontend Layer - React Native/Expo"
+        A[App.tsx] --> B[Navigation]
+        B --> C[WelcomeScreen]
+        B --> D[PCSScreen]
+        B --> E[PhraseSelectionScreen]
+        B --> F[ParentMenuScreen]
+        B --> G[SettingsScreen]
+        
+        D --> H[Pictogram Grid]
+        D --> I[Word Selection]
+        E --> J[Phrase List]
+        E --> K[Text-to-Speech]
+        
+        L[ThemeContext] --> A
+        M[API Client] --> N[Services]
+    end
+    
+    subgraph "API Gateway - Express.js"
+        O[Express Server] --> P[CORS Middleware]
+        O --> Q[Route Handlers]
+        
+        Q --> R[/api/generate-phrases]
+        Q --> S[/api/generate-more-phrases]
+        Q --> T[/api/openai/*]
+        Q --> U[/api/arasaac/*]
+        Q --> V[/api/health]
+        Q --> W[/api/avatar]
+    end
+    
+    subgraph "Services Layer"
+        X[Gemini Service] --> Y[Google Gemini API]
+        Z[OpenAI Service] --> AA[OpenAI API]
+        AB[ARASAAC Service] --> AC[ARASAAC API]
+        AD[Avatar Generator] --> AE[DiceBear API]
+    end
+    
+    subgraph "External APIs"
+        Y
+        AA
+        AC
+        AE
+    end
+    
+    subgraph "Data Layer - Planned"
+        AF[Firebase Firestore] --> AG[User Profiles]
+        AF --> AH[App Data]
+        AI[Firebase Storage] --> AJ[Pictogram Cache]
+        AK[Firebase Auth] --> AL[Authentication]
+    end
+    
+    N --> O
+    R --> X
+    S --> X
+    T --> Z
+    U --> AB
+    W --> AD
+    
+    style A fill:#e1f5ff
+    style O fill:#fff4e1
+    style X fill:#e8f5e9
+    style Z fill:#e8f5e9
+    style AB fill:#e8f5e9
+    style AF fill:#f3e5f5
+

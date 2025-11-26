@@ -1,0 +1,333 @@
+# Project Structure
+
+project-root/
+├── docs/
+│   ├── .cursorrules          # AI behaviour configuration
+│   ├── architecture.mermaid  # System architecture diagram
+│   ├── technical.md          # Technical documentation
+│   ├── status.md            # Progress tracking
+│   └── configuration/       # Configuration guides
+├── frontend/                 # React Native/Expo app
+│   ├── App.tsx
+│   ├── screens/             # Screen components
+│   ├── components/          # Reusable components
+│   ├── services/            # API services
+│   ├── context/             # React context providers
+│   ├── types/               # TypeScript type definitions
+│   └── api.ts               # API client
+├── backend/                  # Node.js/Express server
+│   ├── index.js             # Main server file
+│   ├── services/            # Business logic services
+│   └── utils/               # Utility functions
+└── package.json             # Root package.json with scripts
+
+# Project Context and Architecture
+
+SYSTEM_CONTEXT:
+  You are a senior developer working on an AAC (Augmentative and Alternative Communication) app.
+  This is a React Native/Expo application with a Node.js/Express backend that helps children
+  with special needs communicate using PCS (Picture Communication Symbols) and AI-powered
+  language generation.
+
+  The system integrates:
+  - ARASAAC pictogram library for PCS symbols
+  - Google Gemini AI for natural language generation
+  - OpenAI API (GPT-4o) as alternative AI provider
+  - Firebase (planned) for user profiles and data storage
+  - React Native/Expo for cross-platform mobile app
+
+# File Management Rules
+ON_FILE_CHANGE:
+  Required actions after any code changes:
+  1. READ docs/architecture.mermaid to verify architectural compliance
+  2. UPDATE docs/status.md with:
+     - Current progress
+     - Any new issues encountered
+     - Completed items
+  3. VALIDATE changes against docs/technical.md specifications
+  4. VERIFY task progress against docs/status.md
+
+# Code Style and Patterns
+JAVASCRIPT_GUIDELINES:
+  - Use ES6+ features (arrow functions, destructuring, template literals)
+  - Prefer async/await over Promises and callbacks
+  - Use TypeScript for type safety (frontend uses TypeScript)
+  - Follow RESTful API conventions
+  - Write unit tests for all services and controllers
+  - Document using JSDoc (`/** */`) for JavaScript files
+  - Use TypeScript interfaces and types for frontend code
+  - Handle errors properly with try-catch blocks and custom error classes
+  - Use consistent naming: camelCase for variables/functions, PascalCase for components
+
+TYPESCRIPT_GUIDELINES:
+  - Use strict TypeScript configuration
+  - Define interfaces for all data structures
+  - Use type unions and enums where appropriate
+  - Avoid `any` type - use `unknown` if type is truly unknown
+  - Export types/interfaces from dedicated types files
+  - Use React.FC or explicit return types for components
+
+# Technology Stack Compliance
+
+TECH_STACK:
+  Frontend:
+    - React Native with Expo SDK 54
+    - TypeScript for type safety
+    - React Navigation for navigation
+    - Expo Speech for text-to-speech
+    - AsyncStorage for local data persistence
+    - React Context API for state management
+
+  Backend:
+    - Node.js (v18+) with Express.js framework
+    - CORS enabled for cross-origin requests
+    - dotenv for environment variable management
+    - node-fetch for HTTP requests
+    - Google Gemini AI (@google/generative-ai)
+    - OpenAI API (openai package) as alternative
+
+  External Services:
+    - ARASAAC API for pictogram library
+    - Google Gemini 1.5 Flash/Pro for language generation
+    - OpenAI GPT-4o/GPT-4o-mini as alternative AI
+    - Firebase (planned) for database and authentication
+
+  Development:
+    - Expo CLI for development
+    - Nodemon for backend auto-reload
+    - TypeScript compiler for type checking
+
+# Architecture Understanding
+
+READ_ARCHITECTURE: |
+  File: docs/architecture.mermaid
+  Required parsing:
+  1. Load and parse complete Mermaid diagram
+  2. Extract and understand:
+     - Frontend layer (React Native + Expo)
+     - API Gateway layer (Express.js + CORS middleware)
+     - Services layer (Gemini, OpenAI, ARASAAC services)
+     - External integrations (ARASAAC API, AI APIs)
+     - Data flow: PCS selection → AI processing → Natural language output
+  3. Validate any changes against architectural constraints
+  4. Ensure proper separation of concerns across layers
+
+  Error handling:
+  1. If file not found: STOP and notify user
+  2. If diagram parse fails: REQUEST clarification
+  3. If architectural violation detected: WARN user
+
+# Task Management
+
+TASK_WORKFLOW: |
+  Required files:
+  - docs/status.md: Progress tracking and current tasks
+  - docs/technical.md: Implementation guidelines
+  - docs/architecture.mermaid: System architecture
+
+  Workflow steps:
+  1. READ docs/status.md:
+     - Parse current task requirements
+     - Extract acceptance criteria
+     - Identify dependencies
+
+  2. VALIDATE against docs/architecture.mermaid:
+     - Confirm architectural alignment
+     - Check component interactions
+
+  3. UPDATE docs/status.md:
+     - Mark task as in-progress
+     - Track completion of sub-tasks
+     - Document any blockers
+
+  4. IMPLEMENT following best practices:
+     - Create test files first (if applicable)
+     - Implement code following TypeScript/JavaScript guidelines
+     - Update status on completion
+
+# AI Integration Guidelines
+
+AI_INTEGRATION:
+  - Use environment variables for API keys (GEMINI_API_KEY, OPENAI_API_KEY)
+  - Implement proper error handling for API failures
+  - Use appropriate models based on use case:
+    - Gemini 1.5 Flash: Fast and cost-effective for general use
+    - Gemini 1.5 Pro: More powerful for complex tasks
+    - GPT-4o-mini: Cost-effective OpenAI alternative
+    - GPT-4o: Most powerful but more expensive
+  - Implement retry logic for failed requests
+  - Follow rate limiting best practices
+  - Cache responses when appropriate
+  - Always handle API errors gracefully with user-friendly messages
+
+  Code patterns:
+  ```typescript
+  // Backend pattern
+  const generateContent = async (prompt: string, options = {}) => {
+    try {
+      const model = options.model || 'gemini-1.5-flash';
+      const response = await genAI.getGenerativeModel({ model }).generateContent(prompt);
+      return response.response.text();
+    } catch (error) {
+      console.error('AI API error:', error);
+      throw new Error('Content generation failed');
+    }
+  };
+
+  // Frontend pattern
+  const generatePhrases = async (words: string[]) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/generate-phrases`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ words })
+      });
+      if (!response.ok) throw new Error('Failed to generate phrases');
+      return await response.json();
+    } catch (error) {
+      console.error('Error:', error);
+      // Show user-friendly error message
+    }
+  };
+  ```
+
+# ARASAAC Integration Guidelines
+
+ARASAAC_INTEGRATION:
+  - Always use backend proxy endpoints to avoid CORS issues
+  - Support multiple languages (es, en, fr, it, pt, de, ca)
+  - Use pictogram IDs for consistent references
+  - Support image customization (color, background, plural, skin, hair)
+  - Cache pictogram data when possible
+  - Handle missing pictograms gracefully
+
+  Endpoints:
+  - GET /api/arasaac/search/:language/:searchTerm
+  - GET /api/arasaac/pictogram/:language/:idPictogram
+  - GET /api/arasaac/image/:idPictogram
+  - POST /api/arasaac/search-multiple
+
+# React Native/Expo Patterns
+
+REACT_NATIVE_GUIDELINES:
+  - Use functional components with hooks
+  - Use React Navigation for screen navigation
+  - Implement proper loading states
+  - Handle network errors gracefully
+  - Use Expo Speech for text-to-speech
+  - Follow accessibility best practices:
+    - Large touch targets (minimum 44x44 points)
+    - High contrast colors
+    - Clear visual feedback
+    - Support for screen readers
+  - Optimize images and assets
+  - Use AsyncStorage for local persistence
+  - Implement proper error boundaries
+
+  Component structure:
+  ```typescript
+  import React from 'react';
+  import { View, Text, StyleSheet } from 'react-native';
+
+  interface ComponentProps {
+    // Define props with TypeScript
+  }
+
+  export const Component: React.FC<ComponentProps> = ({ prop1, prop2 }) => {
+    // Component logic
+    return (
+      <View style={styles.container}>
+        {/* JSX */}
+      </View>
+    );
+  };
+
+  const styles = StyleSheet.create({
+    container: {
+      // Styles
+    }
+  });
+  ```
+
+# API Design Standards
+
+API_CONVENTIONS:
+  Response format:
+  ```typescript
+  // Success response
+  {
+    success: true,
+    data: { /* actual data */ },
+    message?: "Operation completed successfully"
+  }
+
+  // Error response
+  {
+    success: false,
+    error: {
+      code: "ERROR_CODE",
+      message: "Human readable message",
+      details?: { /* additional context */ }
+    }
+  }
+  ```
+
+  RESTful endpoints:
+  - POST /api/generate-phrases - Generate phrases from words
+  - POST /api/generate-more-phrases - Generate more phrases
+  - POST /api/openai/generate-phrases - OpenAI phrase generation
+  - POST /api/openai/text-to-pcs - Convert text to PCS symbols
+  - POST /api/openai/pcs-to-text - Convert PCS symbols to text
+  - GET /api/arasaac/search/:language/:searchTerm - Search pictograms
+  - GET /api/arasaac/pictogram/:language/:idPictogram - Get pictogram
+  - GET /api/arasaac/image/:idPictogram - Get pictogram image
+  - POST /api/arasaac/search-multiple - Search multiple pictograms
+  - GET /api/health - Health check
+  - POST /api/avatar - Generate user avatar
+
+# Error Prevention
+
+VALIDATION_RULES: |
+  1. Verify API response structures match expected types
+  2. Check for proper error handling in async operations
+  3. Validate input data before processing (words array, text strings, etc.)
+  4. Ensure proper HTTP status codes in responses
+  5. Handle network failures gracefully
+  6. Validate API keys are configured before making requests
+  7. Check for CORS issues and use backend proxy when needed
+  8. Validate pictogram IDs and language codes
+  9. Handle AI API rate limits and errors
+  10. Check for security vulnerabilities (XSS, injection attacks)
+
+# Environment Configuration
+
+ENV_CONFIGURATION:
+  Backend (.env):
+    - GEMINI_API_KEY: Google Gemini API key
+    - OPENAI_API_KEY: OpenAI API key (optional)
+    - PORT: Server port (default: 3000)
+
+  Frontend (.env):
+    - EXPO_PUBLIC_API_URL: Backend API URL
+      - Web/iOS: http://localhost:3000
+      - Android Emulator: http://10.0.2.2:3000
+      - Physical Device: http://YOUR_IP:3000
+
+  Important:
+    - Never commit .env files to git
+    - Use environment variables for all API keys
+    - Document required environment variables in docs/configuration/
+
+# Accessibility Requirements
+
+ACCESSIBILITY:
+  - Large touch targets (minimum 44x44 points for iOS, 48x48 for Android)
+  - High contrast color schemes
+  - Clear visual feedback for interactions
+  - Support for screen readers (accessibility labels)
+  - Simple navigation structure
+  - Clear, readable fonts
+  - Visual indicators for selected states
+  - Error messages in plain language
+  - Support for different input methods (touch, voice, text)
+
