@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Speech from 'expo-speech';
 import { generatePhrases, generateMorePhrases } from './services/geminiService';
 import { getPictogramImageUrl } from './services/arasaacService';
+import { generateAzurePhrases, generateMoreAzurePhrases } from './services/azureService';
 
 // Componente para mostrar pictogramas con manejo de errores y carga
 interface PictogramImageProps {
@@ -211,7 +212,7 @@ export default function App() {
 
     setIsLoading(true);
     try {
-      const generatedPhrases = await generatePhrases(selectedWords);
+      const generatedPhrases = await generateAzurePhrases(selectedWords);
       setPhrases(generatedPhrases);
       setAllPhrases(generatedPhrases);
       setScreen('phrase-selection');
@@ -234,7 +235,7 @@ export default function App() {
 
     setIsLoading(true);
     try {
-      const morePhrases = await generateMorePhrases(selectedWords, allPhrases);
+      const morePhrases = await generateMoreAzurePhrases(selectedWords, allPhrases);
       setPhrases(morePhrases);
       setAllPhrases([...allPhrases, ...morePhrases]);
     } catch (error: any) {
@@ -245,9 +246,14 @@ export default function App() {
     }
   };
 
-  // Reproducir frase con text-to-speech
+// Reproducir frase con text-to-speech
+function cleanPhrase(phrase: string): string {
+  return phrase.trim().replace(/^\d+\.\s*/, "");
+}
+
   const handleSpeakPhrase = (phrase: string) => {
-    Speech.speak(phrase, {
+    const cleaned = cleanPhrase(phrase);
+    Speech.speak(cleaned, {
       language: 'en',
       pitch: 1.0,
       rate: 0.9,
