@@ -15,7 +15,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { generatePhrases, getPictogramImageUrl } from '../api';
+import { generatePhrases, getPictogramImageUrl, getAllCategories, getCategoryPictogramIds, getPictogramsByIds } from '../api';
 import Header from '../components/common/Header';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
@@ -164,153 +164,9 @@ const DEFAULT_CATEGORIES = [
   { name: 'Transport', emoji: '🚗' },
 ];
 
-// Símbolos organizados por categorías (con más símbolos de prueba)
-const SYMBOLS_BY_CATEGORY: Record<string, Array<{ id: number; text: string; arasaacId: number }>> = {
-  'Food': [
-    { id: 1, text: 'Pizza', arasaacId: 2527 },
-    { id: 2, text: 'Apple', arasaacId: 2528 },
-    { id: 3, text: 'Bread', arasaacId: 2529 },
-    { id: 4, text: 'Water', arasaacId: 2530 },
-    { id: 5, text: 'Milk', arasaacId: 2531 },
-    { id: 6, text: 'Banana', arasaacId: 2532 },
-    { id: 7, text: 'Orange', arasaacId: 2533 },
-    { id: 8, text: 'Cake', arasaacId: 2534 },
-    { id: 9, text: 'Soup', arasaacId: 2535 },
-    { id: 10, text: 'Rice', arasaacId: 2536 },
-    { id: 11, text: 'Meat', arasaacId: 2537 },
-    { id: 12, text: 'Fish', arasaacId: 2538 },
-    { id: 13, text: 'Egg', arasaacId: 2539 },
-    { id: 14, text: 'Cheese', arasaacId: 2540 },
-    { id: 15, text: 'Cookie', arasaacId: 2541 },
-    { id: 16, text: 'Juice', arasaacId: 2542 },
-  ],
-  'Games': [
-    { id: 13, text: 'Play', arasaacId: 23392 },
-    { id: 14, text: 'Ball', arasaacId: 16743 },
-    { id: 15, text: 'Toy', arasaacId: 16744 },
-    { id: 16, text: 'Puzzle', arasaacId: 16745 },
-    { id: 17, text: 'Doll', arasaacId: 16746 },
-    { id: 18, text: 'Car', arasaacId: 16747 },
-    { id: 19, text: 'Blocks', arasaacId: 16748 },
-    { id: 20, text: 'Cards', arasaacId: 16749 },
-    { id: 21, text: 'Board', arasaacId: 16750 },
-    { id: 22, text: 'Video', arasaacId: 16751 },
-    { id: 23, text: 'Console', arasaacId: 16752 },
-    { id: 24, text: 'Game', arasaacId: 16753 },
-    { id: 25, text: 'Fun', arasaacId: 16754 },
-    { id: 26, text: 'Win', arasaacId: 16755 },
-    { id: 27, text: 'Lose', arasaacId: 16756 },
-    { id: 28, text: 'Team', arasaacId: 16757 },
-  ],
-  'School': [
-    { id: 25, text: 'School', arasaacId: 32446 },
-    { id: 26, text: 'Book', arasaacId: 32447 },
-    { id: 27, text: 'Pencil', arasaacId: 32448 },
-    { id: 28, text: 'Teacher', arasaacId: 32449 },
-    { id: 29, text: 'Student', arasaacId: 32450 },
-    { id: 30, text: 'Desk', arasaacId: 32451 },
-    { id: 31, text: 'Chair', arasaacId: 32452 },
-    { id: 32, text: 'Backpack', arasaacId: 32453 },
-    { id: 33, text: 'Homework', arasaacId: 32454 },
-    { id: 34, text: 'Test', arasaacId: 32455 },
-    { id: 35, text: 'Learn', arasaacId: 32456 },
-    { id: 36, text: 'Read', arasaacId: 32457 },
-    { id: 37, text: 'Write', arasaacId: 32458 },
-    { id: 38, text: 'Draw', arasaacId: 32459 },
-    { id: 39, text: 'Class', arasaacId: 32460 },
-    { id: 40, text: 'Friend', arasaacId: 32461 },
-  ],
-  'Family': [
-    { id: 37, text: 'I', arasaacId: 6632 },
-    { id: 38, text: 'You', arasaacId: 6625 },
-    { id: 39, text: 'Mom', arasaacId: 6626 },
-    { id: 40, text: 'Dad', arasaacId: 6627 },
-    { id: 41, text: 'Brother', arasaacId: 6628 },
-    { id: 42, text: 'Sister', arasaacId: 6629 },
-    { id: 43, text: 'Baby', arasaacId: 6630 },
-    { id: 44, text: 'Grandma', arasaacId: 6631 },
-    { id: 45, text: 'Grandpa', arasaacId: 6633 },
-    { id: 46, text: 'Aunt', arasaacId: 6634 },
-    { id: 47, text: 'Uncle', arasaacId: 6635 },
-    { id: 48, text: 'Cousin', arasaacId: 6636 },
-    { id: 49, text: 'Son', arasaacId: 6637 },
-    { id: 50, text: 'Daughter', arasaacId: 6638 },
-    { id: 51, text: 'Family', arasaacId: 6639 },
-    { id: 52, text: 'Home', arasaacId: 6640 },
-  ],
-  'Sports': [
-    { id: 49, text: 'Football', arasaacId: 16743 },
-    { id: 50, text: 'Basketball', arasaacId: 16754 },
-    { id: 51, text: 'Run', arasaacId: 16755 },
-    { id: 52, text: 'Jump', arasaacId: 16756 },
-    { id: 53, text: 'Swim', arasaacId: 16757 },
-    { id: 54, text: 'Bike', arasaacId: 16758 },
-    { id: 55, text: 'Tennis', arasaacId: 16759 },
-    { id: 56, text: 'Soccer', arasaacId: 16760 },
-    { id: 57, text: 'Baseball', arasaacId: 16761 },
-    { id: 58, text: 'Volleyball', arasaacId: 16762 },
-    { id: 59, text: 'Gym', arasaacId: 16763 },
-    { id: 60, text: 'Exercise', arasaacId: 16764 },
-    { id: 61, text: 'Win', arasaacId: 16765 },
-    { id: 62, text: 'Team', arasaacId: 16766 },
-    { id: 63, text: 'Coach', arasaacId: 16767 },
-    { id: 64, text: 'Match', arasaacId: 16768 },
-  ],
-  'Music': [
-    { id: 61, text: 'Music', arasaacId: 16765 },
-    { id: 62, text: 'Sing', arasaacId: 16766 },
-    { id: 63, text: 'Dance', arasaacId: 16767 },
-    { id: 64, text: 'Piano', arasaacId: 16768 },
-    { id: 65, text: 'Guitar', arasaacId: 16769 },
-    { id: 66, text: 'Drum', arasaacId: 16770 },
-    { id: 67, text: 'Song', arasaacId: 16771 },
-    { id: 68, text: 'Listen', arasaacId: 16772 },
-    { id: 69, text: 'Radio', arasaacId: 16773 },
-    { id: 70, text: 'Concert', arasaacId: 16774 },
-    { id: 71, text: 'Band', arasaacId: 16775 },
-    { id: 72, text: 'Play', arasaacId: 23392 },
-    { id: 73, text: 'Microphone', arasaacId: 16776 },
-    { id: 74, text: 'Speaker', arasaacId: 16777 },
-    { id: 75, text: 'CD', arasaacId: 16778 },
-    { id: 76, text: 'Headphones', arasaacId: 16779 },
-  ],
-  'Animals': [
-    { id: 73, text: 'Dog', arasaacId: 16776 },
-    { id: 74, text: 'Cat', arasaacId: 16777 },
-    { id: 75, text: 'Bird', arasaacId: 16778 },
-    { id: 76, text: 'Fish', arasaacId: 2538 },
-    { id: 77, text: 'Rabbit', arasaacId: 16779 },
-    { id: 78, text: 'Horse', arasaacId: 16780 },
-    { id: 79, text: 'Cow', arasaacId: 16781 },
-    { id: 80, text: 'Pig', arasaacId: 16782 },
-    { id: 81, text: 'Duck', arasaacId: 16783 },
-    { id: 82, text: 'Chicken', arasaacId: 16784 },
-    { id: 83, text: 'Sheep', arasaacId: 16785 },
-    { id: 84, text: 'Lion', arasaacId: 16786 },
-    { id: 85, text: 'Bear', arasaacId: 16787 },
-    { id: 86, text: 'Elephant', arasaacId: 16788 },
-    { id: 87, text: 'Tiger', arasaacId: 16789 },
-    { id: 88, text: 'Monkey', arasaacId: 16790 },
-  ],
-  'Transport': [
-    { id: 85, text: 'Car', arasaacId: 16747 },
-    { id: 86, text: 'Bus', arasaacId: 16787 },
-    { id: 87, text: 'Train', arasaacId: 16788 },
-    { id: 88, text: 'Plane', arasaacId: 16789 },
-    { id: 89, text: 'Bike', arasaacId: 16758 },
-    { id: 90, text: 'Boat', arasaacId: 16790 },
-    { id: 91, text: 'Truck', arasaacId: 16791 },
-    { id: 92, text: 'Motorcycle', arasaacId: 16792 },
-    { id: 93, text: 'Taxi', arasaacId: 16793 },
-    { id: 94, text: 'Helicopter', arasaacId: 16794 },
-    { id: 95, text: 'Subway', arasaacId: 16795 },
-    { id: 96, text: 'Walk', arasaacId: 16796 },
-    { id: 97, text: 'Stop', arasaacId: 16797 },
-    { id: 98, text: 'Go', arasaacId: 16798 },
-    { id: 99, text: 'Road', arasaacId: 16799 },
-    { id: 100, text: 'Parking', arasaacId: 16800 },
-  ],
-};
+// Constantes para paginación
+const INITIAL_PAGE_SIZE = 16; // Primeros 16 pictogramas
+const LOAD_MORE_SIZE = 16; // Cargar 16 más al deslizar
 
 // Símbolos comunes (para categoría "All" o por defecto)
 const COMMON_SYMBOLS = [
@@ -350,62 +206,200 @@ const PCSScreen: React.FC = () => {
 
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Estado para categorías y pictogramas cargados desde el backend
+  const [backendCategories, setBackendCategories] = useState<Record<string, number[]>>({});
+  const [categorySymbolsCache, setCategorySymbolsCache] = useState<Record<string, Array<{
+    id: string;
+    text: string;
+    arasaacId: number | null;
+    imageUrl: string;
+    isCustom: boolean;
+  }>>>({});
+  const [categoryLoadProgress, setCategoryLoadProgress] = useState<Record<string, number>>({}); // Cuántos pictogramas se han cargado por categoría
+  const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
 
   // Obtener categorías del usuario (similar a CategoriesScreen)
   const hiddenCategories = useMemo(() => {
     return user?.preferences.hiddenCategories || [];
   }, [user?.preferences.hiddenCategories]);
 
-  const allCategories = useMemo(() => {
-    // Filtrar categorías personalizadas que no estén ocultas
-    const userCategories = (user?.preferences.categories || [])
-      .filter(cat => !hiddenCategories.includes(cat.name))
-      .map(cat => ({
-        name: cat.name,
-        emoji: cat.emoji || '📁',
-        isCustom: true,
-        id: cat.id,
-      }));
-
-    // Filtrar categorías predeterminadas que no estén ocultas
-    const defaultCats = DEFAULT_CATEGORIES
-      .filter(cat => !hiddenCategories.includes(cat.name))
-      .map(cat => ({
-        name: cat.name,
-        emoji: cat.emoji,
-        isCustom: false,
-        id: cat.name,
-      }));
-
-    return [...defaultCats, ...userCategories];
-  }, [user?.preferences.categories, hiddenCategories]);
-
-  // Obtener símbolos para una categoría específica
-  const getSymbolsForCategory = useCallback((categoryName: string) => {
-    const categorySymbols = SYMBOLS_BY_CATEGORY[categoryName] || [];
+  // Cargar categorías desde el backend
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const categories = await getAllCategories();
+        setBackendCategories(categories);
+        console.log('✅ Categorías cargadas desde el backend:', Object.keys(categories));
+      } catch (error) {
+        console.error('❌ Error cargando categorías:', error);
+        // Fallback a categorías por defecto si falla
+        const fallbackCategories: Record<string, number[]> = {};
+        DEFAULT_CATEGORIES.forEach(cat => {
+          fallbackCategories[cat.name] = [];
+        });
+        setBackendCategories(fallbackCategories);
+      }
+    };
     
-    // Convertir a formato de símbolo
-    const predefined = categorySymbols.map(s => ({
-      id: s.id.toString(),
-      text: s.text,
-      arasaacId: s.arasaacId,
-      imageUrl: getPictogramImageUrl(s.arasaacId, { color: true, backgroundColor: 'white' }),
-      isCustom: false,
-    }));
+    loadCategories();
+  }, []);
 
+  // Construir lista de categorías combinando backend y preferencias del usuario
+  const allCategories = useMemo(() => {
+    const categoriesList: Array<{
+      name: string;
+      emoji: string;
+      isCustom: boolean;
+      id: string;
+    }> = [];
+
+    // Categorías del backend (predefinidas + personalizadas)
+    Object.keys(backendCategories).forEach(categoryName => {
+      if (!hiddenCategories.includes(categoryName)) {
+        // Buscar emoji en DEFAULT_CATEGORIES o usar uno por defecto
+        const defaultCat = DEFAULT_CATEGORIES.find(c => c.name === categoryName);
+        const emoji = defaultCat?.emoji || '📁';
+        const isCustom = !DEFAULT_CATEGORIES.some(c => c.name === categoryName);
+        
+        categoriesList.push({
+          name: categoryName,
+          emoji,
+          isCustom,
+          id: categoryName,
+        });
+      }
+    });
+
+    // Añadir categorías personalizadas del usuario que no estén en el backend
+    (user?.preferences.categories || []).forEach(cat => {
+      if (!hiddenCategories.includes(cat.name) && !backendCategories[cat.name]) {
+        categoriesList.push({
+          name: cat.name,
+          emoji: cat.emoji || '📁',
+          isCustom: true,
+          id: cat.id,
+        });
+      }
+    });
+
+    return categoriesList;
+  }, [backendCategories, user?.preferences.categories, hiddenCategories]);
+
+  // Cargar pictogramas para una categoría desde el backend
+  const loadCategoryPictograms = useCallback(async (
+    categoryName: string,
+    startIndex: number = 0,
+    count: number = INITIAL_PAGE_SIZE
+  ) => {
+    // Evitar cargar si ya está cargando
+    if (loadingCategories.has(categoryName)) {
+      console.log(`⏭️ Ya se está cargando "${categoryName}", saltando...`);
+      return;
+    }
+
+    try {
+      console.log(`🔄 Iniciando carga de pictogramas para "${categoryName}" (índice ${startIndex}, cantidad ${count})`);
+      setLoadingCategories(prev => new Set(prev).add(categoryName));
+
+      // Obtener IDs de pictogramas para esta categoría
+      const pictogramIds = await getCategoryPictogramIds(categoryName);
+      
+      if (pictogramIds.length === 0) {
+        console.warn(`⚠️ No se encontraron IDs de pictogramas para "${categoryName}"`);
+        setCategorySymbolsCache(prev => ({ ...prev, [categoryName]: [] }));
+        setCategoryLoadProgress(prev => ({ ...prev, [categoryName]: 0 }));
+        return;
+      }
+
+      // Obtener el rango de IDs a cargar
+      const idsToLoad = pictogramIds.slice(startIndex, startIndex + count);
+      
+      if (idsToLoad.length === 0) {
+        console.log(`✅ Ya se cargaron todos los pictogramas para "${categoryName}"`);
+        return;
+      }
+
+      console.log(`📥 Cargando ${idsToLoad.length} pictogramas desde ARASAAC...`);
+
+      // Obtener información de los pictogramas desde ARASAAC
+      const pictogramsData = await getPictogramsByIds(idsToLoad, 'en');
+
+      // Convertir a formato de símbolo
+      const newSymbols = pictogramsData
+        .filter(item => item.pictogram !== null)
+        .map((item) => ({
+          id: `pictogram_${item.id}`,
+          text: item.text,
+          arasaacId: item.id,
+          imageUrl: getPictogramImageUrl(item.id, { color: true, backgroundColor: 'white' }),
+          isCustom: false,
+        }));
+
+      console.log(`✅ Convertidos ${newSymbols.length} pictogramas a símbolos para "${categoryName}"`);
+
+      // Actualizar cache combinando con símbolos existentes
+      setCategorySymbolsCache(prev => {
+        const existing = prev[categoryName] || [];
+        // Evitar duplicados
+        const existingIds = new Set(existing.map(s => s.arasaacId));
+        const uniqueNewSymbols = newSymbols.filter(s => !existingIds.has(s.arasaacId));
+        return {
+          ...prev,
+          [categoryName]: [...existing, ...uniqueNewSymbols],
+        };
+      });
+
+      // Actualizar progreso
+      setCategoryLoadProgress(prev => ({
+        ...prev,
+        [categoryName]: Math.min(startIndex + count, pictogramIds.length),
+      }));
+
+      console.log(`✅ Cargados ${newSymbols.length} pictogramas para "${categoryName}" (${startIndex + count}/${pictogramIds.length})`);
+    } catch (error: any) {
+      console.error(`❌ Error cargando pictogramas para "${categoryName}":`, error);
+      console.error(`   Mensaje:`, error.message);
+      console.error(`   Stack:`, error.stack);
+    } finally {
+      setLoadingCategories(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(categoryName);
+        return newSet;
+      });
+    }
+  }, [loadingCategories]);
+
+  // Cargar pictogramas iniciales cuando se carga una categoría
+  useEffect(() => {
+    if (Object.keys(backendCategories).length > 0) {
+      // Cargar primeros 16 pictogramas para cada categoría visible
+      allCategories.forEach(category => {
+        if (!categorySymbolsCache[category.name] && backendCategories[category.name] && !loadingCategories.has(category.name)) {
+          loadCategoryPictograms(category.name, 0, INITIAL_PAGE_SIZE);
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backendCategories, allCategories.length]);
+
+  // Obtener símbolos para una categoría específica (desde cache)
+  const getSymbolsForCategory = useCallback((categoryName: string) => {
+    const cached = categorySymbolsCache[categoryName] || [];
+    
     // Añadir símbolos personalizados que pertenezcan a esta categoría
     const custom = (user?.preferences.customPCSSymbols || [])
       .filter(symbol => symbol.category === categoryName)
       .map((symbol) => ({
-      id: `custom_${symbol.id}`,
-      text: symbol.word,
-      arasaacId: null,
-      imageUrl: symbol.imageUrl,
-      isCustom: true,
-    }));
+        id: `custom_${symbol.id}`,
+        text: symbol.word,
+        arasaacId: null,
+        imageUrl: symbol.imageUrl,
+        isCustom: true,
+      }));
 
-    return [...predefined, ...custom];
-  }, [user?.preferences.customPCSSymbols]);
+    return [...cached, ...custom];
+  }, [categorySymbolsCache, user?.preferences.customPCSSymbols]);
 
   // Obtener todos los símbolos (para búsqueda)
   const allSymbols = useMemo(() => {
@@ -417,21 +411,11 @@ const PCSScreen: React.FC = () => {
       isCustom: boolean;
     }> = [];
 
-    // Añadir símbolos de todas las categorías
-    Object.keys(SYMBOLS_BY_CATEGORY).forEach(category => {
+    // Añadir símbolos de todas las categorías cargadas
+    Object.keys(categorySymbolsCache).forEach(category => {
       const symbols = getSymbolsForCategory(category);
       allSymbolsList.push(...symbols);
     });
-
-    // Añadir símbolos comunes
-    const commonSymbols = COMMON_SYMBOLS.map(s => ({
-      id: s.id.toString(),
-      text: s.text,
-      arasaacId: s.arasaacId,
-      imageUrl: getPictogramImageUrl(s.arasaacId, { color: true, backgroundColor: 'white' }),
-      isCustom: false,
-    }));
-    allSymbolsList.push(...commonSymbols);
 
     // Añadir símbolos personalizados sin categoría
     const custom = (user?.preferences.customPCSSymbols || [])
@@ -446,7 +430,7 @@ const PCSScreen: React.FC = () => {
     allSymbolsList.push(...custom);
 
     return allSymbolsList;
-  }, [getSymbolsForCategory, user?.preferences.customPCSSymbols]);
+  }, [categorySymbolsCache, getSymbolsForCategory, user?.preferences.customPCSSymbols]);
 
   // Optimized function to select/deselect words
   const handleWordPress = useCallback((word: string) => {
@@ -564,13 +548,29 @@ const PCSScreen: React.FC = () => {
                   </Text>
                 </View>
                 
-                {/* ScrollView vertical con cuadrícula 4x4 (hasta 16 elementos visibles inicialmente) */}
-                {categorySymbols.length > 0 ? (
+                {/* ScrollView vertical con cuadrícula 4x4 con paginación */}
+                {categorySymbols.length > 0 || loadingCategories.has(category.name) ? (
                   <ScrollView
                     style={styles.categoryScrollView}
                     contentContainerStyle={styles.grid4x4Container}
                     showsVerticalScrollIndicator={true}
                     nestedScrollEnabled={true}
+                    onScroll={({ nativeEvent }) => {
+                      // Detectar cuando el usuario está cerca del final (80% del scroll)
+                      const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+                      const isNearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height * 0.8;
+                      
+                      if (isNearBottom) {
+                        const currentProgress = categoryLoadProgress[category.name] || 0;
+                        const totalIds = backendCategories[category.name]?.length || 0;
+                        
+                        // Cargar más si hay más pictogramas disponibles
+                        if (currentProgress < totalIds && !loadingCategories.has(category.name)) {
+                          loadCategoryPictograms(category.name, currentProgress, LOAD_MORE_SIZE);
+                        }
+                      }
+                    }}
+                    scrollEventThrottle={400}
                   >
                     <View style={styles.grid4x4}>
                       {categorySymbols.map((symbol) => {
@@ -601,12 +601,22 @@ const PCSScreen: React.FC = () => {
                           </TouchableOpacity>
                         );
                       })}
+                      
+                      {/* Indicador de carga al final si se están cargando más */}
+                      {loadingCategories.has(category.name) && (
+                        <View style={styles.loadingMoreContainer}>
+                          <ActivityIndicator size="small" color={theme.primary} />
+                          <Text style={[styles.loadingMoreText, { color: theme.accent }]}>
+                            Loading more...
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </ScrollView>
                 ) : (
                   <View style={styles.emptyCategoryContainer}>
                     <Text style={[styles.emptyCategoryText, { color: theme.accent }]}>
-                      No hay símbolos en esta categoría
+                      No symbols in this category
                     </Text>
                   </View>
                 )}

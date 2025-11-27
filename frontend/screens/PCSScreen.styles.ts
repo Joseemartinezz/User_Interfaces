@@ -175,5 +175,17 @@ export const styles = StyleSheet.create({
     color: '#999',
     marginTop: 4,
   },
+  loadingMoreContainer: {
+    width: '100%',
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  loadingMoreText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
 });
 

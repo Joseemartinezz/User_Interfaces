@@ -16,7 +16,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { getUserAvatarUrl } from '../api';
-import { getInitials, isValidEmail, isValidName } from '../utils';
+import { getInitials, isValidEmail, isValidName } from '../utils/index';
 import BackButton from '../components/common/BackButton';
 import { RootStackParamList } from '../types/navigation';
 import { styles } from './ProfileScreen.styles';
@@ -30,7 +30,7 @@ type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList,
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { theme } = useTheme();
-  const { user, updateUser, resetUser, isLoading: userLoading } = useUser();
+  const { user, updateUser, isLoading: userLoading } = useUser();
 
   // Form states
   const [fullName, setFullName] = useState(user?.fullName || '');
@@ -121,7 +121,11 @@ export default function ProfileScreen() {
           onPress: async () => {
             try {
               setIsSaving(true);
-              await resetUser();
+              // Reset to default values
+              await updateUser({ 
+                fullName: 'Usuario',
+                email: user?.email || ''
+              });
               Alert.alert('Success', 'Profile reset successfully');
             } catch (error: any) {
               Alert.alert('Error', error.message || 'Error resetting profile');
@@ -132,14 +136,8 @@ export default function ProfileScreen() {
         },
       ]
     );
-  }, [resetUser]);
+  }, [updateUser, user?.email]);
 
-  /**
-   * Goes back to previous screen
-   */
-  const handleBack = useCallback(() => {
-    navigation.goBack();
-  }, [navigation]);
 
   if (userLoading) {
     return (
@@ -147,7 +145,7 @@ export default function ProfileScreen() {
         <StatusBar style="auto" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={[styles.loadingText, { color: theme.text }]}>
+          <Text style={[styles.loadingText, { color: theme.primary }]}>
             Loading profile...
           </Text>
         </View>
@@ -163,7 +161,7 @@ export default function ProfileScreen() {
       
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.primary }]}>
-        <BackButton onPress={handleBack} />
+        <BackButton />
         <Text style={styles.headerTitle}>My Profile</Text>
         <View style={{ width: 48 }} />
       </View>
@@ -184,7 +182,7 @@ export default function ProfileScreen() {
               <Text style={styles.avatarInitials}>{initials}</Text>
             )}
           </View>
-          <Text style={[styles.avatarLabel, { color: theme.textSecondary }]}>
+          <Text style={[styles.avatarLabel, { color: theme.accent }]}>
             Automatically generated avatar
           </Text>
         </View>
@@ -193,20 +191,20 @@ export default function ProfileScreen() {
         <View style={styles.form}>
           {/* Nombre completo */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Full Name</Text>
+            <Text style={[styles.label, { color: theme.primary }]}>Full Name</Text>
             <TextInput
               style={[
                 styles.input,
                 { 
                   backgroundColor: 'white',
-                  color: theme.text,
-                  borderColor: theme.border || '#ddd'
+                  color: theme.primary,
+                  borderColor: '#ddd'
                 }
               ]}
               value={fullName}
               onChangeText={setFullName}
               placeholder="Ex: John Doe"
-              placeholderTextColor={theme.textSecondary || '#999'}
+              placeholderTextColor={theme.accent}
               autoCapitalize="words"
               editable={!isSaving}
             />
@@ -214,20 +212,20 @@ export default function ProfileScreen() {
 
           {/* Email */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Email</Text>
+            <Text style={[styles.label, { color: theme.primary }]}>Email</Text>
             <TextInput
               style={[
                 styles.input,
                 { 
                   backgroundColor: 'white',
-                  color: theme.text,
-                  borderColor: theme.border || '#ddd'
+                  color: theme.primary,
+                  borderColor: '#ddd'
                 }
               ]}
               value={email}
               onChangeText={setEmail}
               placeholder="ejemplo@email.com"
-              placeholderTextColor={theme.textSecondary || '#999'}
+              placeholderTextColor={theme.accent}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -237,40 +235,40 @@ export default function ProfileScreen() {
 
           {/* Preferencias (solo lectura por ahora) */}
           <View style={styles.preferencesSection}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Preferences</Text>
+            <Text style={[styles.sectionTitle, { color: theme.primary }]}>Preferences</Text>
             
             <View style={styles.preferenceItem}>
-              <Text style={[styles.preferenceLabel, { color: theme.textSecondary }]}>
+              <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
                 Language
               </Text>
-              <Text style={[styles.preferenceValue, { color: theme.text }]}>
+              <Text style={[styles.preferenceValue, { color: theme.primary }]}>
                 {user?.preferences.language === 'es' ? 'Spanish' : 'English'}
               </Text>
             </View>
 
             <View style={styles.preferenceItem}>
-              <Text style={[styles.preferenceLabel, { color: theme.textSecondary }]}>
+              <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
                 Theme
               </Text>
-              <Text style={[styles.preferenceValue, { color: theme.text }]}>
+              <Text style={[styles.preferenceValue, { color: theme.primary }]}>
                 Palette {user?.preferences.theme || 1}
               </Text>
             </View>
 
             <View style={styles.preferenceItem}>
-              <Text style={[styles.preferenceLabel, { color: theme.textSecondary }]}>
+              <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
                 Font Size
               </Text>
-              <Text style={[styles.preferenceValue, { color: theme.text }]}>
+              <Text style={[styles.preferenceValue, { color: theme.primary }]}>
                 {user?.preferences.fontSize === 'medium' ? 'Medium' : user?.preferences.fontSize}
               </Text>
             </View>
 
             <View style={styles.preferenceItem}>
-              <Text style={[styles.preferenceLabel, { color: theme.textSecondary }]}>
+              <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
                 Voice Speed
               </Text>
-              <Text style={[styles.preferenceValue, { color: theme.text }]}>
+              <Text style={[styles.preferenceValue, { color: theme.primary }]}>
                 {user?.preferences.voiceSpeed || 1.0}x
               </Text>
             </View>
@@ -298,14 +296,14 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={[
                 styles.resetButton,
-                { borderColor: theme.error || '#dc3545' },
+                { borderColor: '#dc3545' },
                 isSaving && styles.disabledButton
               ]}
               onPress={handleReset}
               disabled={isSaving}
               activeOpacity={0.7}
             >
-              <Text style={[styles.resetButtonText, { color: theme.error || '#dc3545' }]}>
+              <Text style={[styles.resetButtonText, { color: '#dc3545' }]}>
                 Reset Profile
               </Text>
             </TouchableOpacity>

@@ -7,6 +7,15 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fetch = require('node-fetch');
 const { generateAzurePhrases, generateMoreAzurePhrases, testAzureConnection } = require('./services/azureService.ts');
 const { generateAacImage, generateAacImagesForPhrases } = require('./services/imageService.ts');
+const {
+  getAllCategories,
+  getCategoryPictograms,
+  createCategory,
+  deleteCategory,
+  initializePredefinedCategories,
+  isPredefinedCategory,
+  PREDEFINED_CATEGORIES
+} = require('./services/categoryService.ts');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1033,7 +1042,7 @@ app.post('/api/avatar', async (req, res) => {
     const { userId, email, fullName } = req.body;
     
     // Importar el generador de avatares
-    const avatarGenerator = require('./utils/avatarGenerator');
+    const avatarGenerator = require('./utils/avatarGenerator.js');
     
     // Crear seed consistente
     const seed = avatarGenerator.createUserSeed(userId, email, fullName);
@@ -1057,7 +1066,7 @@ app.post('/api/avatar', async (req, res) => {
  */
 app.get('/api/user/initials', (req, res) => {
   try {
-    const avatarGenerator = require('./utils/avatarGenerator');
+    const avatarGenerator = require('./utils/avatarGenerator.js');
     const initials = avatarGenerator.getInitials(userData.fullName, userData.email);
     
     res.json({ initials });
@@ -1065,6 +1074,160 @@ app.get('/api/user/initials', (req, res) => {
     console.error('❌ Error obteniendo iniciales:', error);
     res.status(500).json({ 
       error: 'Error al obtener iniciales',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * ========================================
+ * CATEGORY MANAGEMENT ENDPOINTS
+ * ========================================
+ */
+
+/**
+ * GET /api/categories
+ * Get all categories with their pictogram IDs
+ */
+app.get('/api/categories', async (req, res) => {
+  try {
+    const categories = await getAllCategories();
+    res.json({ categories });
+  } catch (error) {
+    console.error('❌ Error getting categories:', error);
+    res.status(500).json({
+      error: 'Error al obtener categorías',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/categories/:categoryName
+ * Get pictogram IDs for a specific category
+ */
+app.get('/api/categories/:categoryName', async (req, res) => {
+  try {
+    const { categoryName } = req.params;
+    const pictogramIds = await getCategoryPictograms(categoryName);
+    
+    res.json({
+      category: categoryName,
+      pictogramIds,
+      count: pictogramIds.length,
+      isPredefined: isPredefinedCategory(categoryName)
+    });
+  } catch (error) {
+    console.error('❌ Error getting category pictograms:', error);
+    res.status(500).json({
+      error: 'Error al obtener pictogramas de la categoría',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/categories
+ * Create a new custom category
+ * Body: { categoryName: string, maxResults?: number }
+ */
+app.post('/api/categories', async (req, res) => {
+  try {
+    const { categoryName, maxResults = 50 } = req.body;
+
+    if (!categoryName || typeof categoryName !== 'string' || categoryName.trim() === '') {
+      return res.status(400).json({
+        error: 'Se requiere un nombre de categoría válido'
+      });
+    }
+
+    const trimmedName = categoryName.trim();
+
+    // Validate category name
+    if (isPredefinedCategory(trimmedName)) {
+      return res.status(400).json({
+        error: `La categoría "${trimmedName}" es una categoría predefinida y no puede ser recreada`
+      });
+    }
+
+    // Create category using AI
+    const pictogramIds = await createCategory(trimmedName, maxResults);
+
+    res.json({
+      category: trimmedName,
+      pictogramIds,
+      count: pictogramIds.length,
+      message: `Categoría "${trimmedName}" creada exitosamente con ${pictogramIds.length} pictogramas`
+    });
+  } catch (error) {
+    console.error('❌ Error creating category:', error);
+    
+    // Check if it's a duplicate error
+    if (error.message.includes('already exists')) {
+      return res.status(409).json({
+        error: error.message
+      });
+    }
+
+    res.status(500).json({
+      error: 'Error al crear categoría',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/categories/:categoryName
+ * Delete a custom category (cannot delete predefined categories)
+ */
+app.delete('/api/categories/:categoryName', async (req, res) => {
+  try {
+    const { categoryName } = req.params;
+
+    if (isPredefinedCategory(categoryName)) {
+      return res.status(400).json({
+        error: `No se puede eliminar la categoría predefinida "${categoryName}"`
+      });
+    }
+
+    await deleteCategory(categoryName);
+
+    res.json({
+      message: `Categoría "${categoryName}" eliminada exitosamente`
+    });
+  } catch (error) {
+    console.error('❌ Error deleting category:', error);
+    
+    if (error.message.includes('does not exist')) {
+      return res.status(404).json({
+        error: error.message
+      });
+    }
+
+    res.status(500).json({
+      error: 'Error al eliminar categoría',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/categories/initialize
+ * Initialize predefined categories (useful for first-time setup)
+ */
+app.post('/api/categories/initialize', async (req, res) => {
+  try {
+    const categories = await initializePredefinedCategories();
+    
+    res.json({
+      message: 'Categorías predefinidas inicializadas exitosamente',
+      categories,
+      predefinedCategories: PREDEFINED_CATEGORIES
+    });
+  } catch (error) {
+    console.error('❌ Error initializing categories:', error);
+    res.status(500).json({
+      error: 'Error al inicializar categorías',
       message: error.message
     });
   }
@@ -1098,6 +1261,11 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - GET  / - Información del servidor`);
   console.log(`   - POST /api/generate-phrases - Generar frases`);
   console.log(`   - GET  /api/arasaac/image/:id - Obtener imagen de pictograma`);
+  console.log(`   - GET  /api/categories - Obtener todas las categorías`);
+  console.log(`   - GET  /api/categories/:name - Obtener pictogramas de una categoría`);
+  console.log(`   - POST /api/categories - Crear nueva categoría personalizada`);
+  console.log(`   - DELETE /api/categories/:name - Eliminar categoría personalizada`);
+  console.log(`   - POST /api/categories/initialize - Inicializar categorías predefinidas`);
   console.log(`\n🔍 Logging activado: Todas las peticiones se registrarán aquí`);
   console.log(`${'='.repeat(60)}\n`);
 });
