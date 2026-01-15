@@ -13,7 +13,9 @@
     "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
     "start": "npm run frontend:start",
     "server": "npm run backend:start",
-    "server:dev": "npm run backend:dev"
+    "server:dev": "npm run backend:dev",
+    "backend:install": "cd backend && npm install",
+    "frontend:install": "cd frontend && npm install"
   }
 }
 

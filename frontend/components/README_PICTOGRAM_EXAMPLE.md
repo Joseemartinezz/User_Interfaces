@@ -1,39 +1,39 @@
-# Componente de Ejemplo: PictogramExample
+# Example Component: PictogramExample
 
-Este es un componente de demostración que muestra cómo integrar el servicio de ARASAAC en tu aplicación React Native.
+This is a demonstration component that shows how to integrate the ARASAAC service into your React Native application.
 
-## Características
+## Features
 
-El componente `PictogramExample.tsx` demuestra:
+The `PictogramExample.tsx` component demonstrates:
 
-1. **Búsqueda de pictogramas**: Busca pictogramas por palabra en el idioma seleccionado
-2. **Selector de idioma**: Permite cambiar entre español, inglés, francés e italiano
-3. **Conversión de frases**: Convierte una frase completa en una secuencia de pictogramas
-4. **Visualización de resultados**: Muestra los pictogramas encontrados en una galería desplazable
+1. **Pictogram search**: Search pictograms by word in the selected language
+2. **Language selector**: Allows switching between Spanish, English, French, and Italian
+3. **Phrase conversion**: Converts a complete phrase into a sequence of pictograms
+4. **Results visualization**: Displays found pictograms in a scrollable gallery
 
-## Cómo usarlo
+## How to Use
 
-### Opción 1: Usar como pantalla independiente
+### Option 1: Use as a standalone screen
 
-Puedes agregar este componente como una nueva pantalla en tu app para probar la funcionalidad de ARASAAC:
+You can add this component as a new screen in your app to test ARASAAC functionality:
 
 ```tsx
-// En App.tsx o tu archivo de navegación
+// In App.tsx or your navigation file
 import PictogramExample from './components/PictogramExample';
 
-// Dentro de tu componente
+// Inside your component
 <PictogramExample />
 ```
 
-### Opción 2: Integrar las funcionalidades en tu app existente
+### Option 2: Integrate functionalities into your existing app
 
-Puedes tomar partes del código de ejemplo y adaptarlas a tu aplicación. Por ejemplo, para mostrar pictogramas en tu UI:
+You can take parts of the example code and adapt them to your application. For example, to display pictograms in your UI:
 
 ```tsx
 import { searchPictograms, getPictogramImageUrl } from './services/arasaacService';
 import { Image } from 'react-native';
 
-// Buscar y mostrar pictograma
+// Search and display pictogram
 async function showPictogramForWord(word: string) {
   const results = await searchPictograms(word, 'es');
   if (results.length > 0) {
@@ -43,24 +43,24 @@ async function showPictogramForWord(word: string) {
 }
 ```
 
-## Requisitos previos
+## Prerequisites
 
-1. **Backend ejecutándose**: Asegúrate de que el servidor backend esté corriendo:
+1. **Backend running**: Make sure the backend server is running:
    ```bash
    cd backend
    npm install
    npm start
    ```
 
-2. **Variables de entorno configuradas**: Verifica que `.env` tenga configurada la URL del backend:
+2. **Environment variables configured**: Verify that `.env` has the backend URL configured:
    ```
    EXPO_PUBLIC_API_URL=http://localhost:3000
    ```
-   (Usa `http://10.0.2.2:3000` para Android Emulator)
+   (Use `http://10.0.2.2:3000` for Android Emulator)
 
-## Funciones principales
+## Main Functions
 
-### 1. Buscar pictogramas
+### 1. Search pictograms
 
 ```typescript
 const handleSearch = async () => {
@@ -69,7 +69,7 @@ const handleSearch = async () => {
 };
 ```
 
-### 2. Convertir frase en pictogramas
+### 2. Convert phrase to pictograms
 
 ```typescript
 const handleConvertPhrase = async () => {
@@ -79,7 +79,7 @@ const handleConvertPhrase = async () => {
 };
 ```
 
-### 3. Obtener URL de imagen
+### 3. Get image URL
 
 ```typescript
 const imageUrl = getPictogramImageUrl(pictogram._id, {
@@ -88,65 +88,65 @@ const imageUrl = getPictogramImageUrl(pictogram._id, {
 });
 ```
 
-## Personalización
+## Customization
 
-Puedes personalizar los pictogramas modificando las opciones en `getPictogramImageUrl`:
+You can customize pictograms by modifying options in `getPictogramImageUrl`:
 
 ```typescript
-// Pictograma en blanco y negro
+// Black and white pictogram
 getPictogramImageUrl(id, { color: false });
 
-// Pictograma en plural
+// Plural pictogram
 getPictogramImageUrl(id, { plural: true });
 
-// Pictograma con fondo negro
+// Pictogram with black background
 getPictogramImageUrl(id, { backgroundColor: 'black' });
 
-// Pictograma con color de piel personalizado
+// Pictogram with custom skin color
 getPictogramImageUrl(id, { skinColor: '#E2C4A8' });
 ```
 
-## Estilos
+## Styles
 
-Los estilos están definidos inline en el componente usando `StyleSheet.create()`. Puedes modificarlos para adaptarlos al diseño de tu app.
+Styles are defined inline in the component using `StyleSheet.create()`. You can modify them to adapt to your app's design.
 
-Algunos estilos clave:
+Some key styles:
 
-- `pictogramCard`: Tarjeta de pictograma individual
-- `pictogramImage`: Tamaño de imagen del pictograma (80x80 por defecto)
-- `button`: Estilo del botón principal
-- `languageButton`: Botones de selección de idioma
+- `pictogramCard`: Individual pictogram card
+- `pictogramImage`: Pictogram image size (80x80 by default)
+- `button`: Main button style
+- `languageButton`: Language selection buttons
 
-## Integración con tu App AAC
+## Integration with Your AAC App
 
-Este componente es un punto de partida. Para integrarlo en tu aplicación AAC completa, considera:
+This component is a starting point. To integrate it into your complete AAC application, consider:
 
-### 1. Reemplazar los símbolos de placeholder
+### 1. Replace placeholder symbols
 
-En `App.tsx`, reemplaza los símbolos de placeholder con pictogramas reales de ARASAAC:
+In `App.tsx`, replace placeholder symbols with real ARASAAC pictograms:
 
 ```tsx
-// En lugar de esto:
+// Instead of this:
 const WORD_SYMBOLS = [
   { id: 1, text: 'I', image: require('./assets/placeholder.png') },
   // ...
 ];
 
-// Usa esto:
+// Use this:
 const WORD_SYMBOLS = [
   { 
     id: 1, 
     text: 'I', 
-    arasaacId: 2318, // ID del pictograma en ARASAAC
+    arasaacId: 2318, // Pictogram ID in ARASAAC
     image: { uri: getPictogramImageUrl(2318) }
   },
   // ...
 ];
 ```
 
-### 2. Búsqueda dinámica de pictogramas
+### 2. Dynamic pictogram search
 
-Permite que el usuario busque y agregue sus propios símbolos:
+Allow users to search and add their own symbols:
 
 ```tsx
 const [customSymbols, setCustomSymbols] = useState([]);
@@ -163,16 +163,16 @@ async function addSymbolFromSearch(word: string) {
 }
 ```
 
-### 3. Integrar con Gemini
+### 3. Integrate with Gemini
 
-Combina la generación de frases de Gemini con los pictogramas de ARASAAC:
+Combine Gemini phrase generation with ARASAAC pictograms:
 
 ```tsx
 async function generatePhrasesWithPictograms(words: string[]) {
-  // 1. Generar frases con Gemini
+  // 1. Generate phrases with Gemini
   const phrases = await generatePhrases(words);
   
-  // 2. Para cada frase, obtener pictogramas para las palabras clave
+  // 2. For each phrase, get pictograms for key words
   const phrasesWithPictograms = await Promise.all(
     phrases.map(async (phrase) => {
       const phraseWords = phrase.split(' ');
@@ -187,40 +187,39 @@ async function generatePhrasesWithPictograms(words: string[]) {
 
 ## Troubleshooting
 
-### No se cargan los pictogramas
+### Pictograms not loading
 
-1. Verifica que el servidor backend esté ejecutándose
-2. Revisa la configuración de `EXPO_PUBLIC_API_URL` en `.env`
-3. Comprueba la consola del backend para ver los logs de las peticiones
-4. Verifica tu conexión a internet (los pictogramas se descargan desde ARASAAC)
+1. Verify that the backend server is running
+2. Check the `EXPO_PUBLIC_API_URL` configuration in `.env`
+3. Check the backend console to see request logs
+4. Verify your internet connection (pictograms are downloaded from ARASAAC)
 
-### Error "Failed to fetch"
+### "Failed to fetch" error
 
-Esto suele indicar que no se puede conectar al backend:
-- En Android Emulator, usa `http://10.0.2.2:3000`
-- En iOS Simulator, usa `http://localhost:3000`
-- En dispositivo físico, usa tu IP local (ej: `http://192.168.1.100:3000`)
+This usually indicates that it cannot connect to the backend:
+- On Android Emulator, use `http://10.0.2.2:3000`
+- On iOS Simulator, use `http://localhost:3000`
+- On physical device, use your local IP (e.g., `http://192.168.1.100:3000`)
 
-### Pictogramas no encontrados para ciertas palabras
+### Pictograms not found for certain words
 
-No todas las palabras tienen pictogramas en ARASAAC. Algunas sugerencias:
-- Prueba con sinónimos
-- Usa palabras más simples o concretas
-- Verifica el idioma seleccionado
-- Consulta el catálogo completo en https://arasaac.org/
+Not all words have pictograms in ARASAAC. Some suggestions:
+- Try synonyms
+- Use simpler or more concrete words
+- Verify the selected language
+- Check the complete catalog at https://arasaac.org/
 
-## Próximos pasos
+## Next Steps
 
-1. **Caché de pictogramas**: Implementa caché local para mejorar el rendimiento
-2. **Descarga offline**: Descarga los pictogramas más usados para uso offline
-3. **Favoritos**: Permite que el usuario marque pictogramas favoritos
-4. **Categorías**: Organiza los pictogramas por categorías (emociones, acciones, objetos, etc.)
-5. **Tableros personalizados**: Permite crear tableros de comunicación personalizados
+1. **Pictogram cache**: Implement local cache to improve performance
+2. **Offline download**: Download most used pictograms for offline use
+3. **Favorites**: Allow users to mark favorite pictograms
+4. **Categories**: Organize pictograms by categories (emotions, actions, objects, etc.)
+5. **Custom boards**: Allow creating custom communication boards
 
-## Referencias
+## References
 
-- [Servicio ARASAAC](../services/arasaacService.ts)
-- [Documentación del servicio](../services/ARASAAC_README.md)
+- [ARASAAC Service](../services/arasaacService.ts)
+- [Service Documentation](../services/ARASAAC_README.md)
 - [Backend README](../../backend/README.md)
-- [API de ARASAAC](https://arasaac.org/developers/api)
-
+- [ARASAAC API](https://arasaac.org/developers/api)

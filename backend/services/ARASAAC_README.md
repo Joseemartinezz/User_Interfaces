@@ -1,42 +1,42 @@
-# Servicio de ARASAAC
+# ARASAAC Service
 
-Este servicio proporciona integración con la API de ARASAAC para obtener pictogramas de comunicación aumentativa y alternativa (CAA).
+This service provides integration with the ARASAAC API to obtain augmentative and alternative communication (AAC) pictograms.
 
-## ¿Qué es ARASAAC?
+## What is ARASAAC?
 
-ARASAAC (Centro Aragonés para la Comunicación Aumentativa y Alternativa) es un recurso gratuito que ofrece pictogramas y materiales para facilitar la comunicación de personas con dificultades en este ámbito.
+ARASAAC (Aragonese Center for Augmentative and Alternative Communication) is a free resource that offers pictograms and materials to facilitate communication for people with communication difficulties.
 
-- **Web oficial**: https://arasaac.org/
-- **Documentación de API**: https://arasaac.org/developers/api
+- **Official website**: https://arasaac.org/
+- **API documentation**: https://arasaac.org/developers/api
 
-## Características
+## Features
 
-El servicio `arasaacService.ts` proporciona las siguientes funcionalidades:
+The `arasaacService.ts` service provides the following functionalities:
 
-### 1. Buscar pictogramas
+### 1. Search pictograms
 
 ```typescript
 import { searchPictograms } from './services/arasaacService';
 
-// Buscar pictogramas para la palabra "casa" en español
+// Search pictograms for the word "casa" in Spanish
 const pictograms = await searchPictograms('casa', 'es');
 ```
 
-### 2. Obtener pictograma por ID
+### 2. Get pictogram by ID
 
 ```typescript
 import { getPictogramById } from './services/arasaacService';
 
-// Obtener información del pictograma con ID 2
+// Get information for pictogram with ID 2
 const pictogram = await getPictogramById(2, 'es');
 ```
 
-### 3. Generar URL de imagen
+### 3. Generate image URL
 
 ```typescript
 import { getPictogramImageUrl } from './services/arasaacService';
 
-// Generar URL de imagen con opciones personalizadas
+// Generate image URL with custom options
 const imageUrl = getPictogramImageUrl(2, {
   size: 'medium',
   color: true,
@@ -45,120 +45,120 @@ const imageUrl = getPictogramImageUrl(2, {
 });
 ```
 
-### 4. Buscar múltiples pictogramas
+### 4. Search multiple pictograms
 
 ```typescript
 import { searchMultiplePictograms } from './services/arasaacService';
 
-// Buscar pictogramas para varias palabras
+// Search pictograms for multiple words
 const results = await searchMultiplePictograms(['casa', 'perro', 'comer'], 'es');
 ```
 
-### 5. Obtener el mejor pictograma para una palabra
+### 5. Get the best pictogram for a word
 
 ```typescript
 import { getBestPictogramForWord } from './services/arasaacService';
 
-// Obtiene el pictograma más popular/relevante
+// Gets the most popular/relevant pictogram
 const bestPictogram = await getBestPictogramForWord('casa', 'es');
 ```
 
-### 6. Convertir palabras en pictogramas
+### 6. Convert words to pictograms
 
 ```typescript
 import { convertWordsToPictograms } from './services/arasaacService';
 
-// Convierte un array de palabras en pictogramas
+// Converts an array of words into pictograms
 const result = await convertWordsToPictograms(['I', 'want', 'pizza'], 'en');
-// Resultado: Array de objetos con { word, pictogram, imageUrl }
+// Result: Array of objects with { word, pictogram, imageUrl }
 ```
 
-## Idiomas soportados
+## Supported Languages
 
-ARASAAC soporta múltiples idiomas, incluyendo:
+ARASAAC supports multiple languages, including:
 
-- `es` - Español
-- `en` - Inglés
-- `fr` - Francés
-- `it` - Italiano
-- `pt` - Portugués
-- `de` - Alemán
-- `ca` - Catalán
-- `eu` - Euskera
-- `gl` - Gallego
-- Y muchos más...
+- `es` - Spanish
+- `en` - English
+- `fr` - French
+- `it` - Italian
+- `pt` - Portuguese
+- `de` - German
+- `ca` - Catalan
+- `eu` - Basque
+- `gl` - Galician
+- And many more...
 
-## Opciones de personalización de imágenes
+## Image Customization Options
 
-Al generar URLs de imágenes con `getPictogramImageUrl`, puedes personalizar:
+When generating image URLs with `getPictogramImageUrl`, you can customize:
 
-| Opción | Tipo | Valores | Descripción |
-|--------|------|---------|-------------|
-| `size` | string | 'small', 'medium', 'large' | Tamaño de la imagen |
-| `color` | boolean | true, false | Color o blanco y negro |
-| `plural` | boolean | true, false | Versión plural del pictograma |
-| `backgroundColor` | string | 'white', 'black', 'transparent' | Color de fondo |
-| `skinColor` | string | Código hexadecimal | Color de piel (si aplica) |
-| `hairColor` | string | Código hexadecimal | Color de cabello (si aplica) |
-| `action` | string | 'present', 'past', 'future' | Tiempo verbal (si aplica) |
+| Option | Type | Values | Description |
+|--------|------|--------|-------------|
+| `size` | string | 'small', 'medium', 'large' | Image size |
+| `color` | boolean | true, false | Color or black and white |
+| `plural` | boolean | true, false | Plural version of the pictogram |
+| `backgroundColor` | string | 'white', 'black', 'transparent' | Background color |
+| `skinColor` | string | Hexadecimal code | Skin color (if applicable) |
+| `hairColor` | string | Hexadecimal code | Hair color (if applicable) |
+| `action` | string | 'present', 'past', 'future' | Verb tense (if applicable) |
 
-### Ejemplos de personalización
+### Customization Examples
 
 ```typescript
-// Pictograma en blanco y negro
+// Black and white pictogram
 const bwUrl = getPictogramImageUrl(2, { color: false });
 
-// Pictograma en plural con fondo negro
+// Plural pictogram with black background
 const pluralUrl = getPictogramImageUrl(2, { 
   plural: true, 
   backgroundColor: 'black' 
 });
 
-// Pictograma con color de piel personalizado
+// Pictogram with custom skin color
 const skinUrl = getPictogramImageUrl(2, { 
   skinColor: '#E2C4A8' 
 });
 ```
 
-## Estructura de datos
+## Data Structure
 
 ### ArasaacPictogram
 
 ```typescript
 interface ArasaacPictogram {
-  _id: number;                    // ID único del pictograma
-  keywords: Array<{               // Palabras clave asociadas
+  _id: number;                    // Unique pictogram ID
+  keywords: Array<{               // Associated keywords
     keyword: string;
     hasLocution: boolean;
   }>;
-  synsets?: string[];            // Conjuntos de sinónimos
-  categories?: string[];         // Categorías del pictograma
-  schematic?: boolean;           // Es esquemático
-  sex?: boolean;                 // Tiene variación de sexo
-  violence?: boolean;            // Contiene violencia
-  aac?: boolean;                 // Es para CAA
-  aacColor?: boolean;            // Tiene versión en color para CAA
-  skin?: boolean;                // Tiene variación de color de piel
-  hair?: boolean;                // Tiene variación de color de cabello
-  downloads?: number;            // Número de descargas
-  variations?: any;              // Variaciones disponibles
+  synsets?: string[];            // Synonym sets
+  categories?: string[];         // Pictogram categories
+  schematic?: boolean;           // Is schematic
+  sex?: boolean;                 // Has gender variation
+  violence?: boolean;            // Contains violence
+  aac?: boolean;                 // Is for AAC
+  aacColor?: boolean;            // Has color version for AAC
+  skin?: boolean;                // Has skin color variation
+  hair?: boolean;                // Has hair color variation
+  downloads?: number;            // Number of downloads
+  variations?: any;              // Available variations
 }
 ```
 
 ## Backend Endpoints
 
-El backend de Express proporciona los siguientes endpoints como proxy para evitar problemas de CORS:
+The Express backend provides the following endpoints as a proxy to avoid CORS issues:
 
 ### GET `/api/arasaac/search/:language/:searchTerm`
 
-Busca pictogramas por término de búsqueda.
+Search pictograms by search term.
 
-**Ejemplo:**
+**Example:**
 ```
 GET http://localhost:3000/api/arasaac/search/es/casa
 ```
 
-**Respuesta:**
+**Response:**
 ```json
 [
   {
@@ -174,16 +174,16 @@ GET http://localhost:3000/api/arasaac/search/es/casa
 
 ### GET `/api/arasaac/pictogram/:language/:idPictogram`
 
-Obtiene información de un pictograma específico.
+Get information for a specific pictogram.
 
-**Ejemplo:**
+**Example:**
 ```
 GET http://localhost:3000/api/arasaac/pictogram/es/2
 ```
 
 ### POST `/api/arasaac/search-multiple`
 
-Busca pictogramas para múltiples palabras a la vez.
+Search pictograms for multiple words at once.
 
 **Body:**
 ```json
@@ -193,7 +193,7 @@ Busca pictogramas para múltiples palabras a la vez.
 }
 ```
 
-**Respuesta:**
+**Response:**
 ```json
 {
   "casa": {
@@ -211,7 +211,7 @@ Busca pictogramas para múltiples palabras a la vez.
 }
 ```
 
-## Ejemplo de uso en React Native
+## React Native Usage Example
 
 ```tsx
 import React, { useState, useEffect } from 'react';
@@ -228,11 +228,11 @@ function PictogramExample() {
   useEffect(() => {
     async function loadPictogram() {
       try {
-        // Buscar pictogramas para "casa"
+        // Search pictograms for "casa"
         const results = await searchPictograms('casa', 'es');
         
         if (results.length > 0) {
-          // Obtener URL del primer resultado
+          // Get URL of first result
           const url = getPictogramImageUrl(results[0]._id);
           setImageUrl(url);
         }
@@ -264,55 +264,54 @@ function PictogramExample() {
 }
 ```
 
-## Configuración
+## Configuration
 
-El servicio utiliza el backend de Express como proxy para evitar problemas de CORS. Asegúrate de que:
+The service uses the Express backend as a proxy to avoid CORS issues. Make sure:
 
-1. El servidor backend esté ejecutándose: `npm run server` (en la carpeta `backend/`)
-2. La variable de entorno `EXPO_PUBLIC_API_URL` esté configurada correctamente en `.env`
+1. The backend server is running: `npm run server` (in the `backend/` folder)
+2. The environment variable `EXPO_PUBLIC_API_URL` is configured correctly in `.env`
 
 ```env
 EXPO_PUBLIC_API_URL=http://localhost:3000
 ```
 
-Para Android Emulator:
+For Android Emulator:
 ```env
 EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
 ```
 
-## Instalación de dependencias
+## Dependency Installation
 
-### Backend (carpeta `backend/`)
+### Backend (folder `backend/`)
 
 ```bash
 cd backend
 npm install
 ```
 
-Esto instalará automáticamente `node-fetch` que es necesario para las peticiones a ARASAAC.
+This will automatically install `node-fetch` which is required for ARASAAC requests.
 
-## Notas importantes
+## Important Notes
 
-1. **CORS**: Las peticiones a ARASAAC se hacen a través del backend para evitar problemas de CORS en el navegador y React Native.
+1. **CORS**: Requests to ARASAAC are made through the backend to avoid CORS issues in the browser and React Native.
 
-2. **Rate limiting**: La API de ARASAAC es gratuita pero puede tener límites de tasa. Considera implementar caché en producción.
+2. **Rate limiting**: The ARASAAC API is free but may have rate limits. Consider implementing caching in production.
 
-3. **Imágenes**: Las URLs de imágenes apuntan directamente a la API de ARASAAC y no pasan por el backend, para mejor rendimiento.
+3. **Images**: Image URLs point directly to the ARASAAC API and do not go through the backend, for better performance.
 
-4. **Idioma por defecto**: Si no se especifica idioma, el servicio usa español ('es') por defecto.
+4. **Default language**: If no language is specified, the service uses Spanish ('es') as default.
 
-5. **Manejo de errores**: Todas las funciones lanzan errores descriptivos que debes capturar con try-catch.
+5. **Error handling**: All functions throw descriptive errors that you must catch with try-catch.
 
-## Próximos pasos
+## Next Steps
 
-1. **Implementar caché**: Almacenar resultados de búsquedas frecuentes
-2. **Descargar pictogramas localmente**: Para uso offline
-3. **Integrar con el LLM**: Para que Gemini sugiera pictogramas apropiados
-4. **Añadir favoritos**: Permitir guardar pictogramas favoritos del usuario
+1. **Implement caching**: Store results of frequent searches
+2. **Download pictograms locally**: For offline use
+3. **Integrate with LLM**: So Gemini can suggest appropriate pictograms
+4. **Add favorites**: Allow users to save favorite pictograms
 
-## Recursos adicionales
+## Additional Resources
 
-- [Documentación oficial de ARASAAC API](https://arasaac.org/developers/api)
-- [Portal de ARASAAC](https://arasaac.org/)
-- [Lista completa de idiomas soportados](https://arasaac.org/developers/api#/Languages)
-
+- [Official ARASAAC API documentation](https://arasaac.org/developers/api)
+- [ARASAAC Portal](https://arasaac.org/)
+- [Complete list of supported languages](https://arasaac.org/developers/api#/Languages)

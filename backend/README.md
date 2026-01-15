@@ -1,92 +1,92 @@
-# Backend Proxy para AAC App
+# Backend Proxy for AAC App
 
-Este servidor actúa como proxy entre la app React Native y la API de Gemini, evitando problemas de CORS.
+This server acts as a proxy between the React Native app and the Gemini API, avoiding CORS issues.
 
-## 🚀 Instalación
+## 🚀 Installation
 
-1. Instala las dependencias:
+1. Install dependencies:
 ```bash
 cd backend
 npm install
 ```
 
-## ⚙️ Configuración
+## ⚙️ Configuration
 
-1. Copia `.env` y configura tu API key de Gemini:
+1. Copy `.env` and configure your Gemini API key:
 ```bash
-# El archivo .env ya debería existir con la configuración
-# Si no, crea uno con:
-GEMINI_API_KEY=tu_api_key_aqui
+# The .env file should already exist with the configuration
+# If not, create one with:
+GEMINI_API_KEY=your_api_key_here
 PORT=3000
 ```
 
-## ▶️ Ejecución
+## ▶️ Execution
 
-Inicia el servidor:
+Start the server:
 ```bash
 npm start
 ```
 
-O en modo desarrollo con auto-reload:
+Or in development mode with auto-reload:
 ```bash
 npm run dev
 ```
 
-El servidor se ejecutará en `http://localhost:3000`
+The server will run on `http://localhost:3000`
 
 ## 📡 Endpoints
 
 ### Gemini AI
-- `POST /api/generate-phrases` - Genera frases a partir de palabras
-- `POST /api/generate-more-phrases` - Genera más frases sin repetir
+- `POST /api/generate-phrases` - Generate phrases from words
+- `POST /api/generate-more-phrases` - Generate more phrases without repeating
 
-### ARASAAC (Pictogramas)
-- `GET /api/arasaac/search/:language/:searchTerm` - Busca pictogramas por término
-- `GET /api/arasaac/pictogram/:language/:idPictogram` - Obtiene un pictograma por ID
-- `POST /api/arasaac/search-multiple` - Busca pictogramas para múltiples palabras
+### ARASAAC (Pictograms)
+- `GET /api/arasaac/search/:language/:searchTerm` - Search pictograms by term
+- `GET /api/arasaac/pictogram/:language/:idPictogram` - Get a pictogram by ID
+- `POST /api/arasaac/search-multiple` - Search pictograms for multiple words
 
-### Sistema
-- `GET /api/health` - Verifica el estado del servidor
-- `GET /` - Información del servidor y lista de endpoints
+### System
+- `GET /api/health` - Check server status
+- `GET /` - Server information and list of endpoints
 
-## 🔧 Configuración para Emuladores
+## 🔧 Configuration for Emulators
 
 ### Android Emulator
-El frontend debe usar: `http://10.0.2.2:3000` (10.0.2.2 es el alias de localhost en Android)
+The frontend should use: `http://10.0.2.2:3000` (10.0.2.2 is the alias for localhost on Android)
 
 ### iOS Simulator
-El frontend debe usar: `http://localhost:3000`
+The frontend should use: `http://localhost:3000`
 
 ### Web Browser
-El frontend debe usar: `http://localhost:3000`
+The frontend should use: `http://localhost:3000`
 
-### Dispositivo Físico
-El frontend debe usar: `http://TU_IP_LOCAL:3000` (ej: `http://192.168.1.100:3000`)
+### Physical Device
+The frontend should use: `http://YOUR_LOCAL_IP:3000` (e.g., `http://192.168.1.100:3000`)
 
-Para encontrar tu IP local:
-- Windows: `ipconfig` (busca IPv4)
-- Mac/Linux: `ifconfig` o `ip addr`
+To find your local IP:
+- Windows: `ipconfig` (look for IPv4)
+- Mac/Linux: `ifconfig` or `ip addr`
 
-## 📖 Ejemplos de uso
+## 📖 Usage Examples
 
-### Buscar pictogramas
+### Search pictograms
 
 ```bash
-# Buscar pictogramas para "casa" en español
+# Search pictograms for "casa" in Spanish
 curl http://localhost:3000/api/arasaac/search/es/casa
 
-# Buscar pictogramas para "house" en inglés
+# Search pictograms for "house" in English
 curl http://localhost:3000/api/arasaac/search/en/house
 ```
 
-### Obtener un pictograma específico
+### Get a specific pictogram
 
 ```bash
-# Obtener pictograma con ID 2 en español
+# Get pictogram with ID 2 in Spanish
 curl http://localhost:3000/api/arasaac/pictogram/es/2
 ```
 
-### Buscar múltiples palabras
+### Search multiple words
 
 ```bash
 curl -X POST http://localhost:3000/api/arasaac/search-multiple \
@@ -94,7 +94,7 @@ curl -X POST http://localhost:3000/api/arasaac/search-multiple \
   -d '{"words": ["casa", "perro", "comer"], "language": "es"}'
 ```
 
-### Generar frases con Gemini
+### Generate phrases with Gemini
 
 ```bash
 curl -X POST http://localhost:3000/api/generate-phrases \
@@ -102,7 +102,7 @@ curl -X POST http://localhost:3000/api/generate-phrases \
   -d '{"words": ["I", "want", "pizza"]}'
 ```
 
-## 📚 Documentación adicional
+## 📚 Additional Documentation
 
-- Ver `services/ARASAAC_README.md` para más información sobre el servicio de ARASAAC
-- Documentación oficial de ARASAAC API: https://arasaac.org/developers/api
+- See `services/ARASAAC_README.md` for more information about the ARASAAC service
+- Official ARASAAC API documentation: https://arasaac.org/developers/api

@@ -29,15 +29,16 @@ export async function createUserDocument(
       email,
       fullName,
       preferences: {
-        language: 'es',
+        language: 'en',
         theme: 1,
         fontSize: 'medium',
-        voiceSpeed: 1.0,
-        colorPalette: 'default',
         preferredFontSize: 'medium',
         customPCSSymbols: [],
         categories: [],
-        hiddenCategories: []
+        hiddenCategories: [],
+        hasCompletedOnboarding: false, // New user needs to complete onboarding
+        // childAge y parentMenuPassword se configurarán más tarde en el onboarding
+        // No los incluimos aquí para evitar valores undefined que Firestore no permite
       },
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   Text,
   View,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  Alert,
   SafeAreaView,
   InteractionManager,
   FlatList,
@@ -19,6 +18,7 @@ import { generatePhrases, getPictogramImageUrl, getAllCategories, getCategoryPic
 import Header from '../components/common/Header';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
+import { useToast } from '../context/ToastContext';
 import { RootStackParamList } from '../types/navigation';
 import { styles } from './PCSScreen.styles';
 
@@ -32,16 +32,16 @@ interface PictogramImageProps {
 const PictogramImage: React.FC<PictogramImageProps> = React.memo(({ arasaacId, style }) => {
   const [imageError, setImageError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
-  // Memoizar URL del pictograma
-  const imageUrl = useMemo(() => 
-    getPictogramImageUrl(arasaacId, { 
-      color: true, 
-      backgroundColor: 'white' 
+
+  // Memoize pictogram URL
+  const imageUrl = useMemo(() =>
+    getPictogramImageUrl(arasaacId, {
+      color: true,
+      backgroundColor: 'white'
     }),
     [arasaacId]
   );
-  
+
   // Optimize useEffect with InteractionManager
   // CRITICAL: Do not block render during back navigation
   useEffect(() => {
@@ -50,59 +50,61 @@ const PictogramImage: React.FC<PictogramImageProps> = React.memo(({ arasaacId, s
     setErrorMessage(null);
     // DO NOT set imageLoading to true here - causes layout shift
     // Image will be displayed directly without ActivityIndicator
-    
+
     // Execute logs after interactions to avoid blocking UI
     const task = InteractionManager.runAfterInteractions(() => {
       console.log(`🖼️ Pictograma ID ${arasaacId} - URL: ${imageUrl}`);
     });
-    
+
     // Optimized cleanup - does not block during unmount
     return () => {
       // Cancel async tasks to avoid blocking
       task.cancel();
     };
   }, [arasaacId, imageUrl]);
-  
+
   // Removed handleLoadStart - not needed since we don't show ActivityIndicator
   const handleLoad = useCallback(() => {
     // Image loaded successfully
   }, []);
-  
+
   const handleError = useCallback((error: any) => {
     const errorDetails = error.nativeEvent || error;
     console.error(`❌ Error loading pictogram ID ${arasaacId}`);
-    
+
     let finalErrorMessage = 'Error loading';
     if (errorDetails.error) {
       finalErrorMessage = String(errorDetails.error);
     } else if (typeof errorDetails === 'string') {
       finalErrorMessage = errorDetails;
     }
-    
+
     setErrorMessage(finalErrorMessage);
     setImageError(true);
   }, [arasaacId]);
-  
+
+  const { theme } = useTheme();
+
   if (imageError) {
     // Show a placeholder if there's an error with debug information
     return (
       <View style={[style, styles.errorContainer]}>
-        <Text style={styles.errorText}>❓</Text>
-        <Text style={styles.errorSubtext}>ID: {arasaacId}</Text>
+        <Text style={[styles.errorText, { color: theme.textSecondary }]}>❓</Text>
+        <Text style={[styles.errorSubtext, { color: theme.textSecondary }]}>ID: {arasaacId}</Text>
         {errorMessage && (
-          <Text style={styles.errorSubtext} numberOfLines={2}>
+          <Text style={[styles.errorSubtext, { color: theme.textSecondary }]} numberOfLines={2}>
             {errorMessage.substring(0, 50)}...
           </Text>
         )}
       </View>
     );
   }
-  
+
   return (
     <View style={[style, { overflow: 'hidden', backgroundColor: '#f5f5f5' }]}>
       {/* CRITICAL: Do not show ActivityIndicator - causes layout shift and white flash */}
       <Image
-        source={{ 
+        source={{
           uri: imageUrl,
           cache: 'default'
         }}
@@ -118,7 +120,7 @@ const PictogramImage: React.FC<PictogramImageProps> = React.memo(({ arasaacId, s
   );
 });
 
-// Componente para mostrar símbolos personalizados
+// Component to display custom symbols
 interface CustomSymbolImageProps {
   imageUrl: string;
   style?: any;
@@ -126,6 +128,7 @@ interface CustomSymbolImageProps {
 
 const CustomSymbolImage: React.FC<CustomSymbolImageProps> = React.memo(({ imageUrl, style }) => {
   const [imageError, setImageError] = useState(false);
+  const { theme } = useTheme();
 
   const handleError = useCallback(() => {
     setImageError(true);
@@ -134,7 +137,7 @@ const CustomSymbolImage: React.FC<CustomSymbolImageProps> = React.memo(({ imageU
   if (imageError) {
     return (
       <View style={[style, styles.errorContainer]}>
-        <Text style={styles.errorText}>❓</Text>
+        <Text style={[styles.errorText, { color: theme.textSecondary }]}>❓</Text>
       </View>
     );
   }
@@ -152,7 +155,7 @@ const CustomSymbolImage: React.FC<CustomSymbolImageProps> = React.memo(({ imageU
   );
 });
 
-// Categorías por defecto (mismo que CategoriesScreen)
+// Default categories (same as CategoriesScreen)
 const DEFAULT_CATEGORIES = [
   { name: 'Food', emoji: '🍕' },
   { name: 'Games', emoji: '🎮' },
@@ -164,11 +167,11 @@ const DEFAULT_CATEGORIES = [
   { name: 'Transport', emoji: '🚗' },
 ];
 
-// Constantes para paginación
-const INITIAL_PAGE_SIZE = 16; // Primeros 16 pictogramas
-const LOAD_MORE_SIZE = 16; // Cargar 16 más al deslizar
+// Pagination constants
+const INITIAL_PAGE_SIZE = 15; // First 15 pictograms (5 rows of 3x3)
+const LOAD_MORE_SIZE = 15; // Load 15 more on scroll (5 rows of 3x3)
 
-// Símbolos comunes (para categoría "All" o por defecto)
+// Common symbols (for "All" category or default)
 const COMMON_SYMBOLS = [
   { id: 100, text: 'I', arasaacId: 6632 },
   { id: 101, text: 'You', arasaacId: 6625 },
@@ -200,14 +203,15 @@ const PCSScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: PCSScreenParams }, 'params'>>();
   const { theme } = useTheme();
   const { user } = useUser();
+  const { showError } = useToast();
   // Params are optional - they may come from topic selection or not
   const params = route.params;
   const topic = params?.topic;
 
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Estado para categorías y pictogramas cargados desde el backend
+
+  // State for categories and pictograms loaded from the backend
   const [backendCategories, setBackendCategories] = useState<Record<string, number[]>>({});
   const [categorySymbolsCache, setCategorySymbolsCache] = useState<Record<string, Array<{
     id: string;
@@ -216,24 +220,70 @@ const PCSScreen: React.FC = () => {
     imageUrl: string;
     isCustom: boolean;
   }>>>({});
-  const [categoryLoadProgress, setCategoryLoadProgress] = useState<Record<string, number>>({}); // Cuántos pictogramas se han cargado por categoría
+  const [categoryLoadProgress, setCategoryLoadProgress] = useState<Record<string, number>>({}); // How many pictograms have been loaded per category
   const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
+  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0); // Current category index for indicators
+  const categoryFlatListRef = useRef<FlatList>(null); // Reference to FlatList for programmatic navigation
+  const indicatorsScrollViewRef = useRef<ScrollView>(null); // Reference to indicators ScrollView
 
-  // Obtener categorías del usuario (similar a CategoriesScreen)
+  // Get user categories (similar to CategoriesScreen)
   const hiddenCategories = useMemo(() => {
     return user?.preferences.hiddenCategories || [];
   }, [user?.preferences.hiddenCategories]);
 
-  // Cargar categorías desde el backend
+  // Load categories from backend
+  // Reloads when user changes or when user preferences change (to detect deleted categories)
   useEffect(() => {
     const loadCategories = async () => {
+      if (!user?.id) {
+        console.log('⚠️ User not authenticated, cannot load custom categories');
+        // Fallback to default categories
+        const fallbackCategories: Record<string, number[]> = {};
+        DEFAULT_CATEGORIES.forEach(cat => {
+          fallbackCategories[cat.name] = [];
+        });
+        setBackendCategories(fallbackCategories);
+        return;
+      }
+
       try {
-        const categories = await getAllCategories();
+        const categories = await getAllCategories(user.id);
         setBackendCategories(categories);
-        console.log('✅ Categorías cargadas desde el backend:', Object.keys(categories));
+        console.log(`✅ Categories loaded from backend for user ${user.id}:`, Object.keys(categories));
+        
+        // Clean up cache: remove symbols from categories that no longer exist
+        setCategorySymbolsCache(prevCache => {
+          const newCache = { ...prevCache };
+          const categoryNames = Object.keys(categories);
+          
+          // Remove cached symbols for deleted categories
+          Object.keys(newCache).forEach(cachedCategory => {
+            if (!categoryNames.includes(cachedCategory)) {
+              console.log(`🗑️ Clearing cache for deleted category: ${cachedCategory}`);
+              delete newCache[cachedCategory];
+            }
+          });
+          
+          return newCache;
+        });
+        
+        // Also reset load progress for deleted categories
+        setCategoryLoadProgress(prevProgress => {
+          const newProgress = { ...prevProgress };
+          const categoryNames = Object.keys(categories);
+          
+          Object.keys(newProgress).forEach(cachedCategory => {
+            if (!categoryNames.includes(cachedCategory)) {
+              delete newProgress[cachedCategory];
+            }
+          });
+          
+          return newProgress;
+        });
+        
       } catch (error) {
-        console.error('❌ Error cargando categorías:', error);
-        // Fallback a categorías por defecto si falla
+        console.error('❌ Error loading categories:', error);
+        // Fallback to default categories if failed
         const fallbackCategories: Record<string, number[]> = {};
         DEFAULT_CATEGORIES.forEach(cat => {
           fallbackCategories[cat.name] = [];
@@ -241,11 +291,11 @@ const PCSScreen: React.FC = () => {
         setBackendCategories(fallbackCategories);
       }
     };
-    
-    loadCategories();
-  }, []);
 
-  // Construir lista de categorías combinando backend y preferencias del usuario
+    loadCategories();
+  }, [user?.id, user?.preferences.categories]);
+
+  // Build categories list combining backend and user preferences
   const allCategories = useMemo(() => {
     const categoriesList: Array<{
       name: string;
@@ -254,14 +304,14 @@ const PCSScreen: React.FC = () => {
       id: string;
     }> = [];
 
-    // Categorías del backend (predefinidas + personalizadas)
+    // Backend categories (predefined + custom)
     Object.keys(backendCategories).forEach(categoryName => {
       if (!hiddenCategories.includes(categoryName)) {
-        // Buscar emoji en DEFAULT_CATEGORIES o usar uno por defecto
+        // Look for emoji in DEFAULT_CATEGORIES or use a default one
         const defaultCat = DEFAULT_CATEGORIES.find(c => c.name === categoryName);
         const emoji = defaultCat?.emoji || '📁';
         const isCustom = !DEFAULT_CATEGORIES.some(c => c.name === categoryName);
-        
+
         categoriesList.push({
           name: categoryName,
           emoji,
@@ -271,7 +321,7 @@ const PCSScreen: React.FC = () => {
       }
     });
 
-    // Añadir categorías personalizadas del usuario que no estén en el backend
+    // Add user custom categories that are not in the backend
     (user?.preferences.categories || []).forEach(cat => {
       if (!hiddenCategories.includes(cat.name) && !backendCategories[cat.name]) {
         categoriesList.push({
@@ -286,46 +336,46 @@ const PCSScreen: React.FC = () => {
     return categoriesList;
   }, [backendCategories, user?.preferences.categories, hiddenCategories]);
 
-  // Cargar pictogramas para una categoría desde el backend
+  // Load pictograms for a category from the backend
   const loadCategoryPictograms = useCallback(async (
     categoryName: string,
     startIndex: number = 0,
     count: number = INITIAL_PAGE_SIZE
   ) => {
-    // Evitar cargar si ya está cargando
+    // Avoid loading if already loading
     if (loadingCategories.has(categoryName)) {
-      console.log(`⏭️ Ya se está cargando "${categoryName}", saltando...`);
+      console.log(`⏭️ Already loading "${categoryName}", skipping...`);
       return;
     }
 
     try {
-      console.log(`🔄 Iniciando carga de pictogramas para "${categoryName}" (índice ${startIndex}, cantidad ${count})`);
+      console.log(`🔄 Starting load of pictograms for "${categoryName}" (index ${startIndex}, count ${count})`);
       setLoadingCategories(prev => new Set(prev).add(categoryName));
 
-      // Obtener IDs de pictogramas para esta categoría
-      const pictogramIds = await getCategoryPictogramIds(categoryName);
-      
+      // Get pictogram IDs for this category
+      const pictogramIds = await getCategoryPictogramIds(categoryName, user?.id);
+
       if (pictogramIds.length === 0) {
-        console.warn(`⚠️ No se encontraron IDs de pictogramas para "${categoryName}"`);
+        console.warn(`⚠️ No pictogram IDs found for "${categoryName}"`);
         setCategorySymbolsCache(prev => ({ ...prev, [categoryName]: [] }));
         setCategoryLoadProgress(prev => ({ ...prev, [categoryName]: 0 }));
         return;
       }
 
-      // Obtener el rango de IDs a cargar
+      // Get range of IDs to load
       const idsToLoad = pictogramIds.slice(startIndex, startIndex + count);
-      
+
       if (idsToLoad.length === 0) {
-        console.log(`✅ Ya se cargaron todos los pictogramas para "${categoryName}"`);
+        console.log(`✅ All pictograms already loaded for "${categoryName}"`);
         return;
       }
 
-      console.log(`📥 Cargando ${idsToLoad.length} pictogramas desde ARASAAC...`);
+      console.log(`📥 Loading ${idsToLoad.length} pictograms from ARASAAC...`);
 
-      // Obtener información de los pictogramas desde ARASAAC
+      // Get pictogram information from ARASAAC
       const pictogramsData = await getPictogramsByIds(idsToLoad, 'en');
 
-      // Convertir a formato de símbolo
+      // Convert to symbol format
       const newSymbols = pictogramsData
         .filter(item => item.pictogram !== null)
         .map((item) => ({
@@ -336,12 +386,12 @@ const PCSScreen: React.FC = () => {
           isCustom: false,
         }));
 
-      console.log(`✅ Convertidos ${newSymbols.length} pictogramas a símbolos para "${categoryName}"`);
+      console.log(`✅ Converted ${newSymbols.length} pictograms to symbols for "${categoryName}"`);
 
-      // Actualizar cache combinando con símbolos existentes
+      // Update cache combining with existing symbols
       setCategorySymbolsCache(prev => {
         const existing = prev[categoryName] || [];
-        // Evitar duplicados
+        // Avoid duplicates
         const existingIds = new Set(existing.map(s => s.arasaacId));
         const uniqueNewSymbols = newSymbols.filter(s => !existingIds.has(s.arasaacId));
         return {
@@ -350,16 +400,16 @@ const PCSScreen: React.FC = () => {
         };
       });
 
-      // Actualizar progreso
+      // Update progress
       setCategoryLoadProgress(prev => ({
         ...prev,
         [categoryName]: Math.min(startIndex + count, pictogramIds.length),
       }));
 
-      console.log(`✅ Cargados ${newSymbols.length} pictogramas para "${categoryName}" (${startIndex + count}/${pictogramIds.length})`);
+      console.log(`✅ Loaded ${newSymbols.length} pictograms for "${categoryName}" (${startIndex + count}/${pictogramIds.length})`);
     } catch (error: any) {
-      console.error(`❌ Error cargando pictogramas para "${categoryName}":`, error);
-      console.error(`   Mensaje:`, error.message);
+      console.error(`❌ Error loading pictograms for "${categoryName}":`, error);
+      console.error(`   Message:`, error.message);
       console.error(`   Stack:`, error.stack);
     } finally {
       setLoadingCategories(prev => {
@@ -368,12 +418,12 @@ const PCSScreen: React.FC = () => {
         return newSet;
       });
     }
-  }, [loadingCategories]);
+  }, [loadingCategories, user?.id]);
 
-  // Cargar pictogramas iniciales cuando se carga una categoría
+  // Load initial pictograms when a category is loaded
   useEffect(() => {
     if (Object.keys(backendCategories).length > 0) {
-      // Cargar primeros 16 pictogramas para cada categoría visible
+      // Load first 16 pictograms for each visible category
       allCategories.forEach(category => {
         if (!categorySymbolsCache[category.name] && backendCategories[category.name] && !loadingCategories.has(category.name)) {
           loadCategoryPictograms(category.name, 0, INITIAL_PAGE_SIZE);
@@ -383,11 +433,11 @@ const PCSScreen: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backendCategories, allCategories.length]);
 
-  // Obtener símbolos para una categoría específica (desde cache)
+  // Get symbols for a specific category (from cache)
   const getSymbolsForCategory = useCallback((categoryName: string) => {
     const cached = categorySymbolsCache[categoryName] || [];
-    
-    // Añadir símbolos personalizados que pertenezcan a esta categoría
+
+    // Add custom symbols belonging to this category
     const custom = (user?.preferences.customPCSSymbols || [])
       .filter(symbol => symbol.category === categoryName)
       .map((symbol) => ({
@@ -401,7 +451,7 @@ const PCSScreen: React.FC = () => {
     return [...cached, ...custom];
   }, [categorySymbolsCache, user?.preferences.customPCSSymbols]);
 
-  // Obtener todos los símbolos (para búsqueda)
+  // Get all symbols (for search)
   const allSymbols = useMemo(() => {
     const allSymbolsList: Array<{
       id: string;
@@ -411,13 +461,13 @@ const PCSScreen: React.FC = () => {
       isCustom: boolean;
     }> = [];
 
-    // Añadir símbolos de todas las categorías cargadas
+    // Add symbols from all loaded categories
     Object.keys(categorySymbolsCache).forEach(category => {
       const symbols = getSymbolsForCategory(category);
       allSymbolsList.push(...symbols);
     });
 
-    // Añadir símbolos personalizados sin categoría
+    // Add custom symbols without category
     const custom = (user?.preferences.customPCSSymbols || [])
       .filter(symbol => !symbol.category)
       .map((symbol) => ({
@@ -432,12 +482,28 @@ const PCSScreen: React.FC = () => {
     return allSymbolsList;
   }, [categorySymbolsCache, getSymbolsForCategory, user?.preferences.customPCSSymbols]);
 
+  // Create a fast lookup map for symbols by text (O(1) instead of O(n))
+  const symbolsByText = useMemo(() => {
+    const map = new Map<string, typeof allSymbols[0]>();
+    allSymbols.forEach(symbol => {
+      map.set(symbol.text, symbol);
+    });
+    return map;
+  }, [allSymbols]);
+
   // Optimized function to select/deselect words
+  // Uses immediate state update for instant visual feedback
   const handleWordPress = useCallback((word: string) => {
+    // Use functional update for immediate state change
     setSelectedWords(prev => {
-      if (prev.includes(word)) {
-        return prev.filter(w => w !== word);
+      const index = prev.indexOf(word);
+      if (index !== -1) {
+        // Remove word - create new array without the word for instant update
+        const newArray = [...prev];
+        newArray.splice(index, 1);
+        return newArray;
       } else {
+        // Add word
         return [...prev, word];
       }
     });
@@ -446,7 +512,7 @@ const PCSScreen: React.FC = () => {
   // Generate phrases with Gemini
   const handleGeneratePhrases = useCallback(async () => {
     if (selectedWords.length === 0) {
-      Alert.alert('Error', 'Please select at least one word');
+      showError('Please select at least one word');
       return;
     }
 
@@ -460,10 +526,7 @@ const PCSScreen: React.FC = () => {
         topic,
       });
     } catch (error: any) {
-      Alert.alert(
-        'Error',
-        error.message || 'Could not generate phrases. Check your Gemini API key.'
-      );
+      showError(error.message || 'Could not generate phrases. Check your Gemini API key.');
       console.error('Error generating phrases:', error);
     } finally {
       setIsLoading(false);
@@ -475,183 +538,403 @@ const PCSScreen: React.FC = () => {
     setSelectedWords([]);
   }, []);
 
+  // Navigate to previous category
+  const handlePreviousCategory = useCallback(() => {
+    if (currentCategoryIndex > 0) {
+      const newIndex = currentCategoryIndex - 1;
+      categoryFlatListRef.current?.scrollToIndex({ index: newIndex, animated: true });
+      setCurrentCategoryIndex(newIndex);
+    }
+  }, [currentCategoryIndex]);
+
+  // Navigate to next category
+  const handleNextCategory = useCallback(() => {
+    if (currentCategoryIndex < allCategories.length - 1) {
+      const newIndex = currentCategoryIndex + 1;
+      categoryFlatListRef.current?.scrollToIndex({ index: newIndex, animated: true });
+      setCurrentCategoryIndex(newIndex);
+    }
+  }, [currentCategoryIndex, allCategories.length]);
+
+  // Navigate directly to a category from indicator
+  const handleCategoryIndicatorPress = useCallback((index: number) => {
+    if (index !== currentCategoryIndex) {
+      categoryFlatListRef.current?.scrollToIndex({ index, animated: true });
+      setCurrentCategoryIndex(index);
+    }
+  }, [currentCategoryIndex]);
+
+  // Auto-scroll indicators when selected category changes
+  useEffect(() => {
+    if (allCategories.length > 0 && indicatorsScrollViewRef.current) {
+      // Calculate selected indicator position
+      // Each indicator has: minWidth (56) + paddingHorizontal (5*2) + gap (4) = ~70px
+      const indicatorWidth = 56 + 10 + 4; // minWidth + padding + gap
+      const screenWidth = Dimensions.get('window').width;
+      const availableWidth = screenWidth - 120; // Available width for indicators (screen - arrows - padding)
+      const scrollPosition = currentCategoryIndex * indicatorWidth;
+
+      // Scroll so selected indicator is visible and centered if possible
+      const targetScroll = Math.max(0, scrollPosition - availableWidth / 2 + indicatorWidth / 2);
+
+      indicatorsScrollViewRef.current.scrollTo({
+        x: targetScroll,
+        animated: true,
+      });
+    }
+  }, [currentCategoryIndex, allCategories.length]);
+
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <StatusBar style="auto" />
-        
+
         {/* Header */}
         <Header
-          title="Word Selection"
+          title="WizzWords"
           showBackButton={!!topic}
         />
 
         {/* Selected words with pictograms */}
         {/* CRITICAL: Avoid layout shift - always render container with fixed height */}
+        {/* Tap on symbols to remove them from selection */}
         <View style={[styles.outputArea, { backgroundColor: theme.white }]}>
           <View style={styles.selectedWordsWrapper}>
             {selectedWords.length > 0 ? (
-              <ScrollView 
-                horizontal 
+              <ScrollView
+                horizontal
                 showsHorizontalScrollIndicator={true}
                 contentContainerStyle={styles.selectedWordsContainer}
                 style={styles.selectedWordsScrollView}
                 nestedScrollEnabled={true}
+                removeClippedSubviews={true}
+                scrollEventThrottle={16}
               >
                 {selectedWords.map((word) => {
-                  const symbol = allSymbols.find(s => s.text === word);
+                  // Use fast O(1) lookup instead of O(n) find
+                  const symbol = symbolsByText.get(word);
                   if (!symbol) return null;
-                  
+
                   return (
-                    <View key={`${symbol.id}_${word}`} style={styles.selectedWordItem}>
+                    <TouchableOpacity
+                      key={`${symbol.id}_${word}`}
+                      style={[
+                        styles.selectedWordItem,
+                        { borderColor: theme.primary }
+                      ]}
+                      onPress={() => handleWordPress(word)}
+                      activeOpacity={0.5}
+                      accessible={true}
+                      accessibilityLabel={`Remove ${word} from selection`}
+                      accessibilityRole="button"
+                      accessibilityHint="Tap to remove this word"
+                    >
                       {symbol.isCustom ? (
-                        <CustomSymbolImage 
+                        <CustomSymbolImage
                           imageUrl={symbol.imageUrl}
                           style={styles.selectedWordImage}
                         />
                       ) : (
-                      <PictogramImage 
+                        <PictogramImage
                           arasaacId={symbol.arasaacId!}
-                        style={styles.selectedWordImage}
-                      />
+                          style={styles.selectedWordImage}
+                        />
                       )}
-                      <Text style={styles.selectedWordText}>{word}</Text>
-                    </View>
+                      <Text style={[styles.selectedWordText, { color: theme.text }]}>{word}</Text>
+                    </TouchableOpacity>
                   );
                 })}
               </ScrollView>
             ) : (
-              <Text style={styles.emptySelectionText}>No words selected</Text>
+              <Text style={[styles.emptySelectionText, { color: theme.textSecondary }]}>No words selected</Text>
             )}
           </View>
         </View>
 
-      {/* Carrusel de categorías con cuadrículas */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.primary }]}>Select Words</Text>
-        <FlatList
-          data={allCategories}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={true}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item: category }) => {
-            const categorySymbols = getSymbolsForCategory(category.name);
-            
-            return (
-              <View style={styles.categoryGridContainer}>
-                {/* Título de la categoría */}
-                <View style={styles.categoryHeader}>
-                  <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-                  <Text style={[styles.categoryName, { color: theme.primary }]}>
-                    {category.name}
-                  </Text>
-                </View>
-                
-                {/* ScrollView vertical con cuadrícula 4x4 con paginación */}
-                {categorySymbols.length > 0 || loadingCategories.has(category.name) ? (
-                  <ScrollView
-                    style={styles.categoryScrollView}
-                    contentContainerStyle={styles.grid4x4Container}
-                    showsVerticalScrollIndicator={true}
-                    nestedScrollEnabled={true}
-                    onScroll={({ nativeEvent }) => {
-                      // Detectar cuando el usuario está cerca del final (80% del scroll)
-                      const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-                      const isNearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height * 0.8;
-                      
-                      if (isNearBottom) {
-                        const currentProgress = categoryLoadProgress[category.name] || 0;
-                        const totalIds = backendCategories[category.name]?.length || 0;
-                        
-                        // Cargar más si hay más pictogramas disponibles
-                        if (currentProgress < totalIds && !loadingCategories.has(category.name)) {
-                          loadCategoryPictograms(category.name, currentProgress, LOAD_MORE_SIZE);
-                        }
-                      }
-                    }}
-                    scrollEventThrottle={400}
-                  >
-                    <View style={styles.grid4x4}>
-                      {categorySymbols.map((symbol) => {
-                        const isSelected = selectedWords.includes(symbol.text);
-                        return (
-                          <TouchableOpacity
-                            key={symbol.id}
-                            style={[
-                              styles.symbolButton,
-                              { backgroundColor: 'white', borderColor: theme.accent },
-                              isSelected && { borderColor: theme.primary, backgroundColor: 'white', borderWidth: 3 }
-                            ]}
-                            onPress={() => handleWordPress(symbol.text)}
-                            activeOpacity={0.7}
-                          >
-                            {symbol.isCustom ? (
-                              <CustomSymbolImage 
-                                imageUrl={symbol.imageUrl}
-                                style={styles.symbolImage}
-                              />
-                            ) : (
-                              <PictogramImage 
-                                arasaacId={symbol.arasaacId!}
-                                style={styles.symbolImage}
-                              />
-                            )}
-                            <Text style={styles.symbolText}>{symbol.text}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                      
-                      {/* Indicador de carga al final si se están cargando más */}
-                      {loadingCategories.has(category.name) && (
-                        <View style={styles.loadingMoreContainer}>
-                          <ActivityIndicator size="small" color={theme.primary} />
-                          <Text style={[styles.loadingMoreText, { color: theme.accent }]}>
-                            Loading more...
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </ScrollView>
-                ) : (
-                  <View style={styles.emptyCategoryContainer}>
-                    <Text style={[styles.emptyCategoryText, { color: theme.accent }]}>
-                      No symbols in this category
+        {/* Category carousel with grids */}
+        <View style={styles.section}>
+          <FlatList
+            ref={categoryFlatListRef}
+            data={allCategories}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id}
+            onMomentumScrollEnd={(event) => {
+              const index = Math.round(event.nativeEvent.contentOffset.x / (Dimensions.get('window').width - 24));
+              setCurrentCategoryIndex(index);
+            }}
+            onScrollToIndexFailed={(info) => {
+              // If scroll fails, retry after a small delay
+              setTimeout(() => {
+                categoryFlatListRef.current?.scrollToIndex({ index: info.index, animated: false });
+              }, 100);
+            }}
+            renderItem={({ item: category }) => {
+              const categorySymbols = getSymbolsForCategory(category.name);
+
+              return (
+                <View style={styles.categoryGridContainer}>
+                  {/* Category title */}
+                  <View style={styles.categoryHeader}>
+                    <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+                    <Text style={[styles.categoryName, { color: theme.primary }]}>
+                      {category.name}
                     </Text>
                   </View>
-                )}
-              </View>
-            );
-          }}
-          getItemLayout={(data, index) => {
-            const itemWidth = Dimensions.get('window').width - 24; // Ancho menos márgenes del section
-            return {
-              length: itemWidth,
-              offset: itemWidth * index,
-              index,
-            };
-          }}
-        />
-      </View>
 
-      {/* Action buttons */}
-      <View style={styles.actionButtons}>
-        <TouchableOpacity 
-          style={[styles.generateButton, { backgroundColor: 'white', borderColor: theme.primary, borderWidth: 2 }, isLoading && styles.buttonDisabled]}
-          onPress={handleGeneratePhrases}
-          disabled={isLoading || selectedWords.length === 0}
-        >
-          {isLoading ? (
-            <ActivityIndicator color={theme.primary} />
-          ) : (
-            <Text style={[styles.generateButtonText, { color: theme.primary }]}>Generate Phrases</Text>
+                  {/* Vertical ScrollView with 3x3 grid */}
+                  {categorySymbols.length > 0 || loadingCategories.has(category.name) ? (
+                    <ScrollView
+                      style={styles.categoryScrollView}
+                      contentContainerStyle={styles.grid3x3Container}
+                      showsVerticalScrollIndicator={true}
+                      nestedScrollEnabled={true}
+                    >
+                      <View style={styles.grid3x3}>
+                        {categorySymbols.map((symbol) => {
+                          const isSelected = selectedWords.includes(symbol.text);
+                          return (
+                            <TouchableOpacity
+                              key={symbol.id}
+                              style={[
+                                styles.symbolButton,
+                                { backgroundColor: 'white', borderColor: theme.accent },
+                                isSelected && { borderColor: theme.primary, backgroundColor: 'white', borderWidth: 3 }
+                              ]}
+                              onPress={() => handleWordPress(symbol.text)}
+                              activeOpacity={0.7}
+                            >
+                              {symbol.isCustom ? (
+                                <CustomSymbolImage
+                                  imageUrl={symbol.imageUrl}
+                                  style={styles.symbolImage}
+                                />
+                              ) : (
+                                <PictogramImage
+                                  arasaacId={symbol.arasaacId!}
+                                  style={styles.symbolImage}
+                                />
+                              )}
+                              <Text style={[styles.symbolText, { color: theme.text }]}>{symbol.text}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+
+                        {/* Button to load more pictograms */}
+                        {(() => {
+                          const currentProgress = categoryLoadProgress[category.name] || 0;
+                          const totalIds = backendCategories[category.name]?.length || 0;
+                          const hasMore = currentProgress < totalIds;
+                          const isLoading = loadingCategories.has(category.name);
+
+                          if (hasMore) {
+                            return (
+                              <TouchableOpacity
+                                style={[
+                                  styles.loadMoreButton,
+                                  {
+                                    backgroundColor: theme.accent,
+                                    borderColor: theme.accent,
+                                  },
+                                  isLoading && styles.buttonDisabled
+                                ]}
+                                onPress={() => {
+                                  if (!isLoading) {
+                                    loadCategoryPictograms(category.name, currentProgress, LOAD_MORE_SIZE);
+                                  }
+                                }}
+                                disabled={isLoading}
+                                activeOpacity={0.7}
+                              >
+                                {isLoading ? (
+                                  <>
+                                    <ActivityIndicator size="small" color="white" />
+                                    <Text style={styles.loadMoreButtonText}>Loading...</Text>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Text style={styles.loadMoreButtonIcon}>➕</Text>
+                                    <Text style={styles.loadMoreButtonText}>Load More</Text>
+                                  </>
+                                )}
+                              </TouchableOpacity>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </View>
+                    </ScrollView>
+                  ) : (
+                    <View style={styles.emptyCategoryContainer}>
+                      <Text style={[styles.emptyCategoryText, { color: theme.textSecondary }]}>
+                        No symbols in this category
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            }}
+            getItemLayout={(data, index) => {
+              const itemWidth = Dimensions.get('window').width - 24; // Width minus section margins
+              return {
+                length: itemWidth,
+                offset: itemWidth * index,
+                index,
+              };
+            }}
+          />
+
+          {/* Indicators and navigation combined */}
+          {allCategories.length > 1 && (
+            <View style={styles.categoryNavigationContainer}>
+              {/* Left arrow - fixed width to maintain proportion */}
+              <View style={styles.navButtonWrapper}>
+                <TouchableOpacity
+                  style={[
+                    styles.navButtonIndicator,
+                    {
+                      backgroundColor: currentCategoryIndex === 0 ? theme.accent : theme.primary,
+                      borderColor: currentCategoryIndex === 0 ? theme.accent : theme.primary,
+                      opacity: currentCategoryIndex === 0 ? 0.5 : 1,
+                    },
+                  ]}
+                  onPress={handlePreviousCategory}
+                  disabled={currentCategoryIndex === 0}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={require('../assets/WhiteBackArrow.png')}
+                    style={styles.navButtonArrow}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Tactile indicators with emojis - centered */}
+              <View style={styles.categoryIndicatorsContainer}>
+                <ScrollView
+                  ref={indicatorsScrollViewRef}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.categoryIndicatorsScrollContent}
+                >
+                  {allCategories.map((category, index) => (
+                    <TouchableOpacity
+                      key={category.id}
+                      style={[
+                        styles.categoryIndicator,
+                        {
+                          backgroundColor: index === currentCategoryIndex ? theme.primary : theme.accent,
+                          borderColor: index === currentCategoryIndex ? theme.primary : theme.accent,
+                          opacity: index === currentCategoryIndex ? 1 : 0.6,
+                          transform: [{ scale: index === currentCategoryIndex ? 1.1 : 1 }],
+                        },
+                      ]}
+                      onPress={() => handleCategoryIndicatorPress(index)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.categoryIndicatorEmoji}>{category.emoji}</Text>
+                      <Text
+                        style={[
+                          styles.categoryIndicatorName,
+                          {
+                            color: 'white',
+                            fontWeight: index === currentCategoryIndex ? '700' : '500',
+                          },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {category.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Right arrow - fixed width to maintain proportion */}
+              <View style={styles.navButtonWrapper}>
+                <TouchableOpacity
+                  style={[
+                    styles.navButtonIndicator,
+                    {
+                      backgroundColor: currentCategoryIndex === allCategories.length - 1 ? theme.accent : theme.primary,
+                      borderColor: currentCategoryIndex === allCategories.length - 1 ? theme.accent : theme.primary,
+                      opacity: currentCategoryIndex === allCategories.length - 1 ? 0.5 : 1,
+                    },
+                  ]}
+                  onPress={handleNextCategory}
+                  disabled={currentCategoryIndex === allCategories.length - 1}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={require('../assets/WhiteNextArrow.png')}
+                    style={styles.navButtonArrow}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={[styles.clearButton, { backgroundColor: 'white', borderColor: theme.tertiary, borderWidth: 2 }]} onPress={handleClear}>
-          <Text style={[styles.clearButtonText, { color: theme.tertiary }]}>Clear</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+
+        {/* Action buttons - PCS-style with pictograms */}
+        <View style={styles.actionButtons}>
+          {/* Generate Phrases button - PCS style */}
+          <TouchableOpacity
+            style={[
+              styles.pcsButton,
+              { backgroundColor: 'white', borderColor: theme.primary },
+              isLoading && styles.buttonDisabled
+            ]}
+            onPress={handleGeneratePhrases}
+            disabled={isLoading || selectedWords.length === 0}
+            accessible={true}
+            accessibilityLabel="Generate phrases from selected words"
+            accessibilityRole="button"
+          >
+            {isLoading ? (
+              <>
+                <ActivityIndicator size="large" color={theme.primary} />
+                <Text style={[styles.pcsButtonText, { color: theme.primary, marginTop: 8 }]}>
+                  Loading...
+                </Text>
+              </>
+            ) : (
+              <>
+                {/* Generate phrases pictogram - ARASAAC ID 9172 */}
+                <PictogramImage
+                  arasaacId={user?.preferences?.actionButtonPictograms?.generate || 9172}
+                  style={styles.pcsButtonImage}
+                />
+                <Text style={[styles.pcsButtonText, { color: theme.primary }]}>
+                  Generate Phrases
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Clear button - PCS style */}
+          <TouchableOpacity
+            style={[
+              styles.pcsButton,
+              { backgroundColor: 'white', borderColor: theme.tertiary }
+            ]}
+            onPress={handleClear}
+            accessible={true}
+            accessibilityLabel="Clear selected words"
+            accessibilityRole="button"
+          >
+            {/* Clear/Delete pictogram - ARASAAC ID 37417 */}
+            <PictogramImage
+              arasaacId={user?.preferences?.actionButtonPictograms?.clear || 37417}
+              style={styles.pcsButtonImage}
+            />
+            <Text style={[styles.pcsButtonText, { color: theme.tertiary }]}>
+              Clear
+            </Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     </View>
   );

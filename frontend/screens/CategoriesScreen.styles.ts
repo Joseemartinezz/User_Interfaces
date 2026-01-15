@@ -49,6 +49,16 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  hiddenCategoryButton: {
+    opacity: 0.7,
+    backgroundColor: '#f5f5f5',
+  },
+  hiddenCategoryText: {
+    opacity: 0.75,
+  },
+  hiddenCategoryEmoji: {
+    opacity: 0.7,
+  },
   deleteButton: {
     position: 'absolute',
     top: -8,
@@ -174,6 +184,29 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 8,
+  },
+  switchLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 12,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  modalTextArea: {
+    minHeight: 100,
+    paddingTop: 16,
   },
 });
 

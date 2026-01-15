@@ -1,15 +1,12 @@
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
-  signInWithCredential,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User as FirebaseUser,
-  updateProfile,
-  GoogleAuthProvider
+  updateProfile
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
-import { Platform } from 'react-native';
 
 /**
  * Registra un nuevo usuario con email y contraseña
@@ -72,48 +69,6 @@ export async function signOut(): Promise<void> {
  */
 export function getCurrentUser(): FirebaseUser | null {
   return auth.currentUser;
-}
-
-/**
- * Inicia sesión con Google en web
- */
-export async function loginWithGoogleWeb(): Promise<FirebaseUser> {
-  try {
-    console.log('🔐 Iniciando sesión con Google (web)...');
-    
-    const { signInWithPopup } = await import('firebase/auth');
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    console.log('✅ Sesión con Google iniciada exitosamente:', result.user.uid);
-    return result.user;
-  } catch (error: any) {
-    console.error('❌ Error iniciando sesión con Google:', error);
-    throw handleAuthError(error);
-  }
-}
-
-/**
- * Inicia sesión con Google en React Native usando un token ID
- * @param idToken - Token ID de Google obtenido de expo-auth-session
- */
-export async function loginWithGoogleNative(idToken: string): Promise<FirebaseUser> {
-  try {
-    console.log('🔐 Iniciando sesión con Google (React Native)...');
-    
-    if (!idToken) {
-      throw new Error('Token ID de Google no proporcionado');
-    }
-
-    // Crear credencial de Google para Firebase
-    const credential = GoogleAuthProvider.credential(idToken);
-    const userCredential = await signInWithCredential(auth, credential);
-    
-    console.log('✅ Sesión con Google iniciada exitosamente:', userCredential.user.uid);
-    return userCredential.user;
-  } catch (error: any) {
-    console.error('❌ Error iniciando sesión con Google:', error);
-    throw handleAuthError(error);
-  }
 }
 
 /**

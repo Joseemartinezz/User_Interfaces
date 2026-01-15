@@ -85,11 +85,12 @@ Guidelines:
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
-      throw new Error(errorData.error?.message || errorData.error || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as { error?: { message?: string } | string; message?: string };
+      const errorMessage = typeof errorData.error === 'object' ? errorData.error?.message : errorData.error;
+      throw new Error(errorMessage || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
     const output = data.choices?.[0]?.message?.content;
     if (!output) return [];
 
@@ -160,11 +161,12 @@ Remember: Generate EXACTLY 3 new phrases, no more, no less.`;
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
-      throw new Error(errorData.error?.message || errorData.error || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as { error?: { message?: string } | string; message?: string };
+      const errorMessage = typeof errorData.error === 'object' ? errorData.error?.message : errorData.error;
+      throw new Error(errorMessage || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
     const output = data.choices?.[0]?.message?.content;
     if (!output) return [];
 

@@ -1,18 +1,45 @@
-// API helper functions - Solo llamadas HTTP al backend
-// Toda la lógica de negocio está en el backend
+// API helper functions - HTTP calls to backend only
+// All business logic is in the backend
+
+import { auth } from './config/firebase';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+
+/**
+ * Gets Firebase authentication token
+ */
+async function getAuthToken(): Promise<string | null> {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      return null;
+    }
+    const token = await currentUser.getIdToken();
+    return token;
+  } catch (error) {
+    console.error('❌ Error getting authentication token:', error);
+    return null;
+  }
+}
+
+/**
+ * Gets the current user's userId
+ */
+function getCurrentUserId(): string | null {
+  const currentUser = auth.currentUser;
+  return currentUser?.uid || null;
+}
 
 // Log de la URL del API para debugging
 console.log('🔗 API_BASE_URL configurada:', API_BASE_URL);
 console.log('🔗 EXPO_PUBLIC_API_URL:', process.env.EXPO_PUBLIC_API_URL || 'no configurada (usando default)');
 
 /**
- * Prueba la conexión con el servidor backend
+ * Tests connection with backend server
  */
 export async function testConnection(): Promise<boolean> {
   try {
-    console.log(`🔍 Test de conexión: Intentando conectar a ${API_BASE_URL}/api/health`);
+    console.log(`🔍 Connection test: Attempting to connect to ${API_BASE_URL}/api/health`);
     const response = await fetch(`${API_BASE_URL}/api/health`, {
       method: 'GET',
       headers: {
@@ -20,23 +47,23 @@ export async function testConnection(): Promise<boolean> {
       },
     });
     const isOk = response.ok;
-    console.log(`✅ Test de conexión: ${isOk ? 'ÉXITO' : 'FALLO'} - Status: ${response.status}`);
+    console.log(`✅ Connection test: ${isOk ? 'SUCCESS' : 'FAILED'} - Status: ${response.status}`);
     return isOk;
   } catch (error: any) {
-    console.error('❌ Test de conexión FALLIDO:', error);
-    console.error('   Tipo:', error.name);
-    console.error('   Mensaje:', error.message);
-    console.error('   URL intentada:', `${API_BASE_URL}/api/health`);
+    console.error('❌ Connection test FAILED:', error);
+    console.error('   Type:', error.name);
+    console.error('   Message:', error.message);
+    console.error('   Attempted URL:', `${API_BASE_URL}/api/health`);
     if (error.message?.includes('Network request failed') || error.message?.includes('Failed to fetch')) {
-      console.error('   ⚠️ El backend no está accesible en:', API_BASE_URL);
-      console.error('   💡 Verifica que el backend esté corriendo: npm run server');
+      console.error('   ⚠️ Backend is not accessible at:', API_BASE_URL);
+      console.error('   💡 Verify that the backend is running: npm run server');
     }
     return false;
   }
 }
 
 /**
- * Genera frases naturales a partir de palabras seleccionadas usando Gemini
+ * Generates natural phrases from selected words using Gemini
  */
 export async function generatePhrases(words: string[]): Promise<string[]> {
   if (!words || words.length === 0) {
@@ -99,7 +126,7 @@ export async function generateMorePhrases(
 }
 
 /**
- * Tipo de pictograma de ARASAAC
+ * ARASAAC pictogram type
  */
 export interface ArasaacPictogram {
   _id: number;
@@ -134,7 +161,7 @@ export interface PictogramImageOptions {
 }
 
 /**
- * Busca pictogramas de ARASAAC por término de búsqueda
+ * Searches ARASAAC pictograms by search term
  */
 export async function searchPictograms(
   searchTerm: string,
@@ -156,19 +183,19 @@ export async function searchPictograms(
     );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
       throw new Error(errorData.error || `Error ${response.status}`);
     }
 
     return await response.json();
   } catch (error: any) {
-    console.error('Error buscando pictogramas:', error);
-    throw new Error(error.message || 'Error al buscar pictogramas. Verifica que el servidor backend esté ejecutándose.');
+    console.error('Error searching pictograms:', error);
+    throw new Error(error.message || 'Error searching pictograms. Verify that the backend server is running.');
   }
 }
 
 /**
- * Obtiene la información de un pictograma específico por su ID
+ * Gets information for a specific pictogram by its ID
  */
 export async function getPictogramById(
   pictogramId: number,
@@ -186,25 +213,25 @@ export async function getPictogramById(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
       const errorMessage = errorData.error || `Error ${response.status}`;
-      console.error(`   ❌ Error ${response.status} obteniendo pictograma ${pictogramId}:`, errorMessage);
+      console.error(`   ❌ Error ${response.status} getting pictogram ${pictogramId}:`, errorMessage);
       throw new Error(errorMessage);
     }
 
     const pictogram = await response.json();
     return pictogram;
   } catch (error: any) {
-    console.error(`   ❌ Error obteniendo pictograma ${pictogramId}:`, error.message || error);
+    console.error(`   ❌ Error getting pictogram ${pictogramId}:`, error.message || error);
     if (error.message?.includes('Network request failed') || error.message?.includes('Failed to fetch')) {
-      throw new Error(`No se pudo conectar al backend. Verifica que esté ejecutándose en ${API_BASE_URL}`);
+      throw new Error(`Could not connect to backend. Verify it is running at ${API_BASE_URL}`);
     }
-    throw new Error(error.message || 'Error al obtener pictograma. Verifica que el servidor backend esté ejecutándose.');
+    throw new Error(error.message || 'Error getting pictogram. Verify that the backend server is running.');
   }
 }
 
 /**
- * Obtiene la URL de una imagen de pictograma
+ * Gets the URL of a pictogram image
  */
 export function getPictogramImageUrl(
   pictogramId: number,
@@ -231,7 +258,7 @@ export function getPictogramImageUrl(
 }
 
 /**
- * Busca pictogramas para múltiples palabras
+ * Searches pictograms for multiple words
  */
 export async function searchMultiplePictograms(
   words: string[],
@@ -251,19 +278,19 @@ export async function searchMultiplePictograms(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
       throw new Error(errorData.error || `Error ${response.status}`);
     }
 
     return await response.json();
   } catch (error: any) {
-    console.error('Error buscando múltiples pictogramas:', error);
-    throw new Error(error.message || 'Error al buscar pictogramas. Verifica que el servidor backend esté ejecutándose.');
+    console.error('Error searching multiple pictograms:', error);
+    throw new Error(error.message || 'Error searching pictograms. Verify that the backend server is running.');
   }
 }
 
 /**
- * Obtiene el mejor pictograma para una palabra
+ * Gets the best pictogram for a word
  */
 export async function getBestPictogramForWord(
   word: string,
@@ -274,10 +301,10 @@ export async function getBestPictogramForWord(
     if (pictograms.length === 0) {
       return null;
     }
-    // Retornar el primero (puedes agregar lógica de selección más sofisticada)
+    // Return the first one (you can add more sophisticated selection logic)
     return pictograms[0];
   } catch (error) {
-    console.error('Error obteniendo mejor pictograma:', error);
+    console.error('Error getting best pictogram:', error);
     return null;
   }
 }
@@ -297,7 +324,7 @@ export async function convertWordsToPictograms(
 // ============================================================================
 
 /**
- * Tipo de usuario
+ * User type
  */
 export interface User {
   id: string;
@@ -307,7 +334,6 @@ export interface User {
     language: string;
     theme: number;
     fontSize: string;
-    voiceSpeed: number;
   };
 }
 
@@ -316,7 +342,7 @@ export interface User {
  */
 export async function getUser(): Promise<User | null> {
   try {
-    console.log(`🔍 Intentando conectar a: ${API_BASE_URL}/api/user`);
+    console.log(`🔍 Attempting to connect to: ${API_BASE_URL}/api/user`);
     const response = await fetch(`${API_BASE_URL}/api/user`, {
       method: 'GET',
       headers: {
@@ -324,7 +350,7 @@ export async function getUser(): Promise<User | null> {
       },
     });
 
-    console.log(`✅ Respuesta recibida: ${response.status} ${response.statusText}`);
+    console.log(`✅ Response received: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -335,15 +361,15 @@ export async function getUser(): Promise<User | null> {
     return data.user || null;
   } catch (error: any) {
     console.error('❌ Error getting user:', error);
-    console.error('   Tipo de error:', error.name);
-    console.error('   Mensaje:', error.message);
-    console.error('   URL intentada:', `${API_BASE_URL}/api/user`);
+    console.error('   Error type:', error.name);
+    console.error('   Message:', error.message);
+    console.error('   Attempted URL:', `${API_BASE_URL}/api/user`);
     if (error.message?.includes('Network request failed') || error.message?.includes('Failed to fetch')) {
-      console.error('   ⚠️ PROBLEMA DE CONEXIÓN: El backend no está accesible');
-      console.error('   💡 Verifica que:');
-      console.error('      1. El backend esté corriendo (npm run server)');
-      console.error('      2. La URL sea correcta para tu plataforma');
-      console.error('      3. No haya firewall bloqueando la conexión');
+      console.error('   ⚠️ CONNECTION PROBLEM: Backend is not accessible');
+      console.error('   💡 Verify that:');
+      console.error('      1. Backend is running (npm run server)');
+      console.error('      2. URL is correct for your platform');
+      console.error('      3. No firewall is blocking the connection');
     }
     return null;
   }
@@ -380,7 +406,7 @@ export async function updateUser(updates: {
 }
 
 /**
- * Resetea el usuario a valores por defecto
+ * Resets user to default values
  */
 export async function resetUser(): Promise<User | null> {
   try {
@@ -445,11 +471,16 @@ export async function getUserAvatarUrl(user: {
 // ============================================================================
 
 /**
- * Obtiene todas las categorías (predefinidas + personalizadas)
+ * Gets all categories (predefined + custom)
+ * If userId is provided, returns only the user's categories
  */
-export async function getAllCategories(): Promise<Record<string, number[]>> {
+export async function getAllCategories(userId?: string): Promise<Record<string, number[]>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/categories`, {
+    const url = userId 
+      ? `${API_BASE_URL}/api/categories?userId=${encodeURIComponent(userId)}`
+      : `${API_BASE_URL}/api/categories`;
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -470,14 +501,16 @@ export async function getAllCategories(): Promise<Record<string, number[]>> {
 }
 
 /**
- * Obtiene los IDs de pictogramas para una categoría específica
+ * Gets pictogram IDs for a specific category
+ * If userId is provided, searches in user's categories
  */
-export async function getCategoryPictogramIds(categoryName: string): Promise<number[]> {
-  const url = `${API_BASE_URL}/api/categories/${encodeURIComponent(categoryName)}`;
+export async function getCategoryPictogramIds(categoryName: string, userId?: string): Promise<number[]> {
+  const baseUrl = `${API_BASE_URL}/api/categories/${encodeURIComponent(categoryName)}`;
+  const url = userId ? `${baseUrl}?userId=${encodeURIComponent(userId)}` : baseUrl;
   
   try {
-    console.log(`🔍 Obteniendo IDs de pictogramas para categoría "${categoryName}"`);
-    console.log(`   🌐 Llamando a: ${url}`);
+    console.log(`🔍 Getting pictogram IDs for category "${categoryName}"${userId ? ` (user: ${userId})` : ''}`);
+    console.log(`   🌐 Calling: ${url}`);
     
     const response = await fetch(url, {
       method: 'GET',
@@ -502,14 +535,118 @@ export async function getCategoryPictogramIds(categoryName: string): Promise<num
   } catch (error: any) {
     console.error(`❌ Error getting pictogram IDs for category "${categoryName}":`, error);
     if (error.message?.includes('Network request failed') || error.message?.includes('Failed to fetch')) {
-      throw new Error(`No se pudo conectar al backend. Verifica que esté ejecutándose en ${API_BASE_URL}`);
+      throw new Error(`Could not connect to backend. Verify it is running at ${API_BASE_URL}`);
     }
-    throw new Error(error.message || 'Error al obtener pictogramas de la categoría.');
+    throw new Error(error.message || 'Error getting pictograms from category.');
   }
 }
 
 /**
- * Obtiene información de pictogramas por sus IDs
+ * Creates a new category with pictograms using AI
+ * @param categoryName Category name
+ * @param description Optional description of what the category encompasses
+ * @param maxResults Maximum number of pictograms to include (default 50)
+ * @param userId User ID (optional, obtained automatically if not provided)
+ */
+export async function createCategoryWithPictograms(
+  categoryName: string,
+  description?: string,
+  maxResults: number = 50,
+  userId?: string
+): Promise<{ category: string; pictogramIds: number[]; count: number }> {
+  try {
+    // Obtener userId si no se proporciona
+    const finalUserId = userId || getCurrentUserId();
+    if (!finalUserId) {
+      throw new Error('User not authenticated. Please log in.');
+    }
+
+    // Get authentication token
+    const token = await getAuthToken();
+    if (!token) {
+      throw new Error('Could not get authentication token.');
+    }
+
+    const body: { categoryName: string; maxResults: number; description?: string; userId: string } = {
+      categoryName,
+      maxResults,
+      userId: finalUserId,
+    };
+
+    if (description && description.trim()) {
+      body.description = description.trim();
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/categories`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${finalUserId}`, // Send userId as token (backend extracts it)
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `Error ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+      category: data.category,
+      pictogramIds: data.pictogramIds || [],
+      count: data.count || 0,
+    };
+  } catch (error: any) {
+    console.error('Error creating category with pictograms:', error);
+    throw new Error(error.message || 'Error creating category with pictograms. Verify that the backend server is running.');
+  }
+}
+
+/**
+ * Deletes a user's custom category
+ * @param categoryName Name of category to delete
+ * @param userId User ID
+ */
+export async function deleteCategoryWithPictograms(
+  categoryName: string,
+  userId?: string
+): Promise<void> {
+  try {
+    // Obtener userId si no se proporciona
+    const finalUserId = userId || getCurrentUserId();
+    if (!finalUserId) {
+      throw new Error('User not authenticated. Please log in.');
+    }
+
+    // Get authentication token
+    const token = await getAuthToken();
+    if (!token) {
+      throw new Error('Could not get authentication token.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/categories/${encodeURIComponent(categoryName)}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${finalUserId}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `Error ${response.status}`);
+    }
+
+    console.log(`✅ Category "${categoryName}" deleted successfully from backend`);
+  } catch (error: any) {
+    console.error('Error deleting category with pictograms:', error);
+    throw new Error(error.message || 'Error deleting category from backend.');
+  }
+}
+
+/**
+ * Gets pictogram information by their IDs
  * Obtiene los detalles completos de múltiples pictogramas desde ARASAAC
  */
 export async function getPictogramsByIds(
@@ -520,32 +657,32 @@ export async function getPictogramsByIds(
     return [];
   }
 
-  console.log(`🔍 Obteniendo ${pictogramIds.length} pictogramas desde ARASAAC (idioma: ${language})`);
+  console.log(`🔍 Getting ${pictogramIds.length} pictograms from ARASAAC (language: ${language})`);
   console.log(`   IDs: ${pictogramIds.slice(0, 10).join(', ')}${pictogramIds.length > 10 ? '...' : ''}`);
 
   try {
-    // Obtener información de cada pictograma en paralelo
+    // Get information for each pictogram in parallel
     const promises = pictogramIds.map(async (id) => {
       try {
-        console.log(`   📥 Obteniendo pictograma ID: ${id}`);
+        console.log(`   📥 Getting pictogram ID: ${id}`);
         const pictogram = await getPictogramById(id, language);
-        // Obtener el texto principal (primera keyword)
+        // Get main text (first keyword)
         const text = pictogram.keywords?.[0]?.keyword || `Pictogram ${id}`;
-        console.log(`   ✅ Pictograma ${id} obtenido: "${text}"`);
+        console.log(`   ✅ Pictogram ${id} obtained: "${text}"`);
         return { id, pictogram, text };
       } catch (error: any) {
-        console.warn(`⚠️ No se pudo obtener el pictograma ${id}:`, error.message || error);
+        console.warn(`⚠️ Could not get pictogram ${id}:`, error.message || error);
         return { id, pictogram: null, text: `Pictogram ${id}` };
       }
     });
 
     const results = await Promise.all(promises);
     const successful = results.filter(r => r.pictogram !== null).length;
-    console.log(`✅ Obtenidos ${successful}/${pictogramIds.length} pictogramas exitosamente`);
+    console.log(`✅ Obtained ${successful}/${pictogramIds.length} pictograms successfully`);
     return results;
   } catch (error: any) {
     console.error('❌ Error getting pictograms by IDs:', error);
-    throw new Error(error.message || 'Error al obtener pictogramas.');
+    throw new Error(error.message || 'Error getting pictograms.');
   }
 }
 

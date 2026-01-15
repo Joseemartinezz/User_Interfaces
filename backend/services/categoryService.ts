@@ -1,13 +1,109 @@
 // Category Service for Dynamic Pictogram Categories
 // Manages category-to-pictogram mappings using a JSON file
-// Uses Azure OpenAI to find relevant pictograms for new categories
+// Uses Azure OpenAI (with Gemini fallback) to find relevant pictograms for new categories
+// 
+// OPTIMIZED VERSION: Improved scoring, ranking, and AI prompt engineering
 
 const fs = require('fs').promises;
 const path = require('path');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Path to categories JSON files
 const PREDEFINED_CATEGORIES_FILE_PATH = path.join(__dirname, '../data/predefinedCategories.json');
 const CUSTOM_CATEGORIES_FILE_PATH = path.join(__dirname, '../data/categories.json');
+const USER_CATEGORIES_DIR = path.join(__dirname, '../data/user_categories');
+
+// ============================================================================
+// CONFIGURATION CONSTANTS
+// ============================================================================
+
+/**
+ * Minimum category name length for valid search
+ */
+const MIN_CATEGORY_NAME_LENGTH = 2;
+
+/**
+ * Maximum pictogram results to return (prevents excessive data)
+ */
+const MAX_PICTOGRAM_RESULTS = 100;
+
+/**
+ * Minimum relevance score for a pictogram to be included
+ * This filters out low-quality matches
+ */
+const MIN_RELEVANCE_SCORE = 3;
+
+/**
+ * Score weights for different match types
+ */
+const SCORE_WEIGHTS = {
+  EXACT_KEYWORD_MATCH: 15,      // Exact match in keywords
+  EXACT_TAG_MATCH: 12,          // Exact match in tags
+  PARTIAL_KEYWORD_MATCH: 6,     // Keyword contains search term or vice versa
+  PARTIAL_TAG_MATCH: 4,         // Tag contains search term or vice versa
+  WORD_IN_KEYWORD: 3,           // Individual word matches keyword
+  WORD_IN_TAG: 2,               // Individual word matches tag
+  AI_KEYWORD_MATCH: 8,          // AI-suggested keyword matches
+  AI_TAG_MATCH: 6,              // AI-suggested tag matches
+};
+
+/**
+ * Cache for unique tags from the database (for AI context)
+ */
+let cachedUniqueTags: string[] | null = null;
+
+/**
+ * Get path to user-specific categories file
+ */
+function getUserCategoriesPath(userId: string): string {
+  return path.join(USER_CATEGORIES_DIR, `${userId}.json`);
+}
+
+/**
+ * Sanitize and validate category name for search
+ * - Removes leading/trailing whitespace
+ * - Removes special characters that could break search
+ * - Returns null if invalid (too short, empty, only special chars)
+ * 
+ * @param categoryName - Raw category name input
+ * @returns Sanitized category name or null if invalid
+ */
+function sanitizeCategoryName(categoryName: string): string | null {
+  if (!categoryName || typeof categoryName !== 'string') {
+    return null;
+  }
+
+  // Trim whitespace
+  let sanitized = categoryName.trim();
+
+  // Remove special characters that could cause issues (keep letters, numbers, spaces, hyphens)
+  sanitized = sanitized.replace(/[^a-zA-Z0-9\s\-áéíóúñüÁÉÍÓÚÑÜ]/g, '');
+
+  // Collapse multiple spaces into single space
+  sanitized = sanitized.replace(/\s+/g, ' ');
+
+  // Validate minimum length
+  if (sanitized.length < MIN_CATEGORY_NAME_LENGTH) {
+    return null;
+  }
+
+  return sanitized;
+}
+
+/**
+ * Validate userId format (Firebase UIDs are typically alphanumeric)
+ * 
+ * @param userId - User ID to validate
+ * @returns true if valid, false otherwise
+ */
+function isValidUserId(userId: string): boolean {
+  if (!userId || typeof userId !== 'string') {
+    return false;
+  }
+  // Firebase UIDs are typically 28 alphanumeric characters
+  // Allow some flexibility for different auth providers
+  return /^[a-zA-Z0-9_-]{10,128}$/.test(userId);
+}
 
 // Predefined categories (from PCSScreen.tsx)
 const PREDEFINED_CATEGORIES = [
@@ -78,6 +174,7 @@ async function loadPredefinedCategories(): Promise<Record<string, number[]>> {
 
 /**
  * Load custom categories JSON file (user-created categories only)
+ * DEPRECATED: Use loadUserCategories instead
  * Returns empty object if file doesn't exist
  */
 async function loadCustomCategories(): Promise<Record<string, number[]>> {
@@ -95,14 +192,34 @@ async function loadCustomCategories(): Promise<Record<string, number[]>> {
 }
 
 /**
+ * Load user-specific categories JSON file
+ * Returns empty object if file doesn't exist
+ */
+async function loadUserCategories(userId: string): Promise<Record<string, number[]>> {
+  try {
+    const filePath = getUserCategoriesPath(userId);
+    const data = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(data);
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      // File doesn't exist, return empty object
+      return {};
+    }
+    console.error(`❌ Error loading user categories for ${userId}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Save custom categories JSON file (user-created categories only)
+ * DEPRECATED: Use saveUserCategories instead
  */
 async function saveCustomCategories(categories: Record<string, number[]>): Promise<void> {
   try {
     // Ensure data directory exists
     const dataDir = path.dirname(CUSTOM_CATEGORIES_FILE_PATH);
     await fs.mkdir(dataDir, { recursive: true });
-    
+
     await fs.writeFile(
       CUSTOM_CATEGORIES_FILE_PATH,
       JSON.stringify(categories, null, 2),
@@ -111,6 +228,27 @@ async function saveCustomCategories(categories: Record<string, number[]>): Promi
     console.log('✅ Custom categories saved successfully');
   } catch (error) {
     console.error('❌ Error saving custom categories:', error);
+    throw error;
+  }
+}
+
+/**
+ * Save user-specific categories JSON file
+ */
+async function saveUserCategories(userId: string, categories: Record<string, number[]>): Promise<void> {
+  try {
+    // Ensure user_categories directory exists
+    await fs.mkdir(USER_CATEGORIES_DIR, { recursive: true });
+
+    const filePath = getUserCategoriesPath(userId);
+    await fs.writeFile(
+      filePath,
+      JSON.stringify(categories, null, 2),
+      'utf-8'
+    );
+    console.log(`✅ User categories saved successfully for user ${userId}`);
+  } catch (error) {
+    console.error(`❌ Error saving user categories for ${userId}:`, error);
     throw error;
   }
 }
@@ -129,6 +267,132 @@ async function loadMasterPictograms(): Promise<Array<{ id: number; keywords: str
     console.error('❌ Error loading master pictograms:', error);
     throw error;
   }
+}
+
+/**
+ * Extract and cache all unique tags from the database
+ * This helps the AI generate more accurate tag suggestions
+ */
+async function getUniqueTags(): Promise<string[]> {
+  if (cachedUniqueTags) {
+    return cachedUniqueTags;
+  }
+
+  const pictograms = await loadMasterPictograms();
+  const tagSet = new Set<string>();
+
+  for (const pictogram of pictograms) {
+    if (pictogram.tags && Array.isArray(pictogram.tags)) {
+      for (const tag of pictogram.tags) {
+        tagSet.add(tag.toLowerCase());
+      }
+    }
+  }
+
+  cachedUniqueTags = Array.from(tagSet).sort();
+  console.log(`📊 Cached ${cachedUniqueTags.length} unique tags from database`);
+  return cachedUniqueTags;
+}
+
+/**
+ * Extract sample keywords from the database for a given search context
+ * Helps AI understand what kind of keywords exist
+ */
+async function getSampleKeywords(pictograms: Array<{ id: number; keywords: string[]; tags: string[] }>, limit: number = 100): Promise<string[]> {
+  const keywordSet = new Set<string>();
+
+  for (const pictogram of pictograms.slice(0, 500)) {
+    if (pictogram.keywords && Array.isArray(pictogram.keywords)) {
+      for (const keyword of pictogram.keywords) {
+        keywordSet.add(keyword.toLowerCase());
+        if (keywordSet.size >= limit) break;
+      }
+    }
+    if (keywordSet.size >= limit) break;
+  }
+
+  return Array.from(keywordSet);
+}
+
+// ============================================================================
+// SCORING AND RANKING SYSTEM
+// ============================================================================
+
+interface ScoredPictogram {
+  id: number;
+  score: number;
+  matchReasons: string[];
+}
+
+/**
+ * Calculate relevance score for a pictogram against search terms
+ * Returns detailed scoring with reasons for debugging
+ */
+function calculatePictogramScore(
+  pictogram: { id: number; keywords: string[]; tags: string[] },
+  searchTerms: { keywords: Set<string>; tags: Set<string> },
+  categoryWords: string[],
+  isAIMatch: boolean = false
+): ScoredPictogram {
+  let score = 0;
+  const matchReasons: string[] = [];
+
+  const keywords = pictogram.keywords || [];
+  const tags = pictogram.tags || [];
+
+  // Check keywords
+  for (const keyword of keywords) {
+    const keywordLower = keyword.toLowerCase();
+
+    // Check against search keywords
+    for (const searchKeyword of searchTerms.keywords) {
+      if (keywordLower === searchKeyword) {
+        score += isAIMatch ? SCORE_WEIGHTS.AI_KEYWORD_MATCH : SCORE_WEIGHTS.EXACT_KEYWORD_MATCH;
+        matchReasons.push(`exact_keyword:${keyword}`);
+      } else if (keywordLower.includes(searchKeyword) || searchKeyword.includes(keywordLower)) {
+        if (keywordLower.length > 2 && searchKeyword.length > 2) {
+          score += SCORE_WEIGHTS.PARTIAL_KEYWORD_MATCH;
+          matchReasons.push(`partial_keyword:${keyword}~${searchKeyword}`);
+        }
+      }
+    }
+
+    // Check against category words
+    for (const word of categoryWords) {
+      if (word.length >= 3 && keywordLower === word) {
+        score += SCORE_WEIGHTS.WORD_IN_KEYWORD;
+        matchReasons.push(`word_keyword:${keyword}`);
+      }
+    }
+  }
+
+  // Check tags
+  for (const tag of tags) {
+    const tagLower = tag.toLowerCase();
+
+    // Check against search tags
+    for (const searchTag of searchTerms.tags) {
+      if (tagLower === searchTag) {
+        score += isAIMatch ? SCORE_WEIGHTS.AI_TAG_MATCH : SCORE_WEIGHTS.EXACT_TAG_MATCH;
+        matchReasons.push(`exact_tag:${tag}`);
+      } else if (tagLower.includes(searchTag) || searchTag.includes(tagLower)) {
+        if (tagLower.length > 3 && searchTag.length > 3) {
+          score += SCORE_WEIGHTS.PARTIAL_TAG_MATCH;
+          matchReasons.push(`partial_tag:${tag}~${searchTag}`);
+        }
+      }
+    }
+
+    // Check against category words
+    for (const word of categoryWords) {
+      if (word.length >= 3 && tagLower.includes(word)) {
+        score += SCORE_WEIGHTS.WORD_IN_TAG;
+        matchReasons.push(`word_tag:${tag}`);
+      }
+    }
+  }
+
+  return { id: pictogram.id, score, matchReasons };
 }
 
 /**
@@ -186,10 +450,10 @@ function findPictogramsByCategory(
  */
 async function initializePredefinedCategories(): Promise<Record<string, number[]>> {
   console.log('🔄 Loading predefined categories...');
-  
+
   // Try to load from file first
   let categories = await loadPredefinedCategories();
-  
+
   // If file is empty or doesn't exist, generate it
   if (Object.keys(categories).length === 0) {
     console.log('⚠️ Predefined categories file is empty, generating from master database...');
@@ -214,18 +478,31 @@ async function initializePredefinedCategories(): Promise<Record<string, number[]
   } else {
     console.log('✅ Predefined categories loaded from file');
   }
-  
+
   return categories;
 }
 
 /**
  * Use Azure OpenAI to find relevant pictograms for a new category
- * Uses a hybrid approach: local search + AI refinement
+ * Uses a hybrid approach: local search + AI refinement with scoring and ranking
+ * 
+ * OPTIMIZED VERSION with:
+ * - Detailed scoring system
+ * - Quality filtering (minimum score threshold)
+ * - Ranking by relevance
+ * - Better AI prompts with real database tags
+ * - Comprehensive logging for debugging
  */
 async function findPictogramsWithAI(
   categoryName: string,
-  maxResults: number = 50
+  maxResults: number = 50,
+  description?: string
 ): Promise<number[]> {
+  console.log('\n' + '='.repeat(80));
+  console.log(`🔍 STARTING PICTOGRAM SEARCH FOR CATEGORY: "${categoryName}"`);
+  if (description) console.log(`📝 Description: "${description}"`);
+  console.log('='.repeat(80));
+
   const config = {
     url: process.env.AZURE_OPENAI_PHRASE_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_URL || '',
     key: process.env.AZURE_OPENAI_PHRASE_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_KEY || '',
@@ -237,107 +514,117 @@ async function findPictogramsWithAI(
     throw new Error('Azure OpenAI no está configurado. Verifica las variables de entorno AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY.');
   }
 
-  // Load all pictograms
+  // Load all pictograms and unique tags
   const pictograms = await loadMasterPictograms();
-  
-  // Step 1: Do a local search first based on category name similarity
+  const uniqueTags = await getUniqueTags();
+
+  console.log(`📊 Database stats: ${pictograms.length} pictograms, ${uniqueTags.length} unique tags`);
+
+  // Prepare search context
   const categoryNameLower = categoryName.toLowerCase();
-  const categoryWords = categoryNameLower.split(/\s+/);
-  
-  // Find pictograms that match the category name in keywords or tags
-  const localMatches: number[] = [];
+  const categoryWords = categoryNameLower.split(/\s+/).filter(w => w.length >= 3);
+  const descriptionWords = description 
+    ? description.toLowerCase().split(/\s+/).filter(w => w.length >= 3)
+    : [];
+  const allSearchWords = [...new Set([...categoryWords, ...descriptionWords])];
+
+  console.log(`🔤 Search words: [${allSearchWords.join(', ')}]`);
+
+  // ============================================================================
+  // STEP 1: LOCAL SEARCH WITH SCORING
+  // ============================================================================
+  console.log('\n📍 STEP 1: Local search with scoring...');
+
+  const localSearchTerms = {
+    keywords: new Set([categoryNameLower, ...allSearchWords]),
+    tags: new Set([categoryNameLower, ...allSearchWords])
+  };
+
+  const scoredPictograms: ScoredPictogram[] = [];
+
   for (const pictogram of pictograms) {
-    let score = 0;
-    
-    // Check keywords
-    if (pictogram.keywords && pictogram.keywords.length > 0) {
-      for (const keyword of pictogram.keywords) {
-        const keywordLower = keyword.toLowerCase();
-        // Exact match
-        if (keywordLower === categoryNameLower) {
-          score += 10;
-        }
-        // Contains category name
-        else if (keywordLower.includes(categoryNameLower) || categoryNameLower.includes(keywordLower)) {
-          score += 5;
-        }
-        // Word match
-        else {
-          for (const word of categoryWords) {
-            if (keywordLower.includes(word) || keywordLower === word) {
-              score += 2;
-            }
-          }
-        }
-      }
-    }
-    
-    // Check tags
-    if (pictogram.tags && pictogram.tags.length > 0) {
-      for (const tag of pictogram.tags) {
-        const tagLower = tag.toLowerCase();
-        if (tagLower === categoryNameLower) {
-          score += 8;
-        } else if (tagLower.includes(categoryNameLower) || categoryNameLower.includes(tagLower)) {
-          score += 4;
-        } else {
-          for (const word of categoryWords) {
-            if (tagLower.includes(word)) {
-              score += 1;
-            }
-          }
-        }
-      }
-    }
-    
-    if (score > 0) {
-      localMatches.push(pictogram.id);
+    const scored = calculatePictogramScore(pictogram, localSearchTerms, allSearchWords, false);
+    if (scored.score >= MIN_RELEVANCE_SCORE) {
+      scoredPictograms.push(scored);
     }
   }
-  
-  console.log(`🔍 Local search found ${localMatches.length} potential matches for "${categoryName}"`);
 
-  // Step 2: Use AI to find additional relevant keywords/tags, then search locally
-  // Create a sample of matching pictograms for context
-  const sampleSize = Math.min(20, localMatches.length);
-  const sampleIds = localMatches.slice(0, sampleSize);
+  // Sort by score descending
+  scoredPictograms.sort((a, b) => b.score - a.score);
+
+  console.log(`   Found ${scoredPictograms.length} pictograms above threshold (min score: ${MIN_RELEVANCE_SCORE})`);
+  if (scoredPictograms.length > 0) {
+    console.log(`   Top 5 local matches:`);
+    scoredPictograms.slice(0, 5).forEach((p, i) => {
+      const pict = pictograms.find(x => x.id === p.id);
+      console.log(`      ${i + 1}. ID ${p.id} (score: ${p.score}) - keywords: [${pict?.keywords?.slice(0, 3).join(', ')}]`);
+    });
+  }
+
+  // ============================================================================
+  // STEP 2: AI-ENHANCED SEARCH
+  // ============================================================================
+  console.log('\n🤖 STEP 2: AI-enhanced search...');
+
+  // Get sample pictograms for AI context (best local matches)
+  const sampleSize = Math.min(15, scoredPictograms.length);
+  const sampleIds = scoredPictograms.slice(0, sampleSize).map(p => p.id);
   const samplePictograms = pictograms
     .filter(p => sampleIds.includes(p.id))
     .map(p => ({
       id: p.id,
-      keywords: p.keywords || [],
-      tags: p.tags || []
+      keywords: (p.keywords || []).slice(0, 5),
+      tags: (p.tags || []).slice(0, 5)
     }));
 
-  const prompt = `You are helping to categorize pictograms for an Augmentative and Alternative Communication (AAC) system.
+  // Get relevant tags from database for AI context
+  const relevantDatabaseTags = uniqueTags.filter(tag => {
+    for (const word of allSearchWords) {
+      if (tag.includes(word) || word.includes(tag)) return true;
+    }
+    return false;
+  }).slice(0, 30);
 
-Given a category name "${categoryName}", I need you to identify relevant keywords and tags that would help find pictograms belonging to this category.
+  console.log(`   Relevant database tags found: [${relevantDatabaseTags.slice(0, 10).join(', ')}${relevantDatabaseTags.length > 10 ? '...' : ''}]`);
 
-The master database contains ${pictograms.length} pictograms. Each pictogram has:
-- id: unique identifier
-- keywords: array of keywords in English
-- tags: array of semantic tags
+  // Build optimized prompt
+  const categoryContext = description
+    ? `Category name: "${categoryName}"\nCategory description: "${description}"`
+    : `Category name: "${categoryName}"`;
 
-Sample pictograms that might belong to "${categoryName}":
-${JSON.stringify(samplePictograms.slice(0, 10), null, 2)}
+  const prompt = `You are an expert at categorizing pictograms for AAC (Augmentative and Alternative Communication) systems used by children with communication difficulties.
 
-Your task:
-1. Understand what "${categoryName}" category represents
-2. Based on the sample, identify 10-20 relevant keywords and 5-10 relevant tags that would help find pictograms in this category
-3. Return a JSON object with this structure:
-{
-  "keywords": ["keyword1", "keyword2", ...],
-  "tags": ["tag1", "tag2", ...]
-}
+CATEGORY TO ANALYZE:
+${categoryContext}
 
-IMPORTANT: 
-- Return ONLY the JSON object, no explanation
-- Keywords should be single words or short phrases in English
-- Tags should be semantic categories
-- Focus on terms that would actually appear in pictogram metadata
-- Be specific and relevant to "${categoryName}"`;
+AVAILABLE DATABASE TAGS (use these exact terms when relevant):
+${JSON.stringify(relevantDatabaseTags.length > 0 ? relevantDatabaseTags : uniqueTags.slice(0, 50), null, 2)}
+
+${samplePictograms.length > 0 ? `SAMPLE MATCHING PICTOGRAMS (analyze their patterns):
+${JSON.stringify(samplePictograms, null, 2)}` : 'No sample pictograms available - generate terms based on the category semantics.'}
+
+YOUR TASK:
+Generate keywords and tags that will match pictograms belonging to this category.
+
+IMPORTANT GUIDELINES:
+1. KEYWORDS should be specific nouns, verbs, or adjectives that represent items/concepts in this category
+2. TAGS should be semantic categories from the AVAILABLE DATABASE TAGS list above when possible
+3. Focus on terms a child would understand and relate to
+4. Include common synonyms and related concepts
+5. Prioritize concrete, visual concepts over abstract ones
+
+EXAMPLES:
+- For "Emotions": keywords=["happy","sad","angry","scared","surprised","tired","excited"], tags=["emotion","feeling","psychology"]
+- For "Furniture": keywords=["chair","table","bed","sofa","desk","lamp","wardrobe"], tags=["furniture","household","home","object"]
+- For "Weather": keywords=["sun","rain","cloud","snow","wind","storm","rainbow"], tags=["weather","nature","climate"]
+
+Return ONLY valid JSON (no markdown, no explanation):
+{"keywords": ["word1", "word2", ...], "tags": ["tag1", "tag2", ...]}`;
+
+  let aiSearchTerms: { keywords: string[]; tags: string[] } = { keywords: [], tags: [] };
 
   try {
+    console.log('   Calling Azure OpenAI...');
     const response = await fetch(
       `${config.url}/openai/deployments/${config.deployment}/chat/completions?api-version=${config.apiVersion}`,
       {
@@ -350,14 +637,14 @@ IMPORTANT:
           messages: [
             {
               role: 'system',
-              content: 'You are an expert at categorizing pictograms for AAC systems. You analyze semantic patterns and return relevant search terms as JSON.'
+              content: 'You are a semantic analysis expert for AAC pictogram databases. Return only valid JSON with relevant keywords and tags. Be precise and child-appropriate.'
             },
             {
               role: 'user',
               content: prompt
             }
           ],
-          max_tokens: 500,
+          max_tokens: 600,
           temperature: 0.3,
           n: 1,
         }),
@@ -365,99 +652,196 @@ IMPORTANT:
     );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
-      throw new Error(errorData.error?.message || errorData.error || `Error ${response.status}`);
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: { message?: string } | string };
+      const errorMessage = typeof errorData.error === 'object' ? errorData.error?.message : errorData.error;
+      throw new Error(errorMessage || `HTTP ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
     const output = data.choices?.[0]?.message?.content;
-    
+
     if (!output) {
-      throw new Error('No response from Azure OpenAI');
+      throw new Error('Empty response from AI');
     }
 
-    // Parse AI response to get keywords and tags
-    let aiSearchTerms: { keywords: string[]; tags: string[] } = { keywords: [], tags: [] };
+    console.log(`   AI raw response: ${output.substring(0, 200)}...`);
+
+    // Parse AI response
+    const cleaned = output.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+
+    if (parsed.keywords && Array.isArray(parsed.keywords)) {
+      aiSearchTerms.keywords = parsed.keywords
+        .map((k: any) => String(k).toLowerCase().trim())
+        .filter((k: string) => k.length >= 2);
+    }
+    if (parsed.tags && Array.isArray(parsed.tags)) {
+      aiSearchTerms.tags = parsed.tags
+        .map((t: any) => String(t).toLowerCase().trim())
+        .filter((t: string) => t.length >= 2);
+    }
+
+    console.log(`   ✅ AI generated ${aiSearchTerms.keywords.length} keywords: [${aiSearchTerms.keywords.slice(0, 10).join(', ')}...]`);
+    console.log(`   ✅ AI generated ${aiSearchTerms.tags.length} tags: [${aiSearchTerms.tags.join(', ')}]`);
+
+  } catch (aiError: any) {
+    console.warn(`   ⚠️ Azure OpenAI failed: ${aiError.message}`);
+    console.log('   🔄 Attempting fallback to Gemini...');
     
+    // Try Gemini as fallback (same pattern as index.js)
     try {
-      const cleaned = output.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const parsed = JSON.parse(cleaned);
-      
-      if (parsed.keywords && Array.isArray(parsed.keywords)) {
-        aiSearchTerms.keywords = parsed.keywords.map((k: any) => String(k).toLowerCase());
-      }
-      if (parsed.tags && Array.isArray(parsed.tags)) {
-        aiSearchTerms.tags = parsed.tags.map((t: any) => String(t).toLowerCase());
-      }
-    } catch (parseError) {
-      console.warn('⚠️ Could not parse AI response, using local search only');
-    }
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+      if (!geminiApiKey) {
+        console.log('   ⚠️ Gemini API key not configured, continuing with local search only...');
+      } else {
+        const genAI = new GoogleGenerativeAI(geminiApiKey);
+        
+        // Simplified prompt for Gemini
+        const geminiPrompt = `You are an expert at categorizing pictograms for AAC systems.
 
-    // Step 3: Search pictograms using AI-suggested keywords and tags
-    const aiMatches: number[] = [];
-    const keywordSet = new Set(aiSearchTerms.keywords);
-    const tagSet = new Set(aiSearchTerms.tags);
-    
-    for (const pictogram of pictograms) {
-      // Skip if already in local matches
-      if (localMatches.includes(pictogram.id)) {
-        continue;
-      }
-      
-      let matches = false;
-      
-      // Check keywords
-      if (pictogram.keywords && pictogram.keywords.length > 0) {
-        for (const keyword of pictogram.keywords) {
-          if (keywordSet.has(keyword.toLowerCase())) {
-            matches = true;
+CATEGORY: "${categoryName}"
+${description ? `DESCRIPTION: "${description}"` : ''}
+
+Generate keywords and tags that will match pictograms in this category.
+
+Return ONLY valid JSON (no markdown, no explanation):
+{"keywords": ["word1", "word2", ...], "tags": ["tag1", "tag2", ...]}`;
+
+        // Try different Gemini models
+        const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro'];
+        let geminiOutput = null;
+        
+        for (const modelName of modelsToTry) {
+          try {
+            console.log(`   📡 Trying Gemini model: ${modelName}...`);
+            const model = genAI.getGenerativeModel({ model: modelName });
+            const result = await model.generateContent(geminiPrompt);
+            const response = await result.response;
+            geminiOutput = response.text();
+            console.log(`   ✅ Gemini response received from ${modelName}`);
             break;
+          } catch (modelError: any) {
+            console.log(`   ⚠️ ${modelName} failed: ${modelError.message?.substring(0, 100)}`);
+            continue;
           }
         }
-      }
-      
-      // Check tags
-      if (!matches && pictogram.tags && pictogram.tags.length > 0) {
-        for (const tag of pictogram.tags) {
-          if (tagSet.has(tag.toLowerCase())) {
-            matches = true;
-            break;
+        
+        if (geminiOutput) {
+          console.log(`   📝 Gemini raw response: ${geminiOutput.substring(0, 200)}...`);
+          
+          // Parse Gemini response (same as Azure)
+          try {
+            const cleaned = geminiOutput.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const parsed = JSON.parse(cleaned);
+            
+            if (parsed.keywords && Array.isArray(parsed.keywords)) {
+              aiSearchTerms.keywords = parsed.keywords
+                .map((k: any) => String(k).toLowerCase().trim())
+                .filter((k: string) => k.length >= 2);
+              console.log(`   ✅ Gemini generated ${aiSearchTerms.keywords.length} keywords`);
+            }
+            if (parsed.tags && Array.isArray(parsed.tags)) {
+              aiSearchTerms.tags = parsed.tags
+                .map((t: any) => String(t).toLowerCase().trim())
+                .filter((t: string) => t.length >= 2);
+              console.log(`   ✅ Gemini generated ${aiSearchTerms.tags.length} tags`);
+            }
+            
+            console.log(`   📊 Gemini keywords: [${aiSearchTerms.keywords.slice(0, 10).join(', ')}${aiSearchTerms.keywords.length > 10 ? '...' : ''}]`);
+            console.log(`   📊 Gemini tags: [${aiSearchTerms.tags.join(', ')}]`);
+          } catch (parseError: any) {
+            console.error(`   ❌ Failed to parse Gemini response: ${parseError.message}`);
+            console.log('   Continuing with local search results only...');
           }
+        } else {
+          console.log('   ⚠️ All Gemini models failed, continuing with local search only...');
         }
       }
-      
-      if (matches) {
-        aiMatches.push(pictogram.id);
-      }
+    } catch (geminiError: any) {
+      console.error(`   ❌ Gemini fallback also failed: ${geminiError.message}`);
+      console.log('   Continuing with local search results only...');
     }
-
-    // Combine local and AI matches, remove duplicates
-    const allMatches = [...new Set([...localMatches, ...aiMatches])];
-    
-    // Limit to maxResults
-    const finalMatches = allMatches.slice(0, maxResults);
-
-    console.log(`✅ Found ${finalMatches.length} pictograms for category "${categoryName}" (${localMatches.length} local + ${aiMatches.length} AI)`);
-    return finalMatches;
-    
-  } catch (error: any) {
-    console.error('❌ Error finding pictograms with AI:', error);
-    
-    // Fallback to local search only
-    if (localMatches.length > 0) {
-      console.log(`⚠️ Using local search results only (${localMatches.length} pictograms)`);
-      return localMatches.slice(0, maxResults);
-    }
-    
-    throw new Error(error.message || 'Error al buscar pictogramas con IA.');
   }
+
+  // ============================================================================
+  // STEP 3: COMBINE AND SCORE AI RESULTS
+  // ============================================================================
+  console.log('\n🔄 STEP 3: Combining local and AI results...');
+
+  const existingIds = new Set(scoredPictograms.map(p => p.id));
+  const aiScoredPictograms: ScoredPictogram[] = [];
+
+  if (aiSearchTerms.keywords.length > 0 || aiSearchTerms.tags.length > 0) {
+    const aiTerms = {
+      keywords: new Set(aiSearchTerms.keywords),
+      tags: new Set(aiSearchTerms.tags)
+    };
+
+    for (const pictogram of pictograms) {
+      if (existingIds.has(pictogram.id)) continue;
+
+      const scored = calculatePictogramScore(pictogram, aiTerms, [], true);
+      if (scored.score >= MIN_RELEVANCE_SCORE) {
+        aiScoredPictograms.push(scored);
+      }
+    }
+
+    aiScoredPictograms.sort((a, b) => b.score - a.score);
+    console.log(`   AI search found ${aiScoredPictograms.length} additional pictograms`);
+  }
+
+  // ============================================================================
+  // STEP 4: MERGE, RANK, AND FILTER FINAL RESULTS
+  // ============================================================================
+  console.log('\n📊 STEP 4: Final ranking and filtering...');
+
+  // Combine all scored pictograms
+  const allScoredPictograms = [...scoredPictograms, ...aiScoredPictograms];
+  
+  // Sort by score and take top results
+  allScoredPictograms.sort((a, b) => b.score - a.score);
+  
+  // Deduplicate and limit
+  const seenIds = new Set<number>();
+  const finalResults: number[] = [];
+  
+  for (const scored of allScoredPictograms) {
+    if (seenIds.has(scored.id)) continue;
+    seenIds.add(scored.id);
+    finalResults.push(scored.id);
+    if (finalResults.length >= maxResults) break;
+  }
+
+  // Log final results summary
+  console.log('\n' + '='.repeat(80));
+  console.log(`✅ SEARCH COMPLETE: Found ${finalResults.length} pictograms for "${categoryName}"`);
+  console.log(`   - Local matches: ${scoredPictograms.length}`);
+  console.log(`   - AI matches: ${aiScoredPictograms.length}`);
+  console.log(`   - Final (after dedup & limit): ${finalResults.length}`);
+  
+  if (finalResults.length > 0) {
+    console.log('\n   Top 10 final results:');
+    finalResults.slice(0, 10).forEach((id, i) => {
+      const pict = pictograms.find(p => p.id === id);
+      const scored = allScoredPictograms.find(s => s.id === id);
+      console.log(`      ${i + 1}. ID ${id} (score: ${scored?.score || 0}) - "${pict?.keywords?.[0] || 'unknown'}"`);
+    });
+  }
+  console.log('='.repeat(80) + '\n');
+
+  return finalResults;
 }
 
 /**
  * Create a new custom category
  * Uses AI to find relevant pictograms
+ * DEPRECATED: Use createUserCategory instead
  */
-async function createCategory(categoryName: string, maxResults: number = 50): Promise<number[]> {
+async function createCategory(
+  categoryName: string,
+  maxResults: number = 50,
+  description?: string
+): Promise<number[]> {
   // Check if it's a predefined category
   if (PREDEFINED_CATEGORIES.includes(categoryName)) {
     throw new Error(`Category "${categoryName}" is a predefined category and cannot be recreated`);
@@ -470,8 +854,8 @@ async function createCategory(categoryName: string, maxResults: number = 50): Pr
   }
 
   // Use AI to find relevant pictograms
-  console.log(`🔄 Finding pictograms for new category "${categoryName}"...`);
-  const pictogramIds = await findPictogramsWithAI(categoryName, maxResults);
+  console.log(`🔄 Finding pictograms for new category "${categoryName}"${description ? ` with description: "${description}"` : ''}...`);
+  const pictogramIds = await findPictogramsWithAI(categoryName, maxResults, description);
 
   // Add to custom categories
   customCategories[categoryName] = pictogramIds;
@@ -482,8 +866,71 @@ async function createCategory(categoryName: string, maxResults: number = 50): Pr
 }
 
 /**
+ * Create a new user-specific category
+ * Uses AI to find relevant pictograms
+ * Includes input validation to prevent invalid categories
+ */
+async function createUserCategory(
+  userId: string,
+  categoryName: string,
+  maxResults: number = 50,
+  description?: string
+): Promise<number[]> {
+  // ============================================================================
+  // INPUT VALIDATION
+  // ============================================================================
+
+  // Validate userId
+  if (!isValidUserId(userId)) {
+    throw new Error('Invalid user ID. Please log in again.');
+  }
+
+  // Sanitize and validate category name
+  const sanitizedName = sanitizeCategoryName(categoryName);
+  if (!sanitizedName) {
+    throw new Error('Invalid category name. Please use at least 2 characters with letters and numbers only.');
+  }
+
+  // Enforce maximum results limit
+  const limitedMaxResults = Math.min(Math.max(1, maxResults), MAX_PICTOGRAM_RESULTS);
+
+  // Check if it's a predefined category
+  if (PREDEFINED_CATEGORIES.includes(sanitizedName)) {
+    throw new Error(`Category "${sanitizedName}" is a predefined category and cannot be recreated`);
+  }
+
+  // Check if category already exists in user categories
+  const userCategories = await loadUserCategories(userId);
+  if (userCategories[sanitizedName]) {
+    throw new Error(`Category "${sanitizedName}" already exists for this user`);
+  }
+
+  // Use AI to find relevant pictograms
+  console.log(`🔄 Finding pictograms for new category "${sanitizedName}" for user ${userId}${description ? ` with description: "${description}"` : ''}...`);
+  const pictogramIds = await findPictogramsWithAI(sanitizedName, limitedMaxResults, description);
+
+  // ============================================================================
+  // DEDUPLICATION: Ensure no duplicate IDs in result
+  // ============================================================================
+  const uniquePictogramIds = [...new Set(pictogramIds)];
+
+  // Graceful handling: Return empty array if no pictograms found (don't throw)
+  if (uniquePictogramIds.length === 0) {
+    console.warn(`⚠️ No pictograms found for category "${sanitizedName}". Creating empty category.`);
+  }
+
+  // Add to user categories
+  userCategories[sanitizedName] = uniquePictogramIds;
+  await saveUserCategories(userId, userCategories);
+
+  console.log(`✅ Category "${sanitizedName}" created for user ${userId} with ${uniquePictogramIds.length} pictograms`);
+  return uniquePictogramIds;
+}
+
+/**
  * Delete a custom category
  * Cannot delete predefined categories
+ * DEPRECATED: Use deleteUserCategory instead
  */
 async function deleteCategory(categoryName: string): Promise<void> {
   if (PREDEFINED_CATEGORIES.includes(categoryName)) {
@@ -502,21 +949,66 @@ async function deleteCategory(categoryName: string): Promise<void> {
 }
 
 /**
+ * Delete a user-specific category
+ * Cannot delete predefined categories
+ */
+async function deleteUserCategory(userId: string, categoryName: string): Promise<void> {
+  if (PREDEFINED_CATEGORIES.includes(categoryName)) {
+    throw new Error(`Cannot delete predefined category "${categoryName}"`);
+  }
+
+  const userCategories = await loadUserCategories(userId);
+  if (!userCategories[categoryName]) {
+    throw new Error(`Category "${categoryName}" does not exist for this user`);
+  }
+
+  delete userCategories[categoryName];
+  await saveUserCategories(userId, userCategories);
+
+  console.log(`✅ Category "${categoryName}" deleted for user ${userId}`);
+}
+
+/**
  * Get all categories (predefined + custom)
+ * DEPRECATED: Use getUserCategories instead
  */
 async function getAllCategories(): Promise<Record<string, number[]>> {
   // Load predefined categories
   const predefined = await initializePredefinedCategories();
-  
+
   // Load custom categories
   const custom = await loadCustomCategories();
-  
+
   // Merge both (custom categories override predefined if same name, but shouldn't happen)
   return { ...predefined, ...custom };
 }
 
 /**
+ * Get all categories for a specific user (predefined + user-specific ONLY)
+ * 
+ * IMPORTANT: This function intentionally DOES NOT load legacy global categories
+ * to ensure proper user isolation. Each user should only see:
+ * 1. Predefined categories (available to all users)
+ * 2. Their own user-specific categories
+ * 
+ * This fixes the bug where categories created by one user appeared for all users.
+ */
+async function getUserCategories(userId: string): Promise<Record<string, number[]>> {
+  // Load predefined categories (shared by all users)
+  const predefined = await initializePredefinedCategories();
+
+  // Load user-specific categories ONLY
+  // DO NOT load legacy global categories - this was causing cross-user data leakage
+  const userCategories = await loadUserCategories(userId);
+
+  // Merge: predefined + user-specific only (user-specific has priority)
+  // This ensures strict user isolation - no shared custom categories
+  return { ...predefined, ...userCategories };
+}
+
+/**
  * Get pictogram IDs for a specific category
+ * DEPRECATED: Use getUserCategoryPictograms instead
  */
 async function getCategoryPictograms(categoryName: string): Promise<number[]> {
   // Check if it's a predefined category
@@ -524,10 +1016,35 @@ async function getCategoryPictograms(categoryName: string): Promise<number[]> {
     const predefined = await initializePredefinedCategories();
     return predefined[categoryName] || [];
   }
-  
+
   // Otherwise, check custom categories
   const custom = await loadCustomCategories();
   return custom[categoryName] || [];
+}
+
+/**
+ * Get pictogram IDs for a specific user category
+ */
+async function getUserCategoryPictograms(userId: string, categoryName: string): Promise<number[]> {
+  // Check if it's a predefined category
+  if (PREDEFINED_CATEGORIES.includes(categoryName)) {
+    const predefined = await initializePredefinedCategories();
+    return predefined[categoryName] || [];
+  }
+
+  // First check user-specific categories
+  const userCategories = await loadUserCategories(userId);
+  if (userCategories[categoryName]) {
+    return userCategories[categoryName];
+  }
+
+  // Fallback to legacy global categories (for backward compatibility)
+  const legacyCategories = await loadCustomCategories();
+  if (legacyCategories[categoryName]) {
+    return legacyCategories[categoryName];
+  }
+
+  return [];
 }
 
 /**
@@ -541,11 +1058,17 @@ module.exports = {
   loadPredefinedCategories,
   loadCustomCategories,
   saveCustomCategories,
+  loadUserCategories,
+  saveUserCategories,
   initializePredefinedCategories,
   createCategory,
+  createUserCategory,
   deleteCategory,
+  deleteUserCategory,
   getAllCategories,
+  getUserCategories,
   getCategoryPictograms,
+  getUserCategoryPictograms,
   isPredefinedCategory,
   PREDEFINED_CATEGORIES
 };

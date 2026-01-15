@@ -6,13 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Header from '../components/common/Header';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
+import { useToast } from '../context/ToastContext';
 import { styles } from './SettingsScreen.styles';
 
 type SettingsScreenProps = {
@@ -25,26 +25,27 @@ type SettingsScreenProps = {
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { theme, currentPalette, setTheme } = useTheme();
   const { user, updatePreferences } = useUser();
+  const { showSuccess, showError } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
   const handleThemeChange = async (paletteNumber: number) => {
-    await setTheme(paletteNumber);
+    const paletteNames: Record<number, string> = {
+      1: 'Purple Harmony',
+      2: 'Ocean Blue',
+      3: 'Forest Green',
+      4: 'Sunshine Bright',
+      5: 'Soft Pastel',
+      6: 'Earthy Tones',
+    };
+    
+    await setTheme(paletteNumber, false); // Don't show internal notification
     try {
       await updatePreferences({ theme: paletteNumber });
+      const paletteName = paletteNames[paletteNumber] || `Palette ${paletteNumber}`;
+      showSuccess(`Theme changed to ${paletteName}`);
     } catch (error) {
       console.error('Error saving theme:', error);
-    }
-  };
-
-  const handleColorPaletteChange = async (palette: 'default' | 'high-contrast' | 'pastel' | 'vibrant') => {
-    setIsSaving(true);
-    try {
-      await updatePreferences({ colorPalette: palette });
-      Alert.alert('Success', 'Color palette updated');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error updating palette');
-    } finally {
-      setIsSaving(false);
+      showError('Could not save theme preference');
     }
   };
 
@@ -52,9 +53,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     setIsSaving(true);
     try {
       await updatePreferences({ preferredFontSize: size });
-      Alert.alert('Success', 'Font size updated');
+      showSuccess('Font size updated');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error updating font size');
+      showError(error.message || 'Error updating font size');
     } finally {
       setIsSaving(false);
     }
@@ -66,7 +67,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <StatusBar style="auto" />
-        
+
         {/* Header */}
         <Header
           title="Settings"
@@ -74,8 +75,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         />
 
         {/* Contenido */}
-        <ScrollView 
-          style={[styles.content, { backgroundColor: theme.background }]} 
+        <ScrollView
+          style={[styles.content, { backgroundColor: theme.background }]}
           contentContainerStyle={styles.contentContainer}
         >
           {/* Section: Color Theme */}
@@ -84,12 +85,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             <Text style={[styles.sectionDescription, { color: theme.primary }]}>
               Select a color palette for the app:
             </Text>
-            
+
             <View style={styles.themeSelector}>
+              {/* Paleta 1 */}
               <TouchableOpacity
                 style={[
                   styles.themeOption,
-                  { 
+                  {
                     backgroundColor: 'white',
                     borderColor: theme.primary,
                     borderWidth: currentPalette === 1 ? 3 : 2,
@@ -100,19 +102,22 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               >
                 <View style={styles.themePreview}>
                   <View style={[styles.colorSwatch, { backgroundColor: '#8470e5' }]} />
-                  <View style={[styles.colorSwatch, { backgroundColor: '#efbaf9' }]} />
-                  <View style={[styles.colorSwatch, { backgroundColor: '#e9a1f7' }]} />
                   <View style={[styles.colorSwatch, { backgroundColor: '#daa5f3' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#e9a1f7' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#efbaf9' }]} />
+                  {currentPalette === 1 && (
+                    <View style={[styles.selectedBadge, { backgroundColor: theme.primary }]}>
+                      <Text style={styles.selectedCheckmark}>✓</Text>
+                    </View>
+                  )}
                 </View>
-                <Text style={[styles.themeOptionText, { color: theme.primary }]}>
-                  Palette 1 {currentPalette === 1 && '✓'}
-                </Text>
               </TouchableOpacity>
 
+              {/* Paleta 2 */}
               <TouchableOpacity
                 style={[
                   styles.themeOption,
-                  { 
+                  {
                     backgroundColor: 'white',
                     borderColor: theme.primary,
                     borderWidth: currentPalette === 2 ? 3 : 2,
@@ -122,66 +127,142 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                 disabled={isSaving}
               >
                 <View style={styles.themePreview}>
-                  <View style={[styles.colorSwatch, { backgroundColor: '#ffffff' }]} />
-                  <View style={[styles.colorSwatch, { backgroundColor: '#6a99f0' }]} />
-                  <View style={[styles.colorSwatch, { backgroundColor: '#678dea' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#5b59c5' }]} />
                   <View style={[styles.colorSwatch, { backgroundColor: '#6481e3' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#81A0EE' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#90B3F4' }]} />
+                  {currentPalette === 2 && (
+                    <View style={[styles.selectedBadge, { backgroundColor: theme.primary }]}>
+                      <Text style={styles.selectedCheckmark}>✓</Text>
+                    </View>
+                  )}
                 </View>
-                <Text style={[styles.themeOptionText, { color: theme.primary }]}>
-                  Palette 2 {currentPalette === 2 && '✓'}
-                </Text>
               </TouchableOpacity>
-            </View>
-          </View>
 
-          {/* Section: Preferred PCS Palette */}
-          <View style={[styles.section, { backgroundColor: theme.white }]}>
-            <Text style={[styles.sectionTitle, { color: theme.primary }]}>🖌️ PCS Symbol Palette</Text>
-            <Text style={[styles.sectionDescription, { color: theme.primary }]}>
-              Style of PCS symbols
-            </Text>
-            
-            <View style={styles.optionsList}>
-              {(['default', 'high-contrast', 'pastel', 'vibrant'] as const).map((palette) => (
-                <TouchableOpacity
-                  key={palette}
-                  style={[
-                    styles.optionItem,
-                    { 
-                      borderColor: user?.preferences.colorPalette === palette ? theme.primary : '#ddd',
-                      borderWidth: user?.preferences.colorPalette === palette ? 2 : 1,
-                      backgroundColor: user?.preferences.colorPalette === palette ? theme.secondary : 'white',
-                    }
-                  ]}
-                  onPress={() => handleColorPaletteChange(palette)}
-                  disabled={isSaving}
-                >
-                  <Text style={[styles.optionText, { color: theme.primary }]}>
-                    {palette === 'default' && 'Default'}
-                    {palette === 'high-contrast' && 'High Contrast'}
-                    {palette === 'pastel' && 'Pastel'}
-                    {palette === 'vibrant' && 'Vibrant'}
-                    {user?.preferences.colorPalette === palette && ' ✓'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {/* Paleta 3 - Evergreen/Dark Teal */}
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor: 'white',
+                    borderColor: theme.primary,
+                    borderWidth: currentPalette === 3 ? 3 : 2,
+                  }
+                ]}
+                onPress={() => handleThemeChange(3)}
+                disabled={isSaving}
+              >
+                <View style={styles.themePreview}>
+                  <View style={[styles.colorSwatch, { backgroundColor: '#002626' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#0E4749' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#95C623' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#E55812' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#EFE7DA' }]} />
+                  {currentPalette === 3 && (
+                    <View style={[styles.selectedBadge, { backgroundColor: theme.primary }]}>
+                      <Text style={styles.selectedCheckmark}>✓</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              {/* Paleta 4 - Light Yellow/Emerald */}
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor: 'white',
+                    borderColor: theme.primary,
+                    borderWidth: currentPalette === 4 ? 3 : 2,
+                  }
+                ]}
+                onPress={() => handleThemeChange(4)}
+                disabled={isSaving}
+              >
+                <View style={styles.themePreview}>
+                  <View style={[styles.colorSwatch, { backgroundColor: '#F8FFE5' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#08D6A0' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#189AAA' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#EF476F' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#FFC43D' }]} />
+                  {currentPalette === 4 && (
+                    <View style={[styles.selectedBadge, { backgroundColor: theme.primary }]}>
+                      <Text style={styles.selectedCheckmark}>✓</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              {/* Paleta 5 - Lavender Blush/Aquamarine */}
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor: 'white',
+                    borderColor: theme.primary,
+                    borderWidth: currentPalette === 5 ? 3 : 2,
+                  }
+                ]}
+                onPress={() => handleThemeChange(5)}
+                disabled={isSaving}
+              >
+                <View style={styles.themePreview}>
+                  <View style={[styles.colorSwatch, { backgroundColor: '#FCEFEF' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#7FD8BE' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#A1FCDF' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#FCD29F' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#FCAB64' }]} />
+                  {currentPalette === 5 && (
+                    <View style={[styles.selectedBadge, { backgroundColor: theme.primary }]}>
+                      <Text style={styles.selectedCheckmark}>✓</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              {/* Paleta 6 - Pecan Beige/Desert Sand */}
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor: 'white',
+                    borderColor: theme.primary,
+                    borderWidth: currentPalette === 6 ? 3 : 2,
+                  }
+                ]}
+                onPress={() => handleThemeChange(6)}
+                disabled={isSaving}
+              >
+                <View style={styles.themePreview}>
+                  <View style={[styles.colorSwatch, { backgroundColor: '#D8CFAF' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#E6B89C' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#ED9390' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#F374AE' }]} />
+                  <View style={[styles.colorSwatch, { backgroundColor: '#32533D' }]} />
+                  {currentPalette === 6 && (
+                    <View style={[styles.selectedBadge, { backgroundColor: theme.primary }]}>
+                      <Text style={styles.selectedCheckmark}>✓</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
             </View>
           </View>
 
           {/* Section: Font Size */}
           <View style={[styles.section, { backgroundColor: theme.white }]}>
-            <Text style={[styles.sectionTitle, { color: theme.primary }]}>📏 Font Size</Text>
+            <Text style={[styles.sectionTitle, { color: theme.primary }]}>📏 Font Size (Not implemented)</Text>
             <Text style={[styles.sectionDescription, { color: theme.primary }]}>
               Text size in the app
             </Text>
-            
+
             <View style={styles.optionsList}>
               {(['small', 'medium', 'large', 'extra-large'] as const).map((size) => (
                 <TouchableOpacity
                   key={size}
                   style={[
                     styles.optionItem,
-                    { 
+                    {
                       borderColor: user?.preferences.preferredFontSize === size ? theme.primary : '#ddd',
                       borderWidth: user?.preferences.preferredFontSize === size ? 2 : 1,
                       backgroundColor: user?.preferences.preferredFontSize === size ? theme.secondary : 'white',
@@ -190,10 +271,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   onPress={() => handleFontSizeChange(size)}
                   disabled={isSaving}
                 >
-                  <Text 
+                  <Text
                     style={[
-                      styles.optionText, 
-                      { 
+                      styles.optionText,
+                      {
                         color: theme.primary,
                         fontSize: size === 'small' ? 14 : size === 'medium' ? 16 : size === 'large' ? 18 : 20
                       }
@@ -208,16 +289,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
-
-          {/* App Information */}
-          <View style={[styles.infoBox, { backgroundColor: theme.secondary, borderColor: theme.accent }]}>
-            <Text style={[styles.infoTitle, { color: theme.primary }]}>ℹ️ App Information</Text>
-            <Text style={[styles.infoText, { color: theme.primary }]}>
-              AAC App - Augmentative Communication{'\n'}
-              Version 0.2.0 (with Firebase){'\n'}
-              Polimi - Advanced User Interfaces
-            </Text>
           </View>
         </ScrollView>
       </SafeAreaView>

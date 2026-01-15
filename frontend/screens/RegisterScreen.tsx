@@ -9,11 +9,12 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  Alert
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '../context/UserContext';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
 
 type RegisterScreenProps = {
   navigation: NativeStackNavigationProp<any>;
@@ -27,26 +28,28 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { registerWithEmailAndPassword } = useUser();
   const { theme } = useTheme();
+  const { showError } = useToast();
+  const insets = useSafeAreaInsets();
 
   const handleRegister = async () => {
     // Validations
     if (!fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showError('Please fill in all fields');
       return;
     }
 
     if (fullName.trim().length < 2) {
-      Alert.alert('Error', 'Name must be at least 2 characters');
+      showError('Name must be at least 2 characters');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      showError('Password must be at least 6 characters');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showError('Passwords do not match');
       return;
     }
 
@@ -55,7 +58,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
       await registerWithEmailAndPassword(email.trim(), password, fullName.trim());
       // Navigation will be handled automatically by AuthContext
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error registering user');
+      showError(error.message || 'Error registering user');
     } finally {
       setIsLoading(false);
     }
@@ -77,12 +80,13 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
       >
         <View style={styles.content}>
           {/* Header con gradiente visual */}
-          <View style={[styles.headerContainer, { backgroundColor: theme.secondary }]}>
+          <View style={[styles.headerContainer, {
+            backgroundColor: theme.secondary,
+            paddingTop: Math.max(insets.top + 20, Platform.OS === 'ios' ? 60 : 40)
+          }]}>
             <View style={styles.header}>
-              <Text style={[styles.title, { color: theme.primary }]}>Create Account</Text>
-              <Text style={[styles.subtitle, { color: theme.primary }]}>
-                Sign up to get started
-              </Text>
+              <Text style={[styles.appTitle, { color: theme.primary }]}>WizzWords</Text>
+              <Text style={[styles.screenTitle, { color: theme.primary }]}>Create Account</Text>
             </View>
           </View>
 
@@ -92,14 +96,14 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
               {/* Full Name Input */}
               <View style={styles.inputContainer}>
                 <Text style={[styles.label, { color: theme.primary }]}>Full Name</Text>
-                <View style={[styles.inputWrapper, { 
+                <View style={[styles.inputWrapper, {
                   backgroundColor: theme.white,
                   borderColor: fullName ? theme.primary : theme.accent,
                   shadowColor: theme.primary
                 }]}>
                   <TextInput
                     style={[styles.input, { color: theme.primary }]}
-                    placeholder="Juan Pérez"
+                    placeholder="John Doe"
                     placeholderTextColor={theme.accent}
                     value={fullName}
                     onChangeText={setFullName}
@@ -113,14 +117,14 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
               {/* Email Input */}
               <View style={styles.inputContainer}>
                 <Text style={[styles.label, { color: theme.primary }]}>Email</Text>
-                <View style={[styles.inputWrapper, { 
+                <View style={[styles.inputWrapper, {
                   backgroundColor: theme.white,
                   borderColor: email ? theme.primary : theme.accent,
                   shadowColor: theme.primary
                 }]}>
                   <TextInput
                     style={[styles.input, { color: theme.primary }]}
-                    placeholder="tu@email.com"
+                    placeholder="your@email.com"
                     placeholderTextColor={theme.accent}
                     value={email}
                     onChangeText={setEmail}
@@ -135,7 +139,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
               {/* Password Input */}
               <View style={styles.inputContainer}>
                 <Text style={[styles.label, { color: theme.primary }]}>Password</Text>
-                <View style={[styles.inputWrapper, { 
+                <View style={[styles.inputWrapper, {
                   backgroundColor: theme.white,
                   borderColor: password ? theme.primary : theme.accent,
                   shadowColor: theme.primary
@@ -157,7 +161,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
               {/* Confirm Password Input */}
               <View style={styles.inputContainer}>
                 <Text style={[styles.label, { color: theme.primary }]}>Confirm Password</Text>
-                <View style={[styles.inputWrapper, { 
+                <View style={[styles.inputWrapper, {
                   backgroundColor: theme.white,
                   borderColor: confirmPassword ? theme.primary : theme.accent,
                   shadowColor: theme.primary
@@ -180,7 +184,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
-                  { 
+                  {
                     backgroundColor: theme.primary,
                     shadowColor: theme.primary
                   },
@@ -196,13 +200,6 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
                   <Text style={styles.primaryButtonText}>Create Account</Text>
                 )}
               </TouchableOpacity>
-
-              {/* Divider */}
-              <View style={styles.divider}>
-                <View style={[styles.dividerLine, { backgroundColor: theme.accent }]} />
-                <Text style={[styles.dividerText, { color: theme.primary }]}>o</Text>
-                <View style={[styles.dividerLine, { backgroundColor: theme.accent }]} />
-              </View>
 
               {/* Login Link */}
               <View style={styles.loginContainer}>
@@ -238,7 +235,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerContainer: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: 40,
     paddingHorizontal: 24,
     borderBottomLeftRadius: 30,
@@ -247,14 +243,16 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
   },
-  title: {
-    fontSize: 32,
+  appTitle: {
+    fontSize: 42,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  subtitle: {
-    fontSize: 16,
-    opacity: 0.8,
+  screenTitle: {
+    fontSize: 18,
+    fontWeight: '400',
+    opacity: 0.6,
+    letterSpacing: 1,
   },
   formContainer: {
     flex: 1,

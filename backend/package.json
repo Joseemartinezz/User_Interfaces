@@ -4,8 +4,8 @@
   "description": "Backend proxy para AAC App - Evita problemas de CORS",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node index.js",
-    "dev": "nodemon --exec ts-node index.js"
+    "start": "npx ts-node index.js",
+    "dev": "npx nodemon --exec ts-node index.js"
   },
   "dependencies": {
     "@dicebear/collection": "^9.2.4",

@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
-  Alert,
   FlatList,
   Dimensions,
   Image,
@@ -13,11 +12,51 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
-import { generateMorePhrases } from '../api';
+import { generateMorePhrases, getPictogramImageUrl } from '../api';
 import { generateImagesForPhrases, GeneratedImage } from '../services/imageService';
 import Header from '../components/common/Header';
+import ImageLoadingScreen from '../components/common/ImageLoadingScreen';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
+import { useUser } from '../context/UserContext';
 import { styles } from './PhraseSelectionScreen.styles';
+
+// Component to display ARASAAC pictograms with error handling
+interface PictogramImageProps {
+  arasaacId: number;
+  style?: any;
+}
+
+const PictogramImage: React.FC<PictogramImageProps> = React.memo(({ arasaacId, style }) => {
+  const [imageError, setImageError] = useState(false);
+  const { theme } = useTheme();
+
+  const imageUrl = useMemo(() =>
+    getPictogramImageUrl(arasaacId, {
+      color: true,
+      backgroundColor: 'white'
+    }),
+    [arasaacId]
+  );
+
+  if (imageError) {
+    return (
+      <View style={[style, { backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ fontSize: 24 }}>❓</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri: imageUrl, cache: 'default' }}
+      style={style}
+      resizeMode="contain"
+      onError={() => setImageError(true)}
+      fadeDuration={150}
+    />
+  );
+});
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -42,8 +81,10 @@ const PhraseSelectionScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PhraseSelectionParams }, 'params'>>();
   const { theme } = useTheme();
+  const { showError } = useToast();
+  const { user } = useUser();
   const flatListRef = useRef<FlatList>(null);
-  
+
   const params = route.params;
   const initialPhrases = params?.phrases || [];
   const words = params?.words || [];
@@ -52,6 +93,7 @@ const PhraseSelectionScreen: React.FC = () => {
   const [phrasesWithImages, setPhrasesWithImages] = useState<PhraseWithImage[]>([]);
   const [allPhrases, setAllPhrases] = useState<string[]>(initialPhrases);
   const [isGeneratingMore, setIsGeneratingMore] = useState(false);
+  const [isLoadingInitialImages, setIsLoadingInitialImages] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tappedIndex, setTappedIndex] = useState<number | null>(null);
@@ -65,10 +107,13 @@ const PhraseSelectionScreen: React.FC = () => {
   useEffect(() => {
     const loadImagesForPhrases = async () => {
       console.log('🎨 Cargando imágenes para frases iniciales...');
-      
+
       // Limitar a solo las primeras 3 frases
       const firstThreePhrases = initialPhrases.slice(0, 3);
-      
+
+      // Activar pantalla de carga
+      setIsLoadingInitialImages(true);
+
       // Inicializar con loading state
       const initialData: PhraseWithImage[] = firstThreePhrases.map(phrase => ({
         phrase,
@@ -86,9 +131,11 @@ const PhraseSelectionScreen: React.FC = () => {
         }));
         setPhrasesWithImages(phrasesData);
         console.log('✅ Imágenes cargadas exitosamente');
+        // Desactivar pantalla de carga cuando todas las imágenes estén listas
+        setIsLoadingInitialImages(false);
       } catch (error: any) {
         console.error('Error cargando imágenes:', error);
-        Alert.alert('Error', 'Could not generate images for some phrases');
+        showError('Could not generate images for some phrases');
         // Mantener las frases pero sin imágenes
         const phrasesData: PhraseWithImage[] = firstThreePhrases.map(phrase => ({
           phrase,
@@ -96,6 +143,8 @@ const PhraseSelectionScreen: React.FC = () => {
           isLoading: false,
         }));
         setPhrasesWithImages(phrasesData);
+        // Desactivar pantalla de carga incluso si hay error
+        setIsLoadingInitialImages(false);
       }
     };
 
@@ -125,14 +174,14 @@ const PhraseSelectionScreen: React.FC = () => {
     setIsGeneratingMore(true);
     try {
       const morePhrases = await generateMorePhrases(words, allPhrases);
-      
+
       // Agregar las nuevas frases con loading state
       const newPhrasesWithLoading: PhraseWithImage[] = morePhrases.map(phrase => ({
         phrase,
         imageUrl: '',
         isLoading: true,
       }));
-      
+
       setPhrasesWithImages(prev => [...prev, ...newPhrasesWithLoading]);
       setAllPhrases(prev => [...prev, ...morePhrases]);
 
@@ -155,7 +204,7 @@ const PhraseSelectionScreen: React.FC = () => {
       });
 
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Could not generate more phrases');
+      showError(error.message || 'Could not generate more phrases');
       console.error('Error generating more phrases:', error);
     } finally {
       setIsGeneratingMore(false);
@@ -195,7 +244,7 @@ const PhraseSelectionScreen: React.FC = () => {
   const renderFlashcard = useCallback(({ item, index }: { item: PhraseWithImage; index: number }) => {
     const isSelected = selectedIndex === index;
     const isTapped = tappedIndex === index;
-    
+
     return (
       <View style={[styles.flashcardContainer, isSelected && styles.flashcardContainerSelected]}>
         <TouchableOpacity
@@ -208,8 +257,14 @@ const PhraseSelectionScreen: React.FC = () => {
             { backgroundColor: theme.white },
             isTapped && { borderWidth: 4, borderColor: theme.primary }
           ]}>
-            {/* Imagen */}
+            {/* Image with audio indicator */}
             <View style={styles.imageContainer}>
+              {/* Audio indicator badge - shows that tapping plays audio */}
+              <View style={styles.audioIndicatorBadge}>
+                <Text style={styles.audioIndicatorIcon}>🔊</Text>
+                <Text style={styles.audioIndicatorText}>Tap to hear</Text>
+              </View>
+              
               {item.isLoading ? (
                 <View style={styles.imageLoadingContainer}>
                   <ActivityIndicator size="large" color={theme.primary} />
@@ -279,15 +334,20 @@ const PhraseSelectionScreen: React.FC = () => {
   const showLeftArrow = phrasesWithImages.length > 1 && currentIndex > 0 && selectedIndex === null;
   const showRightArrow = phrasesWithImages.length > 1 && currentIndex < phrasesWithImages.length - 1 && selectedIndex === null;
 
+  // Mostrar pantalla de carga mientras se generan las imágenes iniciales
+  if (isLoadingInitialImages) {
+    return <ImageLoadingScreen message="Creating your flashcards..." />;
+  }
+
   // Si hay una frase seleccionada, mostrar vista especial
   if (selectedIndex !== null) {
     const selectedPhrase = phrasesWithImages[selectedIndex];
-    
+
     return (
       <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
           <StatusBar style="auto" />
-          
+
           <Header
             title="Selected Phrase"
             subtitle="Your chosen phrase"
@@ -314,7 +374,7 @@ const PhraseSelectionScreen: React.FC = () => {
                 )}
               </View>
 
-              <View style={styles.phraseTextContainer}>
+              <View style={[styles.phraseTextContainer, { flex: 1, justifyContent: 'center' }]}>
                 <Text style={[styles.phraseText, styles.phraseTextLarge, { color: theme.primary }]}>
                   {cleanPhrase(selectedPhrase.phrase)}
                 </Text>
@@ -322,23 +382,51 @@ const PhraseSelectionScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Botones */}
+          {/* Action buttons - PCS style */}
           <View style={styles.selectedActionButtons}>
+            {/* Back to Phrases button */}
             <TouchableOpacity
-              style={[styles.deselectButton, { backgroundColor: theme.accent }]}
+              style={[
+                styles.pcsButtonSelected,
+                { backgroundColor: 'white', borderColor: theme.accent }
+              ]}
               onPress={() => {
                 setSelectedIndex(null);
                 setTappedIndex(null);
               }}
+              accessible={true}
+              accessibilityLabel="Back to phrase list"
+              accessibilityRole="button"
             >
-              <Text style={styles.deselectButtonText}>Back to Phrases</Text>
+              {/* Back arrow pictogram */}
+              <PictogramImage
+                arasaacId={38195}
+                style={styles.pcsButtonImage}
+              />
+              <Text style={[styles.pcsButtonText, { color: theme.accent }]}>
+                Back to{'\n'}Phrases
+              </Text>
             </TouchableOpacity>
-            
+
+            {/* Back to Words button */}
             <TouchableOpacity
-              style={[styles.homeButton, { backgroundColor: 'white', borderColor: theme.tertiary, borderWidth: 2 }]}
+              style={[
+                styles.pcsButtonSelected,
+                { backgroundColor: 'white', borderColor: theme.tertiary }
+              ]}
               onPress={handleBackToPCS}
+              accessible={true}
+              accessibilityLabel="Go back to word selection"
+              accessibilityRole="button"
             >
-              <Text style={[styles.homeButtonText, { color: theme.tertiary }]}>Back to Words</Text>
+              {/* Home/Words pictogram - ARASAAC ID 4008 (house/home) */}
+              <PictogramImage
+                arasaacId={4008}
+                style={styles.pcsButtonImage}
+              />
+              <Text style={[styles.pcsButtonText, { color: theme.tertiary }]}>
+                Back to{'\n'}Words
+              </Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -351,7 +439,7 @@ const PhraseSelectionScreen: React.FC = () => {
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <StatusBar style="auto" />
-        
+
         <Header
           title="Generated Phrases"
           subtitle="Swipe to see more phrases"
@@ -366,7 +454,7 @@ const PhraseSelectionScreen: React.FC = () => {
                 <Text style={styles.arrowText}>‹</Text>
               </View>
             )}
-            
+
             <FlatList
               ref={flatListRef}
               data={phrasesWithImages}
@@ -388,14 +476,14 @@ const PhraseSelectionScreen: React.FC = () => {
                 index,
               })}
             />
-            
+
             {/* Flecha derecha */}
             {showRightArrow && (
               <View style={[styles.arrowIndicator, styles.arrowRight]}>
                 <Text style={styles.arrowText}>›</Text>
               </View>
             )}
-            
+
             {/* Indicadores de página (dots) */}
             {phrasesWithImages.length > 1 && (
               <View style={styles.dotsContainer}>
@@ -423,31 +511,61 @@ const PhraseSelectionScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Botones de acción */}
+        {/* Action buttons - PCS style with pictograms */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity 
+          {/* Generate More button - PCS style */}
+          <TouchableOpacity
             style={[
-              styles.generateButton,
-              { backgroundColor: 'white', borderColor: theme.primary, borderWidth: 2 },
+              styles.pcsButton,
+              { backgroundColor: 'white', borderColor: theme.primary },
               isGeneratingMore && styles.buttonDisabled
             ]}
             onPress={handleGenerateMorePhrases}
             disabled={isGeneratingMore}
+            accessible={true}
+            accessibilityLabel="Generate more phrases"
+            accessibilityRole="button"
           >
             {isGeneratingMore ? (
-            <ActivityIndicator color={theme.primary} />
-          ) : (
-              <Text style={[styles.generateButtonText, { color: theme.primary }]}>
-                Generate 3 More
-              </Text>
-          )}
-        </TouchableOpacity>
-          
+              <>
+                <ActivityIndicator size="large" color={theme.primary} />
+                <Text style={[styles.pcsButtonText, { color: theme.primary, marginTop: 8 }]}>
+                  Loading...
+                </Text>
+              </>
+            ) : (
+              <>
+                {/* Plus/Add pictogram - ARASAAC ID 5270 (plus sign) */}
+                <PictogramImage
+                  arasaacId={user?.preferences?.actionButtonPictograms?.generateMore || 5270}
+                  style={styles.pcsButtonImage}
+                />
+                <Text style={[styles.pcsButtonText, { color: theme.primary }]}>
+                  Generate{'\n'}More
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Back to Words button - PCS style */}
           <TouchableOpacity
-            style={[styles.homeButton, { backgroundColor: 'white', borderColor: theme.tertiary, borderWidth: 2 }]}
+            style={[
+              styles.pcsButton,
+              { backgroundColor: 'white', borderColor: theme.tertiary }
+            ]}
             onPress={handleBackToPCS}
+            accessible={true}
+            accessibilityLabel="Go back to word selection"
+            accessibilityRole="button"
           >
-            <Text style={[styles.homeButtonText, { color: theme.tertiary }]}>Back to Words</Text>
+            {/* Back arrow pictogram - ARASAAC ID 38195 (back arrow) */}
+            <PictogramImage
+              arasaacId={user?.preferences?.actionButtonPictograms?.back || 38195}
+              style={styles.pcsButtonImage}
+            />
+            <Text style={[styles.pcsButtonText, { color: theme.tertiary }]}>
+              Back to{'\n'}Words
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

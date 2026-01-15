@@ -7,7 +7,6 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  Alert,
   Image,
   ActivityIndicator,
 } from 'react-native';
@@ -16,10 +15,13 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import Header from '../components/common/Header';
+import ConfirmModal from '../components/common/ConfirmModal';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
+import { useToast } from '../context/ToastContext';
 import { RootStackParamList } from '../types/navigation';
 import { styles } from './CategoryDetailScreen.styles';
+import { deleteCategoryWithPictograms } from '../api';
 
 type CategoryDetailParams = {
   categoryId: string;
@@ -40,8 +42,8 @@ const CategoryDetailScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<{ params: CategoryDetailParams }, 'params'>>();
   const { theme } = useTheme();
-  const { user, updatePreferences, addCustomSymbol } = useUser();
-  
+  const { user, updatePreferences, addCustomSymbol, removeCustomSymbol } = useUser();
+
   const params = route.params;
   const { categoryId, categoryName, categoryEmoji, isCustom, selectedColor = theme.primary } = params;
 
@@ -49,25 +51,31 @@ const CategoryDetailScreen: React.FC = () => {
   const [symbolName, setSymbolName] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAddingSymbol, setIsAddingSymbol] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteCategoryConfirm, setShowDeleteCategoryConfirm] = useState(false);
+  const [symbolToDelete, setSymbolToDelete] = useState<{ id: string; word: string } | null>(null);
+  const [isDeletingSymbol, setIsDeletingSymbol] = useState(false);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+  const { showSuccess, showError, showInfo, showWarning } = useToast();
 
-  // Verificar si la categoría está oculta
+  // Check if category is hidden
   const isHidden = useMemo(() => {
     const hiddenCategories = user?.preferences.hiddenCategories || [];
     return hiddenCategories.includes(categoryName);
   }, [user?.preferences.hiddenCategories, categoryName]);
 
-  // Obtener símbolos personalizados de esta categoría
+  // Get custom symbols for this category
   const categorySymbols = useMemo(() => {
     return (user?.preferences.customPCSSymbols || [])
       .filter(symbol => symbol.category === categoryName);
   }, [user?.preferences.customPCSSymbols, categoryName]);
 
-  // Seleccionar imagen para símbolo personalizado
+  // Select image for custom symbol
   const handlePickImage = useCallback(async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Required', 'We need permission to access your photos to add custom symbols.');
+        showWarning('We need permission to access your photos to add custom symbols.');
         return;
       }
 
@@ -82,19 +90,19 @@ const CategoryDetailScreen: React.FC = () => {
         setSelectedImage(result.assets[0].uri);
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error selecting image');
+      showError(error.message || 'Error selecting image');
     }
-  }, []);
+  }, [showError]);
 
-  // Guardar símbolo personalizado
+  // Save custom symbol
   const handleSaveSymbol = useCallback(async () => {
     if (!symbolName.trim()) {
-      Alert.alert('Error', 'Please enter a name for the symbol');
+      showError('Please enter a name for the symbol');
       return;
     }
 
     if (!selectedImage) {
-      Alert.alert('Error', 'Please select an image for the symbol');
+      showError('Please select an image for the symbol');
       return;
     }
 
@@ -106,25 +114,25 @@ const CategoryDetailScreen: React.FC = () => {
         category: categoryName,
       });
 
-      Alert.alert('Success', 'Custom symbol added successfully');
+      showSuccess('Custom symbol added successfully');
       setShowAddSymbolModal(false);
       setSymbolName('');
       setSelectedImage(null);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error saving symbol');
+      showError(error.message || 'Error saving symbol');
     } finally {
       setIsAddingSymbol(false);
     }
   }, [symbolName, selectedImage, addCustomSymbol, categoryName]);
 
-  // Abrir modal para añadir símbolo
+  // Open modal to add symbol
   const handleAddSymbol = useCallback(() => {
     setShowAddSymbolModal(true);
     setSymbolName('');
     setSelectedImage(null);
   }, []);
 
-  // Cerrar modal
+  // Close modal
   const handleCloseModal = useCallback(() => {
     if (!isAddingSymbol) {
       setShowAddSymbolModal(false);
@@ -133,87 +141,132 @@ const CategoryDetailScreen: React.FC = () => {
     }
   }, [isAddingSymbol]);
 
-  // Ocultar/mostrar categoría
+  // Hide/show category
   const handleToggleVisibility = useCallback(async () => {
     try {
       const currentHidden = user?.preferences.hiddenCategories || [];
-      
+
       if (isHidden) {
-        // Mostrar categoría (eliminar de la lista de ocultas)
+        // Show category (remove from hidden list)
         const updatedHidden = currentHidden.filter(name => name !== categoryName);
         await updatePreferences({
           hiddenCategories: updatedHidden
         });
-        Alert.alert('Success', 'Category is now visible in PCS Screen');
+        showSuccess('Category is now visible in PCS Screen');
       } else {
-        // Ocultar categoría (añadir a la lista de ocultas)
+        // Hide category (add to hidden list)
         await updatePreferences({
           hiddenCategories: [...currentHidden, categoryName]
         });
-        Alert.alert('Success', 'Category is now hidden from PCS Screen');
+        showSuccess('Category is now hidden from PCS Screen');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error updating category visibility');
+      showError(error.message || 'Error updating category visibility');
     }
-  }, [isHidden, categoryName, user?.preferences.hiddenCategories, updatePreferences]);
+  }, [isHidden, categoryName, user?.preferences.hiddenCategories, updatePreferences, showSuccess, showError]);
 
-  // Eliminar categoría
+  // Open confirmation modal to delete symbol
+  const handleDeleteSymbol = useCallback((symbolId: string, symbolWord: string) => {
+    setSymbolToDelete({ id: symbolId, word: symbolWord });
+    setShowDeleteModal(true);
+  }, []);
+
+  // Confirm symbol deletion
+  const handleConfirmDeleteSymbol = useCallback(async () => {
+    if (!symbolToDelete) return;
+
+    setIsDeletingSymbol(true);
+    try {
+      await removeCustomSymbol(symbolToDelete.id);
+      setShowDeleteModal(false);
+      setSymbolToDelete(null);
+      showSuccess('Symbol deleted successfully');
+    } catch (error: any) {
+      showError(error.message || 'Error deleting symbol');
+    } finally {
+      setIsDeletingSymbol(false);
+    }
+  }, [symbolToDelete, removeCustomSymbol]);
+
+  // Cancel symbol deletion
+  const handleCancelDeleteSymbol = useCallback(() => {
+    if (!isDeletingSymbol) {
+      setShowDeleteModal(false);
+      setSymbolToDelete(null);
+    }
+  }, [isDeletingSymbol]);
+
+  // Delete category
   const handleDeleteCategory = useCallback(() => {
-    Alert.alert(
-      'Delete Category',
-      `Are you sure you want to delete "${categoryName}"? This action cannot be undone.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              if (isCustom) {
-                // Eliminar categoría personalizada
-                const currentCategories = user?.preferences.categories || [];
-                const updatedCategories = currentCategories.filter(cat => cat.id !== categoryId);
-                
-                await updatePreferences({
-                  categories: updatedCategories
-                });
-                
-                Alert.alert('Success', 'Category deleted successfully');
-                navigation.goBack();
-              } else {
-                // Las categorías predeterminadas no se pueden eliminar, solo ocultar
-                Alert.alert('Info', 'Default categories cannot be deleted, but you can hide them.');
-              }
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Error deleting category');
-            }
-          },
-        },
-      ]
-    );
-  }, [categoryId, categoryName, isCustom, user?.preferences.categories, updatePreferences, navigation]);
+    if (!isCustom) {
+      showInfo('Default categories cannot be deleted, but you can hide them.');
+      return;
+    }
+    setShowDeleteCategoryConfirm(true);
+  }, [isCustom, showInfo]);
+
+  const performDeleteCategory = useCallback(async () => {
+    setShowDeleteCategoryConfirm(false);
+    setIsDeletingCategory(true);
+    try {
+      // Step 1: Delete from backend (JSON file with pictograms)
+      // This ensures the category's pictogram mappings are removed from the user's file
+      try {
+        await deleteCategoryWithPictograms(categoryName, user?.id);
+        console.log(`✅ Category "${categoryName}" removed from backend`);
+      } catch (backendError: any) {
+        // Log warning but continue - category might not exist in backend yet
+        console.warn(`⚠️ Could not delete from backend: ${backendError.message}`);
+        // Don't throw - we still want to remove from Firebase
+      }
+
+      // Step 2: Delete from Firebase (user preferences)
+      const currentCategories = user?.preferences.categories || [];
+      const updatedCategories = currentCategories.filter(cat => cat.id !== categoryId);
+
+      await updatePreferences({
+        categories: updatedCategories
+      });
+
+      // Step 3: Remove custom symbols associated with this category
+      const currentSymbols = user?.preferences.customPCSSymbols || [];
+      const updatedSymbols = currentSymbols.filter(symbol => symbol.category !== categoryName);
+
+      if (updatedSymbols.length !== currentSymbols.length) {
+        await updatePreferences({
+          customPCSSymbols: updatedSymbols
+        });
+        console.log(`🗑️ Removed ${currentSymbols.length - updatedSymbols.length} custom symbols from category "${categoryName}"`);
+      }
+
+      showSuccess('Category deleted successfully');
+      navigation.goBack();
+    } catch (error: any) {
+      console.error('❌ Error deleting category:', error);
+      showError(error.message || 'Error deleting category');
+    } finally {
+      setIsDeletingCategory(false);
+    }
+  }, [categoryId, categoryName, user?.id, user?.preferences.categories, user?.preferences.customPCSSymbols, updatePreferences, navigation, showSuccess, showError]);
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <StatusBar style="auto" />
-        
+
         {/* Header */}
-        <Header 
+        <Header
           title={categoryName}
           backgroundColor={selectedColor}
           showBackButton={true}
         />
 
-        {/* Contenido principal */}
-        <ScrollView 
+        {/* Main content */}
+        <ScrollView
           style={[styles.content, { backgroundColor: theme.background }]}
           contentContainerStyle={styles.contentContainer}
         >
-          {/* Información de la categoría */}
+          {/* Category info */}
           <View style={[styles.categoryInfoCard, { backgroundColor: theme.white }]}>
             <Text style={styles.categoryEmojiLarge}>{categoryEmoji}</Text>
             <Text style={[styles.categoryNameLarge, { color: theme.primary }]}>{categoryName}</Text>
@@ -225,19 +278,26 @@ const CategoryDetailScreen: React.FC = () => {
             </Text>
           </View>
 
-          {/* Símbolos personalizados */}
+          {/* Custom symbols */}
           <View style={[styles.section, { backgroundColor: theme.white }]}>
             <Text style={[styles.sectionTitle, { color: theme.primary }]}>
               Custom Symbols ({categorySymbols.length})
             </Text>
-            
+
             {categorySymbols.length > 0 ? (
               <View style={styles.symbolsGrid}>
                 {categorySymbols.map((symbol) => (
-                  <View 
-                    key={symbol.id} 
+                  <View
+                    key={symbol.id}
                     style={[styles.symbolCard, { borderColor: theme.accent }]}
                   >
+                    <TouchableOpacity
+                      style={[styles.deleteSymbolButton, { backgroundColor: '#e74c3c' }]}
+                      onPress={() => handleDeleteSymbol(symbol.id, symbol.word)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.deleteSymbolButtonText}>×</Text>
+                    </TouchableOpacity>
                     <Image
                       source={{ uri: symbol.imageUrl }}
                       style={styles.symbolImage}
@@ -249,7 +309,7 @@ const CategoryDetailScreen: React.FC = () => {
               </View>
             ) : (
               <Text style={[styles.emptyText, { color: theme.accent }]}>
-                No custom symbols yet. Add one below!
+                No custom symbols yet.
               </Text>
             )}
 
@@ -262,14 +322,14 @@ const CategoryDetailScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Acciones de categoría */}
+          {/* Category actions */}
           <View style={[styles.section, { backgroundColor: theme.white }]}>
             <Text style={[styles.sectionTitle, { color: theme.primary }]}>Category Actions</Text>
-            
+
             <TouchableOpacity
               style={[
-                styles.actionButton, 
-                { 
+                styles.actionButton,
+                {
                   backgroundColor: isHidden ? theme.tertiary : theme.secondary,
                   borderWidth: 2,
                   borderColor: isHidden ? theme.tertiary : theme.primary,
@@ -296,7 +356,7 @@ const CategoryDetailScreen: React.FC = () => {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Modal para añadir símbolo personalizado */}
+      {/* Modal to add custom symbol */}
       <Modal
         visible={showAddSymbolModal}
         transparent={true}
@@ -312,7 +372,7 @@ const CategoryDetailScreen: React.FC = () => {
               to {categoryName}
             </Text>
 
-            {/* Input para el nombre */}
+            {/* Name input */}
             <TextInput
               style={[styles.modalInput, { borderColor: theme.primary, color: theme.primary }]}
               placeholder="Symbol name"
@@ -322,7 +382,7 @@ const CategoryDetailScreen: React.FC = () => {
               editable={!isAddingSymbol}
             />
 
-            {/* Botón para seleccionar imagen */}
+            {/* Select image button */}
             <TouchableOpacity
               style={[styles.imagePickerButton, { borderColor: theme.primary }]}
               onPress={handlePickImage}
@@ -333,7 +393,7 @@ const CategoryDetailScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
 
-            {/* Vista previa de la imagen */}
+            {/* Image preview */}
             {selectedImage && (
               <View style={styles.imagePreviewContainer}>
                 <Image
@@ -344,7 +404,7 @@ const CategoryDetailScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Botones de acción */}
+            {/* Action buttons */}
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalCancelButton, { borderColor: theme.accent }]}
@@ -358,7 +418,7 @@ const CategoryDetailScreen: React.FC = () => {
                 style={[
                   styles.modalButton,
                   styles.modalSaveButton,
-                  { 
+                  {
                     backgroundColor: theme.primary,
                     opacity: (!symbolName.trim() || !selectedImage || isAddingSymbol) ? 0.5 : 1
                   }
@@ -376,6 +436,68 @@ const CategoryDetailScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Confirmation modal to delete symbol */}
+      <Modal
+        visible={showDeleteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCancelDeleteSymbol}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.white }]}>
+            <Text style={[styles.modalTitle, { color: theme.primary }]}>
+              Delete Symbol
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: theme.accent }]}>
+              Are you sure you want to delete "{symbolToDelete?.word}"? This action cannot be undone.
+            </Text>
+
+            {/* Action buttons */}
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton, { borderColor: theme.accent }]}
+                onPress={handleCancelDeleteSymbol}
+                disabled={isDeletingSymbol}
+              >
+                <Text style={[styles.modalButtonText, { color: theme.primary }]}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.modalDeleteButton,
+                  {
+                    backgroundColor: '#e74c3c',
+                    opacity: isDeletingSymbol ? 0.5 : 1
+                  }
+                ]}
+                onPress={handleConfirmDeleteSymbol}
+                disabled={isDeletingSymbol}
+              >
+                {isDeletingSymbol ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.modalDeleteButtonText}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Confirmation Modal for Category Deletion */}
+      <ConfirmModal
+        visible={showDeleteCategoryConfirm}
+        title="Delete Category"
+        message={`Are you sure you want to delete "${categoryName}"? This action cannot be undone.`}
+        icon="🗑️"
+        buttons={[
+          { text: 'Cancel', onPress: () => setShowDeleteCategoryConfirm(false), style: 'cancel' },
+          { text: 'Delete', onPress: performDeleteCategory, style: 'destructive' },
+        ]}
+        onDismiss={() => setShowDeleteCategoryConfirm(false)}
+      />
     </View>
   );
 };

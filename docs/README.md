@@ -11,19 +11,15 @@ docs/
 ├── technical.md                    # Technical documentation and specifications
 ├── status.md                       # Project progress tracking
 ├── project-brief.md                # Project brief and overview
-├── arasaac-integration-summary.md  # ARASAAC integration summary
 ├── configuration/                   # Configuration guides
 │   ├── README.md                   # Configuration guides index
-│   ├── api-setup.md                # AI APIs setup (Gemini, OpenAI)
+│   ├── api-setup.md                # AI APIs setup (Gemini, OpenAI, Azure)
 │   ├── arasaac-setup.md            # ARASAAC pictogram integration
-│   ├── arasaac-quickstart.md       # ARASAAC quick start guide
-│   ├── arasaac-quick-commands.md   # ARASAAC quick commands reference
-│   ├── openai-setup.md             # OpenAI API setup guide
 │   ├── pictograms-reference.md     # Pictograms reference and IDs
 │   ├── env-config.md               # Environment variables configuration
-│   └── platform-setup.md           # Platform-specific setup (iOS, Android, Web)
-├── development/                     # Development documentation
-│   └── parent-menu-changes.md      # Parent menu implementation changes
+│   └── platform-setup.md           # Platform-specific setup (iOS, Android)
+├── images/                         # Documentation images
+│   └── PolimiLogo.png              # Politecnico di Milano logo
 └── README.md                       # This file
 ```
 
@@ -33,23 +29,14 @@ docs/
 - [Architecture](./architecture.mermaid) - System architecture diagram
 - [Technical Documentation](./technical.md) - Technical specifications
 - [Project Status](./status.md) - Current progress and tasks
+- [Project Brief](./project-brief.md) - Project overview and roadmap
 
 ### Configuration Guides
-- [API Setup](./configuration/api-setup.md) - Configure Gemini and OpenAI APIs
-- [OpenAI Setup](./configuration/openai-setup.md) - OpenAI API specific guide
+- [API Setup](./configuration/api-setup.md) - Configure Gemini, OpenAI, and Azure APIs
 - [ARASAAC Setup](./configuration/arasaac-setup.md) - Pictogram integration guide
-- [ARASAAC Quickstart](./configuration/arasaac-quickstart.md) - Quick start guide
-- [ARASAAC Quick Commands](./configuration/arasaac-quick-commands.md) - Command reference
 - [Pictograms Reference](./configuration/pictograms-reference.md) - Pictogram IDs and usage
 - [Environment Variables](./configuration/env-config.md) - Environment configuration
 - [Platform Setup](./configuration/platform-setup.md) - Platform-specific setup
-
-### Project Documentation
-- [Project Brief](./project-brief.md) - Project overview and roadmap
-- [ARASAAC Integration Summary](./arasaac-integration-summary.md) - Integration details
-
-### Development Documentation
-- [Parent Menu Changes](./development/parent-menu-changes.md) - UI/UX changes documentation
 
 ### AI Configuration
 - [.cursorrules](./.cursorrules) - AI behavior configuration for Cursor IDE
@@ -85,7 +72,7 @@ The `status.md` file tracks:
 
 ### Configuration Guides
 The `configuration/` folder contains detailed guides for:
-- Setting up AI APIs (Gemini, OpenAI)
+- Setting up AI APIs (Gemini, OpenAI, Azure)
 - Integrating ARASAAC pictograms
 - Configuring environment variables
 - Platform-specific setup instructions
@@ -128,4 +115,3 @@ When adding new documentation:
 - Architecture diagram uses Mermaid syntax
 - Configuration guides include platform-specific instructions
 - Status file should be updated regularly to reflect current state
-

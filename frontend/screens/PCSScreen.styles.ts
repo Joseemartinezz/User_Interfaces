@@ -35,6 +35,15 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 70,
     marginRight: 12,
+    padding: 6,
+    borderRadius: 12,
+    borderWidth: 3,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   selectedWordImage: {
     width: 50,
@@ -44,12 +53,10 @@ export const styles = StyleSheet.create({
   selectedWordText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#333',
     textAlign: 'center',
   },
   emptySelectionText: {
     fontSize: 14,
-    color: '#999',
     fontStyle: 'italic',
     textAlign: 'center',
     paddingVertical: 8,
@@ -89,16 +96,16 @@ export const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0, // Importante para que el ScrollView funcione dentro de flex
   },
-  grid4x4Container: {
+  grid3x3Container: {
     paddingBottom: 10,
   },
-  grid4x4: {
+  grid3x3: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
   symbolButton: {
-    width: '23%', // 4 columnas con espacio entre ellas (100% / 4 - espacio)
+    width: '30%', // 3 columnas con espacio entre ellas (100% / 3 - espacio)
     aspectRatio: 1,
     borderRadius: 12,
     alignItems: 'center',
@@ -123,43 +130,49 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
   },
   symbolImage: {
-    width: 50,
-    height: 50,
-    marginBottom: 4,
+    width: 70,
+    height: 70,
+    marginBottom: 6,
   },
   symbolText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     textAlign: 'center',
   },
   actionButtons: {
     padding: 12,
     paddingBottom: 35,
+    flexDirection: 'row',
     gap: 10,
   },
-  generateButton: {
-    padding: 16,
-    borderRadius: 8,
+  pcsButton: {
+    flex: 1,
+    aspectRatio: 1.2,
+    minHeight: 120,
+    maxHeight: 120,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 50,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 3,
+    padding: 8,
   },
-  generateButtonText: {
+  pcsButtonImage: {
+    width: 60,
+    height: 60,
+    marginBottom: 6,
+  },
+  pcsButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    textAlign: 'center',
   },
   buttonDisabled: {
-    opacity: 0.6,
-  },
-  clearButton: {
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  clearButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    opacity: 0.5,
   },
   errorContainer: {
     backgroundColor: '#f0f0f0',
@@ -168,11 +181,9 @@ export const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 30,
-    color: '#999',
   },
   errorSubtext: {
     fontSize: 10,
-    color: '#999',
     marginTop: 4,
   },
   loadingMoreContainer: {
@@ -186,6 +197,114 @@ export const styles = StyleSheet.create({
   loadingMoreText: {
     fontSize: 14,
     fontStyle: 'italic',
+  },
+  loadMoreButton: {
+    width: '100%',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 2,
+  },
+  loadMoreButtonIcon: {
+    fontSize: 20,
+    marginRight: 4,
+  },
+  loadMoreButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'white',
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingTop: 25,
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  categoryNavigationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingTop: 12,
+    paddingBottom: 4,
+    gap: 4,
+  },
+  navButtonWrapper: {
+    width: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navButtonIndicator: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    flexShrink: 0,
+  },
+  navButtonArrow: {
+    width: 24,
+    height: 24,
+  },
+  categoryIndicatorsContainer: {
+    flex: 1,
+    paddingVertical: 2,
+    maxHeight: 75,
+    minHeight: 55,
+    marginHorizontal: 4,
+    maxWidth: Dimensions.get('window').width - 104, // Ancho de pantalla menos espacio para flechas (40*2 + padding)
+  },
+  categoryIndicatorsScrollContent: {
+    paddingHorizontal: 8, // Padding para evitar que el primer botón se corte al hacer scale
+    gap: 4,
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  categoryIndicator: {
+    minWidth: 56,
+    paddingHorizontal: 5,
+    paddingVertical: 7,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  categoryIndicatorEmoji: {
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  categoryIndicatorName: {
+    fontSize: 10,
+    textAlign: 'center',
   },
 });
 

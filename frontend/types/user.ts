@@ -22,19 +22,34 @@ export interface CustomPCSSymbol {
 }
 
 /**
- * Preferencias del usuario
+ * Action button pictograms configuration
+ * Allows users to customize pictograms used in action buttons
+ */
+export interface ActionButtonPictograms {
+  generate?: number; // ARASAAC ID for "generate phrases" button (default: 9172)
+  clear?: number; // ARASAAC ID for "clear" button (default: 37417)
+  generateMore?: number; // ARASAAC ID for "generate more" button (default: 5270 - plus)
+  back?: number; // ARASAAC ID for "back" button (default: 38195 - back arrow)
+}
+
+/**
+ * User preferences
  */
 export interface UserPreferences {
   language: string;
   theme: number;
   fontSize: string;
-  voiceSpeed: number;
-  // Nuevas preferencias
-  colorPalette: 'default' | 'high-contrast' | 'pastel' | 'vibrant';
+  // New preferences
   preferredFontSize: 'small' | 'medium' | 'large' | 'extra-large';
   customPCSSymbols: CustomPCSSymbol[];
   categories: UserCategory[];
-  hiddenCategories?: string[]; // Nombres de categorías por defecto que el usuario ha ocultado
+  hiddenCategories?: string[]; // Names of default categories hidden by user
+  // Action button customization
+  actionButtonPictograms?: ActionButtonPictograms; // Custom pictograms for action buttons
+  // Onboarding and initial setup
+  hasCompletedOnboarding?: boolean; // Indicates if user completed initial setup
+  childAge?: number; // Age of child using the app
+  parentMenuPassword?: string; // Password to access parent menu
 }
 
 /**

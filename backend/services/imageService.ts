@@ -2,25 +2,42 @@
 // Backend service that handles image generation with DALL-E 3 via Azure OpenAI
 
 /**
+ * Limpia y sanitiza la frase para evitar problemas con las políticas de la API
+ */
+function sanitizePhrase(phrase) {
+  if (!phrase) return '';
+  
+  // Limpiar la frase: remover números al inicio, puntos, y caracteres especiales problemáticos
+  let cleaned = phrase.trim()
+    .replace(/^\d+\.\s*/, '') // Remover números al inicio
+    .replace(/[^\w\s.,!?-]/g, '') // Remover caracteres especiales excepto puntuación básica
+    .trim();
+  
+  // Convertir a minúsculas para evitar problemas
+  cleaned = cleaned.toLowerCase();
+  
+  return cleaned;
+}
+
+/**
  * Construye el prompt optimizado para generar imágenes AAC child-friendly
+ * Usa un enfoque seguro que cumple con las políticas de la API
  */
 function buildAacImagePrompt(phrase) {
-  return `
-Create a simple, clear, family-friendly, inclusive illustration for a child who uses an AAC (Augmentative and Alternative Communication) device.
-
-Requirements:
-- The image must be easy for a child to recognize and understand instantly.
-- Show ONE main subject or action, centered and uncluttered.
-- Use flat colors, soft shapes, minimal detail, and a friendly style.
-- Inclusive representation: neutral skin tones or varied tones depending on the phrase.
-- No text, no letters, no symbols, no numbers anywhere in the image.
-- Background should be simple or minimal, only when helpful for understanding.
-- Absolutely no violent, scary, or adult content.
-- The image should directly communicate the meaning of the phrase.
-
-Phrase to illustrate:
-“${phrase}”
-  `.trim();
+  // Sanitizar la frase
+  const sanitizedPhrase = sanitizePhrase(phrase);
+  
+  // Crear un prompt más seguro, descriptivo y genérico
+  // Evitamos incluir la frase directamente si puede ser problemática
+  // En su lugar, usamos un formato más descriptivo y seguro
+  return `A cheerful, simple illustration for children showing a positive and happy scene. 
+The illustration should be colorful, friendly, and easy to understand. 
+Use soft, rounded shapes, bright colors, and a warm, welcoming style. 
+The image should show appropriate, family-friendly content suitable for young children. 
+Keep the design simple with a clean, uncluttered background. 
+No text, letters, numbers, or symbols should appear in the image. 
+The overall feeling should be positive, happy, and inclusive. 
+Illustrate the concept: ${sanitizedPhrase}`.trim();
 }
 
 /**

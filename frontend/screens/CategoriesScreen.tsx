@@ -7,7 +7,8 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  Alert,
+  Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -16,9 +17,11 @@ import { Timestamp } from 'firebase/firestore';
 import Header from '../components/common/Header';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
+import { useToast } from '../context/ToastContext';
 import { RootStackParamList } from '../types/navigation';
 import { UserCategory } from '../types/user';
 import { styles } from './CategoriesScreen.styles';
+import { createCategoryWithPictograms } from '../api';
 
 type CategoriesParams = {
   selectedColor?: string;
@@ -46,6 +49,7 @@ const CategoriesScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: CategoriesParams }, 'params'>>();
   const { theme } = useTheme();
   const { user, updatePreferences } = useUser();
+  const { showSuccess, showError, showWarning } = useToast();
   const params = route.params;
   const selectedColor = params?.selectedColor || theme.primary;
 
@@ -53,6 +57,8 @@ const CategoriesScreen: React.FC = () => {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryEmoji, setNewCategoryEmoji] = useState('📁');
   const [isSaving, setIsSaving] = useState(false);
+  const [includeStandardSymbols, setIncludeStandardSymbols] = useState(false);
+  const [categoryDescription, setCategoryDescription] = useState('');
 
   // Get list of hidden/default categories that user has removed
   const hiddenCategories = useMemo(() => {
@@ -60,28 +66,36 @@ const CategoriesScreen: React.FC = () => {
   }, [user?.preferences.hiddenCategories]);
 
   // Combine default categories with user's custom categories
+  // Include hidden categories but mark them as hidden
+  // Sort to show hidden categories at the end
   const allCategories = useMemo(() => {
     const userCategories = (user?.preferences.categories || []).map(cat => ({
       name: cat.name,
       emoji: cat.emoji || '📁',
       isCustom: true,
       id: cat.id,
+      isHidden: hiddenCategories.includes(cat.name),
     }));
 
-    // Filter out hidden default categories
-    const defaultCats = DEFAULT_CATEGORIES
-      .filter(cat => !hiddenCategories.includes(cat.name))
-      .map(cat => ({
-        name: cat.name,
-        emoji: cat.emoji,
-        isCustom: false,
-        id: cat.name,
-      }));
+    // Include all default categories (both visible and hidden)
+    const defaultCats = DEFAULT_CATEGORIES.map(cat => ({
+      name: cat.name,
+      emoji: cat.emoji,
+      isCustom: false,
+      id: cat.name,
+      isHidden: hiddenCategories.includes(cat.name),
+    }));
 
-    return [...defaultCats, ...userCategories];
+    const all = [...defaultCats, ...userCategories];
+
+    // Sort: visible categories first, hidden categories at the end
+    return all.sort((a, b) => {
+      if (a.isHidden === b.isHidden) return 0;
+      return a.isHidden ? 1 : -1;
+    });
   }, [user?.preferences.categories, hiddenCategories]);
 
-  const handleCategoryPress = useCallback((category: { id: string; name: string; emoji: string; isCustom: boolean }) => {
+  const handleCategoryPress = useCallback((category: { id: string; name: string; emoji: string; isCustom: boolean; isHidden?: boolean }) => {
     // Navegar a la pantalla de detalle de categoría
     navigation.navigate('CategoryDetail', {
       categoryId: category.id,
@@ -95,26 +109,55 @@ const CategoriesScreen: React.FC = () => {
 
   const handleAddCategory = useCallback(async () => {
     if (!newCategoryName.trim()) {
-      Alert.alert('Error', 'Please enter a category name');
+      showError('Please enter a category name');
       return;
     }
 
+    // Validate description if including standard symbols
+    if (includeStandardSymbols) {
+      if (!categoryDescription.trim()) {
+        showError('Please enter a description of what this category will include');
+        return;
+      }
+    }
+
+    const finalCategoryName = newCategoryName.trim();
+
     // Check if category already exists
-    const exists = allCategories.some(cat => 
-      cat.name.toLowerCase() === newCategoryName.trim().toLowerCase()
+    const exists = allCategories.some(cat =>
+      cat.name.toLowerCase() === finalCategoryName.toLowerCase()
     );
 
     if (exists) {
-      Alert.alert('Error', 'This category already exists');
+      showError('This category already exists');
       return;
     }
 
     setIsSaving(true);
     try {
+
+      // If including standard symbols, create category in backend first
+      if (includeStandardSymbols) {
+        try {
+          await createCategoryWithPictograms(
+            finalCategoryName,
+            categoryDescription.trim(),
+            50,
+            user?.id // Pasar userId del usuario actual
+          );
+        } catch (backendError: any) {
+          // If backend creation fails, still allow creating the category in Firebase
+          // but warn the user
+          console.warn('⚠️ Failed to create category in backend:', backendError);
+          showWarning('Could not add standard symbols. The category will be created without them.');
+        }
+      }
+
+      // Create category in Firebase
       const currentCategories = user?.preferences.categories || [];
       const newCategory: UserCategory = {
         id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: newCategoryName.trim(),
+        name: finalCategoryName,
         emoji: newCategoryEmoji,
         createdAt: Timestamp.now(),
       };
@@ -123,21 +166,39 @@ const CategoriesScreen: React.FC = () => {
         categories: [...currentCategories, newCategory]
       });
 
-      Alert.alert('Success', 'Category added successfully');
+      showSuccess(
+        includeStandardSymbols
+          ? 'Category added successfully with standard symbols'
+          : 'Category added successfully. You can add custom symbols manually.'
+      );
+
+      // Reset form
       setShowAddCategoryModal(false);
       setNewCategoryName('');
       setNewCategoryEmoji('📁');
+      setIncludeStandardSymbols(false);
+      setCategoryDescription('');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error adding category');
+      showError(error.message || 'Error adding category');
     } finally {
       setIsSaving(false);
     }
-  }, [newCategoryName, newCategoryEmoji, allCategories, user?.preferences.categories, updatePreferences]);
+  }, [
+    newCategoryName,
+    newCategoryEmoji,
+    allCategories,
+    user?.preferences.categories,
+    updatePreferences,
+    includeStandardSymbols,
+    categoryDescription
+  ]);
 
   const handleOpenAddModal = useCallback(() => {
     setShowAddCategoryModal(true);
     setNewCategoryName('');
     setNewCategoryEmoji('📁');
+    setIncludeStandardSymbols(false);
+    setCategoryDescription('');
   }, []);
 
   const handleCloseModal = useCallback(() => {
@@ -145,6 +206,8 @@ const CategoriesScreen: React.FC = () => {
       setShowAddCategoryModal(false);
       setNewCategoryName('');
       setNewCategoryEmoji('📁');
+      setIncludeStandardSymbols(false);
+      setCategoryDescription('');
     }
   }, [isSaving]);
 
@@ -152,41 +215,52 @@ const CategoriesScreen: React.FC = () => {
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <StatusBar style="auto" />
-        
+
         {/* Header */}
         <Header title="Categories" backgroundColor={selectedColor} />
 
         {/* Contenido principal */}
         <View style={[styles.content, { backgroundColor: theme.background }]}>
           {/* Grid de categorías */}
-          <ScrollView 
+          <ScrollView
             style={styles.categoriesContainer}
             contentContainerStyle={styles.categoriesGrid}
             showsVerticalScrollIndicator={false}
           >
-            {allCategories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={[
-                  styles.categoryButton,
-                  { 
-                    backgroundColor: 'white',
-                    borderColor: selectedColor,
-                  }
-                ]}
-                onPress={() => handleCategoryPress(category)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-                <Text style={[styles.categoryText, { color: selectedColor }]}>{category.name}</Text>
-              </TouchableOpacity>
-            ))}
+            {allCategories.map((category) => {
+              const isHidden = category.isHidden || false;
+              return (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.categoryButton,
+                    {
+                      backgroundColor: isHidden ? '#f5f5f5' : 'white',
+                      borderColor: isHidden ? '#d0d0d0' : selectedColor,
+                    },
+                    isHidden && styles.hiddenCategoryButton,
+                  ]}
+                  onPress={() => handleCategoryPress(category)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.categoryEmoji,
+                    isHidden && styles.hiddenCategoryEmoji
+                  ]}>{category.emoji}</Text>
+                  <Text style={[
+                    styles.categoryText,
+                    { color: isHidden ? '#999999' : selectedColor },
+                    isHidden && styles.hiddenCategoryText
+                  ]}>{category.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
 
             {/* Botón para añadir nueva categoría */}
             <TouchableOpacity
               style={[
                 styles.addCategoryButton,
-                { 
+                {
                   backgroundColor: theme.secondary,
                   borderColor: selectedColor,
                   borderWidth: 2,
@@ -237,6 +311,39 @@ const CategoriesScreen: React.FC = () => {
               maxLength={2}
             />
 
+            {/* Toggle para incluir símbolos PCS estándar */}
+            <View style={styles.switchContainer}>
+              <Text style={[styles.switchLabel, { color: theme.primary }]}>
+                Include standard PCS symbols
+              </Text>
+              <Switch
+                value={includeStandardSymbols}
+                onValueChange={setIncludeStandardSymbols}
+                disabled={isSaving}
+                trackColor={{ false: theme.accent, true: theme.primary }}
+                thumbColor="white"
+              />
+            </View>
+
+            {/* Campos condicionales para símbolos estándar */}
+            {includeStandardSymbols && (
+              <TextInput
+                style={[
+                  styles.modalInput,
+                  styles.modalTextArea,
+                  { borderColor: theme.primary, color: theme.primary }
+                ]}
+                placeholder="Description of this category (e.g. Feelings and emotional states like happy, sad, angry, excited)"
+                placeholderTextColor="#999"
+                value={categoryDescription}
+                onChangeText={setCategoryDescription}
+                editable={!isSaving}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            )}
+
             {/* Botones de acción */}
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -251,15 +358,27 @@ const CategoriesScreen: React.FC = () => {
                 style={[
                   styles.modalButton,
                   styles.modalSaveButton,
-                  { 
+                  {
                     backgroundColor: theme.primary,
-                    opacity: (!newCategoryName.trim() || isSaving) ? 0.5 : 1
+                    opacity: (
+                      !newCategoryName.trim() ||
+                      isSaving ||
+                      (includeStandardSymbols && !categoryDescription.trim())
+                    ) ? 0.5 : 1
                   }
                 ]}
                 onPress={handleAddCategory}
-                disabled={!newCategoryName.trim() || isSaving}
+                disabled={
+                  !newCategoryName.trim() ||
+                  isSaving ||
+                  (includeStandardSymbols && !categoryDescription.trim())
+                }
               >
-                <Text style={styles.modalSaveButtonText}>Add</Text>
+                {isSaving ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.modalSaveButtonText}>Add</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>

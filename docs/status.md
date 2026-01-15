@@ -11,9 +11,14 @@ Last Updated: 2024
 - [x] Navigation setup with React Navigation
 - [x] Welcome screen
 - [x] PCS symbol selection screen
-- [x] Phrase generation screen
+- [x] Phrase selection screen with flashcards
 - [x] Text-to-speech integration (Expo Speech)
 - [x] Theme context for UI theming
+- [x] Custom Toast and Confirmation Modal systems
+- [x] Hardened Parent Mode with password lockout mechanism
+- [x] Dynamic PCS generation with loading indicators and retry logic
+- [x] User-scoped categories for data isolation
+- [x] Full removal of all OS-level alerts (replaced by custom UI)
 
 ### Backend Integration
 - [x] Express.js server setup
@@ -49,10 +54,10 @@ Last Updated: 2024
 
 ## In Progress 🚧
 
-- [ ] Complete ARASAAC pictogram integration in frontend
-- [ ] User profile management
-- [ ] Settings persistence
-- [ ] Improved error handling and user feedback
+- [x] Complete ARASAAC pictogram integration in frontend
+- [x] User profile management
+- [x] Settings persistence
+- [x] Improved error handling and user feedback
 
 ## Planned Features 📋
 
@@ -120,19 +125,54 @@ Last Updated: 2024
 
 ## Recent Changes
 
-### Latest Updates
-- Created docs folder structure
-- Added .cursorrules for AI assistance
-- Created architecture documentation
-- Created technical documentation
-- Set up project status tracking
+### Latest Updates (UI/UX/Accessibility Improvements - January 2026)
+- **Color Palettes**: Completely revised all 6 color palettes with WCAG AA compliant contrast ratios (4.5:1 for normal text, 3:1 for large text) for maximum accessibility. All text colors now meet accessibility standards while maintaining calm, child-friendly aesthetics.
+  - Palette 1: Purple Harmony (default) - calm and friendly
+  - Palette 2: Ocean Blue - soothing and clear
+  - Palette 3: Forest Green - natural and calming
+  - Palette 4: Sunshine Bright - cheerful and energetic
+  - Palette 5: Soft Pastel - gentle and warm
+  - Palette 6: Earthy Tones - warm and grounded
+- **Toast Notifications**: Added toast notification system when switching between color palettes, showing palette name (e.g., "Theme changed to Ocean Blue") for clear user feedback
+- **Unified Transitions**: Standardized screen transitions across all navigators with smooth, non-disorienting animations:
+  - 300ms slide_from_right for most screens
+  - 250ms fade for main screens (PCS, Login, Profile) to reduce distraction
+  - 300ms slide_from_bottom for PhraseSelection (natural forward flow)
+  - Modal presentations for Parent/Profile screens to maintain context
+- **PCS-Style Action Buttons**: Converted all action buttons to PCS-style square buttons with pictograms + text labels:
+  - Generate Phrases: Uses ARASAAC pictogram #9172
+  - Clear: Uses ARASAAC pictogram #37417
+  - Generate More: Uses ARASAAC pictogram #5270 (plus sign)
+  - Back to Words: Uses ARASAAC pictogram #38195 (back arrow)
+  - All buttons are customizable via user preferences
+- **User Preferences**: Added ActionButtonPictograms interface allowing users to customize pictograms used in action buttons (generate, clear, generateMore, back)
+- **Enhanced PCS Selection Bar**:
+  - Added visible frames around selected symbols matching the symbol grid style
+  - Made selected symbols tappable for direct removal from the selection bar
+  - Added accessibility labels ("Tap to remove this word")
+  - Maintains visual consistency with 3px border in theme.primary color
+- **Flashcard Audio Indicator**: Added prominent "🔊 Tap to hear" badge on flashcard images to clearly indicate that tapping plays the spoken phrase
+- **Accessibility Improvements**:
+  - All interactive elements have proper accessibilityLabel and accessibilityRole
+  - Large touch targets (aspect ratio 1.2 for PCS buttons)
+  - Clear visual feedback on all interactions
+  - Shadow and elevation for depth perception
+
+### Previous Updates
+- Created custom Toast and ConfirmModal system for accessible feedback
+- Hardened Parent Mode with password strength validation and 5-attempt lockout mechanism
+- Implemented user-scoped categories to ensure data isolation between different users
+- Optimized ARASAAC pictogram search with input validation and deduplication
+- Improved dynamic PCS generation with non-blocking UI and loading indicators
+- Replaced 60+ OS-level alerts with custom accessible UI components across the entire app
+- Translated all remaining Spanish code comments to English for better maintainability
 
 ### Next Steps
-1. Complete ARASAAC integration in frontend screens
-2. Implement user profile management
-3. Add settings persistence
-4. Improve error handling
-5. Add unit tests for critical services
+1. Implement Firebase/Firestore persistence for all user data
+2. Add unit tests for critical services (category matching, password validation)
+3. Enhance accessibility with screen reader optimizations for the new Toast system
+4. Add offline support for common pictograms
+5. Add settings screen section for customizing action button pictograms
 
 ## Metrics
 

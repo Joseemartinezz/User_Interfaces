@@ -1,6 +1,9 @@
 import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
+  rootWrapper: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
@@ -13,32 +16,27 @@ export const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-  },
   content: {
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
+    padding: 16,
+    paddingBottom: 32,
   },
+  card: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  // Avatar section
   avatarSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    paddingVertical: 8,
   },
   avatarContainer: {
     width: 120,
@@ -49,8 +47,8 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 6,
     overflow: 'hidden',
   },
@@ -61,82 +59,104 @@ export const styles = StyleSheet.create({
   avatarInitials: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#333',
   },
   avatarLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontStyle: 'italic',
+    marginTop: 4,
   },
-  form: {
-    width: '100%',
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 8,
   },
+  statItem: {
+    width: '30%',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+    minWidth: 100,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  statsLoadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  // Form styles
   inputGroup: {
     marginBottom: 20,
   },
   label: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 14,
     fontSize: 16,
   },
-  preferencesSection: {
-    marginTop: 24,
-    marginBottom: 32,
-  },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 16,
   },
+  // Preferences
   preferenceItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    paddingVertical: 14,
+  },
+  preferenceLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  preferenceIcon: {
+    fontSize: 20,
+    marginRight: 12,
   },
   preferenceLabel: {
     fontSize: 15,
+    flex: 1,
   },
   preferenceValue: {
     fontSize: 15,
     fontWeight: '600',
   },
-  buttonContainer: {
-    marginTop: 8,
+  preferenceDivider: {
+    height: 1,
+    backgroundColor: '#f0f0f0',
+    marginVertical: 4,
   },
   saveButton: {
-    padding: 16,
-    borderRadius: 8,
+    padding: 18,
+    borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 12,
+    marginTop: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowRadius: 6,
     elevation: 4,
   },
   saveButtonText: {
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  resetButton: {
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 2,
-    backgroundColor: 'transparent',
-  },
-  resetButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
   },
   disabledButton: {
     opacity: 0.6,

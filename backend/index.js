@@ -1,4 +1,4 @@
-// Cargar variables de entorno PRIMERO, antes de cualquier otro require
+// Load environment variables FIRST, before any other require
 require('dotenv').config();
 
 const express = require('express');
@@ -9,9 +9,13 @@ const { generateAzurePhrases, generateMoreAzurePhrases, testAzureConnection } = 
 const { generateAacImage, generateAacImagesForPhrases } = require('./services/imageService.ts');
 const {
   getAllCategories,
+  getUserCategories,
   getCategoryPictograms,
+  getUserCategoryPictograms,
   createCategory,
+  createUserCategory,
   deleteCategory,
+  deleteUserCategory,
   initializePredefinedCategories,
   isPredefinedCategory,
   PREDEFINED_CATEGORIES
@@ -50,48 +54,85 @@ app.use((req, res, next) => {
   next();
 });
 
+/**
+ * Simple authentication middleware
+ * Extrae userId del header Authorization o del body
+ * In production, should verify Firebase token with Admin SDK
+ */
+const authenticateUser = (req, res, next) => {
+  // Try to get userId from Authorization header (format: "Bearer userId" or just "userId")
+  const authHeader = req.headers.authorization;
+  let userId = null;
+  
+  if (authHeader) {
+    // Si viene como "Bearer userId", extraer userId
+    const parts = authHeader.split(' ');
+    userId = parts.length > 1 ? parts[1] : parts[0];
+  }
+  
+  // If not in header, try from body
+  if (!userId && req.body && req.body.userId) {
+    userId = req.body.userId;
+  }
+  
+  // If still no userId, try from query (for GET requests)
+  if (!userId && req.query && req.query.userId) {
+    userId = req.query.userId;
+  }
+  
+  if (!userId) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'userId is required for this operation. Include userId in Authorization header, body or query.'
+    });
+  }
+  
+  // Add userId to request for use in handlers
+  req.userId = userId;
+  next();
+};
 
-// Configuración de Azure OpenAI (Proveedor Principal) - Para generación de frases
+// Azure OpenAI Configuration (Primary Provider) - For phrase generation
 const AZURE_OPENAI_PHRASE_URL = process.env.AZURE_OPENAI_PHRASE_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_URL;
 const AZURE_OPENAI_PHRASE_KEY = process.env.AZURE_OPENAI_PHRASE_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_KEY;
 
 if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
-  console.warn('⚠️ ADVERTENCIA: Azure OpenAI para frases no está configurado en las variables de entorno');
-  console.warn('   Agrega AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY al archivo backend/.env');
-  console.warn('   Azure OpenAI es el proveedor principal de IA');
+  console.warn('⚠️ WARNING: Azure OpenAI for phrases is not configured in environment variables');
+  console.warn('   Add AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY to backend/.env file');
+  console.warn('   Azure OpenAI is the primary AI provider');
 } else {
-  console.log('✅ Azure OpenAI configurado (Proveedor Principal)');
+  console.log('✅ Azure OpenAI configured (Primary Provider)');
 }
 
-// Configuración de Gemini (Proveedor Secundario/Fallback)
+// Gemini Configuration (Secondary Provider/Fallback)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 if (!GEMINI_API_KEY) {
-  console.warn('⚠️ ADVERTENCIA: GEMINI_API_KEY no está configurada en las variables de entorno');
-  console.warn('   Agrega GEMINI_API_KEY=tu_clave_aqui al archivo backend/.env');
-  console.warn('   Gemini se usará como fallback si Azure OpenAI falla');
+  console.warn('⚠️ WARNING: GEMINI_API_KEY is not configured in environment variables');
+  console.warn('   Add GEMINI_API_KEY=your_key_here to backend/.env file');
+  console.warn('   Gemini will be used as fallback if Azure OpenAI fails');
 } else {
-  console.log('✅ Gemini configurado (Proveedor Secundario/Fallback)');
+  console.log('✅ Gemini configured (Secondary Provider/Fallback)');
 }
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY || '');
 
 /**
  * Lista los modelos disponibles de Gemini
- * Útil para debugging
+ * Useful for debugging
  */
 async function listAvailableModels() {
   try {
-    // Intentar listar modelos si el método está disponible
+    // Try to list models if method is available
     if (typeof genAI.listModels === 'function') {
       const models = await genAI.listModels();
       const modelNames = Array.isArray(models) 
         ? models.map(model => model.name || model)
         : [];
-      console.log('📋 Modelos disponibles:', modelNames);
+      console.log('📋 Available models:', modelNames);
       return modelNames;
     } else {
-      console.log('⚠️ listModels() no está disponible en esta versión del SDK');
+      console.log('⚠️ listModels() is not available in this SDK version');
       return [];
     }
   } catch (error) {
@@ -109,7 +150,7 @@ function extractPhrases(text) {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    // Busca líneas que empiecen con número seguido de punto
+    // Search for lines that start with number followed by period
     const match = trimmed.match(/^\d+\.\s*(.+)$/);
     if (match && match[1]) {
       phrases.push(match[1].trim());
@@ -120,7 +161,7 @@ function extractPhrases(text) {
 }
 
 /**
- * Endpoint para generar frases
+ * Endpoint to generate phrases
  * Usa Azure OpenAI como proveedor principal, Gemini como fallback
  */
 app.post('/api/generate-phrases', async (req, res) => {
@@ -128,29 +169,29 @@ app.post('/api/generate-phrases', async (req, res) => {
     const { words } = req.body;
 
     if (!words || !Array.isArray(words) || words.length === 0) {
-      return res.status(400).json({ error: 'Se requiere un array de palabras' });
+      return res.status(400).json({ error: 'An array of words is required' });
     }
 
-    // Intentar primero con Azure OpenAI (Proveedor Principal)
+    // Try first with Azure OpenAI (Primary Provider)
     if (AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) {
       try {
-        console.log('🔄 Intentando generar frases con Azure OpenAI (Proveedor Principal)...');
+        console.log('🔄 Attempting to generate phrases with Azure OpenAI (Primary Provider)...');
         const phrases = await generateAzurePhrases(words);
-        console.log('✅ Frases generadas exitosamente con Azure OpenAI');
+        console.log('✅ Phrases generated successfully with Azure OpenAI');
         return res.json({ phrases });
       } catch (azureError) {
-        console.error('❌ Azure OpenAI falló:', azureError.message);
-        console.log('⚠️ Intentando con Gemini como fallback...');
+        console.error('❌ Azure OpenAI failed:', azureError.message);
+        console.log('⚠️ Attempting with Gemini as fallback...');
       }
     } else {
-      console.log('⚠️ Azure OpenAI no está configurado, usando Gemini como proveedor principal...');
+      console.log('⚠️ Azure OpenAI is not configured, using Gemini as primary provider...');
     }
 
-    // Si Azure falló o no está configurado, intentar con Gemini (Proveedor Secundario)
+    // If Azure failed or is not configured, try with Gemini (Secondary Provider)
     if (!GEMINI_API_KEY) {
       return res.status(500).json({ 
-        error: 'Ningún proveedor de IA está configurado',
-        message: 'Configura AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY, o GEMINI_API_KEY en backend/.env'
+        error: 'No AI provider is configured',
+        message: 'Configure AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY, or GEMINI_API_KEY in backend/.env'
       });
     }
 
@@ -167,36 +208,36 @@ Guidelines:
 - Return one phrase per line, numbered starting from 1.
 `;
 
-    console.log('🔄 Llamando a Gemini API con palabras:', words);
+    console.log('🔄 Calling Gemini API with words:', words);
     
-    // Intentar con diferentes modelos de Gemini en orden de preferencia
+    // Try with different Gemini models in order of preference
     const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro'];
     let text = null;
     let lastError = null;
     
     for (const modelName of modelsToTry) {
       try {
-        console.log(`📡 Intentando con modelo Gemini: ${modelName}...`);
+        console.log(`📡 Attempting with Gemini model: ${modelName}...`);
         const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(basePrompt);
         const response = await result.response;
         text = response.text();
-        console.log(`✅ Respuesta recibida de Gemini con modelo: ${modelName}`);
-        console.log('📄 Texto completo:', text);
-        break; // Si funciona, salir del loop
+        console.log(`✅ Response received from Gemini with model: ${modelName}`);
+        console.log('📄 Full text:', text);
+        break; // If it works, exit the loop
       } catch (modelError) {
         const errorMsg = modelError.message || String(modelError);
-        console.log(`❌ ${modelName} falló:`, errorMsg.substring(0, 150));
+        console.log(`❌ ${modelName} failed:`, errorMsg.substring(0, 150));
         lastError = modelError;
-        continue; // Intentar siguiente modelo
+        continue; // Try next model
       }
     }
     
     if (!text) {
-      // Si todos los modelos de Gemini fallaron
-      console.log('⚠️ Todos los modelos de Gemini fallaron. Listando modelos disponibles...');
+      // If all Gemini models failed
+      console.log('⚠️ All Gemini models failed. Listing available models...');
       await listAvailableModels();
-      throw lastError || new Error('Todos los proveedores de IA fallaron. Verifica tu configuración.');
+      throw lastError || new Error('All AI providers failed. Verify your configuration.');
     }
 
     const phrases = extractPhrases(text);
@@ -212,17 +253,17 @@ Guidelines:
     });
     
     // Mensaje de error más útil
-    let errorMessage = error.message || 'Error desconocido';
+    let errorMessage = error.message || 'Unknown error';
     if (error.message?.includes('404') || error.message?.includes('not found')) {
-      errorMessage = 'El modelo de Gemini no está disponible. Verifica tu API key y los modelos disponibles.';
+      errorMessage = 'Gemini model is not available. Verify your API key and available models.';
     } else if (error.message?.includes('API_KEY') || error.message?.includes('API key')) {
-      errorMessage = 'API Key de Gemini inválida o sin permisos. Verifica tu API key.';
+      errorMessage = 'Invalid Gemini API Key or no permissions. Verify your API key.';
     } else if (error.message?.includes('quota') || error.message?.includes('limit')) {
-      errorMessage = 'Se ha excedido la cuota de la API de Gemini. Verifica tu plan.';
+      errorMessage = 'Gemini API quota exceeded. Verify your plan.';
     }
     
     res.status(500).json({ 
-      error: 'Error al generar frases',
+      error: 'Error generating phrases',
       message: errorMessage,
       details: process.env.NODE_ENV === 'development' ? {
         originalError: error.message,
@@ -233,15 +274,15 @@ Guidelines:
 });
 
 /**
- * Endpoint para generar más frases
- * Usa Azure OpenAI como proveedor principal, Gemini como fallback
+ * Endpoint to generate more phrases
+ * Uses Azure OpenAI as primary provider, Gemini as fallback
  */
 app.post('/api/generate-more-phrases', async (req, res) => {
   try {
     const { words, existingPhrases } = req.body;
 
     if (!words || !Array.isArray(words) || words.length === 0) {
-      return res.status(400).json({ error: 'Se requiere un array de palabras' });
+      return res.status(400).json({ error: 'An array of words is required' });
     }
 
     if (!existingPhrases || !Array.isArray(existingPhrases)) {
@@ -251,9 +292,9 @@ app.post('/api/generate-more-phrases', async (req, res) => {
     // Intentar primero con Azure OpenAI (Proveedor Principal)
     if (AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) {
       try {
-        console.log('🔄 Intentando generar más frases con Azure OpenAI (Proveedor Principal)...');
+        console.log('🔄 Attempting to generate more phrases with Azure OpenAI (Primary Provider)...');
         const phrases = await generateMoreAzurePhrases(words, existingPhrases);
-        // Limitar a exactamente 3 frases como medida de seguridad (doble verificación)
+        // Limit to exactly 3 phrases as a security measure (double verification)
         const limitedPhrases = phrases.slice(0, 3);
         console.log(`📊 Frases de Azure: ${phrases.length}, limitadas a: ${limitedPhrases.length}`);
         if (limitedPhrases.length !== 3) {
@@ -262,17 +303,17 @@ app.post('/api/generate-more-phrases', async (req, res) => {
         console.log('✅ Frases generadas exitosamente con Azure OpenAI');
         return res.json({ phrases: limitedPhrases });
       } catch (azureError) {
-        console.error('❌ Azure OpenAI falló:', azureError.message);
-        console.log('⚠️ Intentando con Gemini como fallback...');
+        console.error('❌ Azure OpenAI failed:', azureError.message);
+        console.log('⚠️ Attempting with Gemini as fallback...');
       }
     } else {
-      console.log('⚠️ Azure OpenAI no está configurado, usando Gemini como proveedor principal...');
+      console.log('⚠️ Azure OpenAI is not configured, using Gemini as primary provider...');
     }
 
-    // Si Azure falló o no está configurado, intentar con Gemini (Proveedor Secundario)
+    // If Azure failed or is not configured, try with Gemini (Secondary Provider)
     if (!GEMINI_API_KEY) {
       return res.status(500).json({ 
-        error: 'Ningún proveedor de IA está configurado',
+        error: 'No AI provider is configured',
         message: 'Configura AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY, o GEMINI_API_KEY en backend/.env'
       });
     }
@@ -301,35 +342,35 @@ Guidelines:
     
     for (const modelName of modelsToTry) {
       try {
-        console.log(`📡 Intentando con modelo Gemini: ${modelName} para generar más frases...`);
+        console.log(`📡 Attempting with Gemini model: ${modelName} to generate more phrases...`);
         const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(promptMore);
         const response = await result.response;
         text = response.text();
-        console.log(`✅ Respuesta recibida de Gemini con modelo: ${modelName}`);
-        console.log('📄 Texto completo:', text);
-        break; // Si funciona, salir del loop
+        console.log(`✅ Response received from Gemini with model: ${modelName}`);
+        console.log('📄 Full text:', text);
+        break; // If it works, exit the loop
       } catch (modelError) {
         const errorMsg = modelError.message || String(modelError);
-        console.log(`❌ ${modelName} falló:`, errorMsg.substring(0, 150));
+        console.log(`❌ ${modelName} failed:`, errorMsg.substring(0, 150));
         lastError = modelError;
-        continue; // Intentar siguiente modelo
+        continue; // Try next model
       }
     }
     
     if (!text) {
-      // Si todos los modelos de Gemini fallaron
-      console.log('⚠️ Todos los modelos de Gemini fallaron. Listando modelos disponibles...');
+      // If all Gemini models failed
+      console.log('⚠️ All Gemini models failed. Listing available models...');
       await listAvailableModels();
-      throw lastError || new Error('Todos los proveedores de IA fallaron. Verifica tu configuración.');
+      throw lastError || new Error('All AI providers failed. Verify your configuration.');
     }
 
     const phrases = extractPhrases(text);
-    // Limitar a exactamente 3 frases como medida de seguridad
+    // Limit to exactly 3 phrases as a security measure
     const limitedPhrases = phrases.slice(0, 3);
-    console.log(`📊 Frases extraídas: ${phrases.length}, limitadas a: ${limitedPhrases.length}`);
+    console.log(`📊 Extracted phrases: ${phrases.length}, limited to: ${limitedPhrases.length}`);
     if (limitedPhrases.length !== 3) {
-      console.warn(`⚠️ Advertencia: Se esperaban 3 frases pero se obtuvieron ${limitedPhrases.length}`);
+      console.warn(`⚠️ Warning: Expected 3 phrases but got ${limitedPhrases.length}`);
     }
     res.json({ phrases: limitedPhrases });
   } catch (error) {
@@ -343,13 +384,13 @@ Guidelines:
     });
     
     // Mensaje de error más útil
-    let errorMessage = error.message || 'Error desconocido';
+    let errorMessage = error.message || 'Unknown error';
     if (error.message?.includes('404') || error.message?.includes('not found')) {
-      errorMessage = 'El modelo de Gemini no está disponible. Verifica tu API key y los modelos disponibles.';
+      errorMessage = 'Gemini model is not available. Verify your API key and available models.';
     } else if (error.message?.includes('API_KEY') || error.message?.includes('API key')) {
-      errorMessage = 'API Key de Gemini inválida o sin permisos. Verifica tu API key.';
+      errorMessage = 'Invalid Gemini API Key or no permissions. Verify your API key.';
     } else if (error.message?.includes('quota') || error.message?.includes('limit')) {
-      errorMessage = 'Se ha excedido la cuota de la API de Gemini. Verifica tu plan.';
+      errorMessage = 'Gemini API quota exceeded. Verify your plan.';
     }
     
     res.status(500).json({ 
@@ -364,11 +405,11 @@ Guidelines:
 });
 
 // ==========================================
-// ENDPOINT DE GENERACIÓN DE IMÁGENES
+// IMAGE GENERATION ENDPOINT
 // ==========================================
 
 /**
- * Endpoint para generar una imagen con DALL-E para una frase AAC
+ * Endpoint to generate an image with DALL-E for an AAC phrase
  * POST /api/generate-image
  * Body: { phrase: string }
  */
@@ -378,7 +419,7 @@ app.post('/api/generate-image', async (req, res) => {
 
     if (!phrase || typeof phrase !== 'string' || phrase.trim().length === 0) {
       return res.status(400).json({ 
-        error: 'Se requiere una frase válida',
+        error: 'A valid phrase is required',
         message: 'El campo "phrase" es obligatorio y debe ser un string no vacío'
       });
     }
@@ -476,7 +517,7 @@ app.post('/api/azure/generate-phrases', async (req, res) => {
     const { words } = req.body;
 
     if (!words || !Array.isArray(words) || words.length === 0) {
-      return res.status(400).json({ error: 'Se requiere un array de palabras' });
+      return res.status(400).json({ error: 'An array of words is required' });
     }
 
     if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
@@ -535,7 +576,7 @@ app.post('/api/azure/generate-phrases', async (req, res) => {
     const { words } = req.body;
 
     if (!words || !Array.isArray(words) || words.length === 0) {
-      return res.status(400).json({ error: 'Se requiere un array de palabras' });
+      return res.status(400).json({ error: 'An array of words is required' });
     }
 
     if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
@@ -589,7 +630,7 @@ app.post('/api/azure/generate-more-phrases', async (req, res) => {
     const { words, existingPhrases } = req.body;
 
     if (!words || !Array.isArray(words) || words.length === 0) {
-      return res.status(400).json({ error: 'Se requiere un array de palabras' });
+      return res.status(400).json({ error: 'An array of words is required' });
     }
 
     if (!existingPhrases || !Array.isArray(existingPhrases)) {
@@ -662,13 +703,13 @@ app.get('/api/arasaac/image/:idPictogram', async (req, res) => {
     const { color, backgroundColor, plural, skin, hair, action } = req.query;
 
     if (!idPictogram) {
-      return res.status(400).json({ error: 'Se requiere un ID de pictograma' });
+      return res.status(400).json({ error: 'Pictogram ID is required' });
     }
 
-    console.log(`🖼️ Sirviendo imagen de pictograma ID: ${idPictogram}`);
-    console.log(`   Request desde: ${req.headers['user-agent'] || 'Unknown'}`);
+    console.log(`🖼️ Serving pictogram image ID: ${idPictogram}`);
+    console.log(`   Request from: ${req.headers['user-agent'] || 'Unknown'}`);
 
-    // Construir URL de ARASAAC con parámetros opcionales
+    // Build ARASAAC URL with optional parameters
     let url = `${ARASAAC_BASE_URL}/pictograms/${idPictogram}`;
     const params = [];
     
@@ -726,25 +767,25 @@ app.get('/api/arasaac/image/:idPictogram', async (req, res) => {
     try {
       imageBuffer = await response.buffer();
     } catch (error) {
-      // Si buffer() no está disponible, usar arrayBuffer()
+      // If buffer() is not available, use arrayBuffer()
       const arrayBuffer = await response.arrayBuffer();
       imageBuffer = Buffer.from(arrayBuffer);
     }
     
     const contentType = response.headers.get('content-type') || 'image/png';
 
-    console.log(`✅ Imagen obtenida: ${imageBuffer.length} bytes, tipo: ${contentType}`);
+    console.log(`✅ Image obtained: ${imageBuffer.length} bytes, type: ${contentType}`);
 
-    // Enviar la imagen con los headers correctos para React Native
+    // Send image with correct headers for React Native
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Length', imageBuffer.length);
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache por 1 año
-    res.setHeader('Access-Control-Allow-Origin', '*'); // CORS para React Native
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+    res.setHeader('Access-Control-Allow-Origin', '*'); // CORS for React Native
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.send(imageBuffer);
   } catch (error) {
-    console.error('❌ Error obteniendo imagen de ARASAAC:', error);
+    console.error('❌ Error getting image from ARASAAC:', error);
     res.status(500).json({ 
       error: 'Error al obtener la imagen',
       message: error.message
@@ -859,7 +900,7 @@ app.post('/api/arasaac/search-multiple', async (req, res) => {
     const { words, language = 'es' } = req.body;
 
     if (!words || !Array.isArray(words) || words.length === 0) {
-      return res.status(400).json({ error: 'Se requiere un array de palabras' });
+      return res.status(400).json({ error: 'An array of words is required' });
     }
 
     console.log(`🔍 Buscando pictogramas para ${words.length} palabras en idioma: ${language}`);
@@ -952,8 +993,7 @@ let userData = {
   preferences: {
     language: 'es',
     theme: 1,
-    fontSize: 'medium',
-    voiceSpeed: 1.0
+    fontSize: 'medium'
   }
 };
 
@@ -1016,8 +1056,7 @@ app.post('/api/user/reset', (req, res) => {
       preferences: {
         language: 'es',
         theme: 1,
-        fontSize: 'medium',
-        voiceSpeed: 1.0
+        fontSize: 'medium'
       }
     };
     
@@ -1041,21 +1080,21 @@ app.post('/api/avatar', async (req, res) => {
   try {
     const { userId, email, fullName } = req.body;
     
-    // Importar el generador de avatares
+    // Import avatar generator
     const avatarGenerator = require('./utils/avatarGenerator.js');
     
-    // Crear seed consistente
+    // Create consistent seed
     const seed = avatarGenerator.createUserSeed(userId, email, fullName);
     
-    // Generar avatar (ahora es asíncrono porque convierte SVG a PNG)
+    // Generate avatar (now async because it converts SVG to PNG)
     const avatarUrl = await avatarGenerator.generateAvatarDataUrl(seed);
     
-    console.log(`✅ Avatar generado para seed: ${seed.substring(0, 10)}...`);
+    console.log(`✅ Avatar generated for seed: ${seed.substring(0, 10)}...`);
     res.json({ avatarUrl, seed });
   } catch (error) {
-    console.error('❌ Error generando avatar:', error);
+    console.error('❌ Error generating avatar:', error);
     res.status(500).json({ 
-      error: 'Error al generar avatar',
+      error: 'Error generating avatar',
       message: error.message
     });
   }
@@ -1088,10 +1127,23 @@ app.get('/api/user/initials', (req, res) => {
 /**
  * GET /api/categories
  * Get all categories with their pictogram IDs
+ * If userId is provided, returns only the user's categories
  */
 app.get('/api/categories', async (req, res) => {
   try {
-    const categories = await getAllCategories();
+    const userId = req.query.userId;
+    
+    let categories;
+    if (userId) {
+      // Load categories for specific user
+      categories = await getUserCategories(userId);
+      console.log(`✅ Categories loaded for user ${userId}: ${Object.keys(categories).length} categories`);
+    } else {
+      // Load all categories (backward compatibility)
+      categories = await getAllCategories();
+      console.log(`✅ All categories loaded: ${Object.keys(categories).length} categories`);
+    }
+    
     res.json({ categories });
   } catch (error) {
     console.error('❌ Error getting categories:', error);
@@ -1105,11 +1157,19 @@ app.get('/api/categories', async (req, res) => {
 /**
  * GET /api/categories/:categoryName
  * Get pictogram IDs for a specific category
+ * Si se proporciona userId, busca en las categorías del usuario
  */
 app.get('/api/categories/:categoryName', async (req, res) => {
   try {
     const { categoryName } = req.params;
-    const pictogramIds = await getCategoryPictograms(categoryName);
+    const userId = req.query.userId;
+    
+    let pictogramIds;
+    if (userId) {
+      pictogramIds = await getUserCategoryPictograms(userId, categoryName);
+    } else {
+      pictogramIds = await getCategoryPictograms(categoryName);
+    }
     
     res.json({
       category: categoryName,
@@ -1129,11 +1189,13 @@ app.get('/api/categories/:categoryName', async (req, res) => {
 /**
  * POST /api/categories
  * Create a new custom category
- * Body: { categoryName: string, maxResults?: number }
+ * Body: { categoryName: string, maxResults?: number, description?: string, userId: string }
+ * Header: Authorization: Bearer <userId> (opcional si viene en body)
  */
-app.post('/api/categories', async (req, res) => {
+app.post('/api/categories', authenticateUser, async (req, res) => {
   try {
-    const { categoryName, maxResults = 50 } = req.body;
+    const { categoryName, maxResults = 50, description } = req.body;
+    const userId = req.userId; // Obtenido del middleware authenticateUser
 
     if (!categoryName || typeof categoryName !== 'string' || categoryName.trim() === '') {
       return res.status(400).json({
@@ -1142,6 +1204,7 @@ app.post('/api/categories', async (req, res) => {
     }
 
     const trimmedName = categoryName.trim();
+    const trimmedDescription = description && typeof description === 'string' ? description.trim() : undefined;
 
     // Validate category name
     if (isPredefinedCategory(trimmedName)) {
@@ -1150,14 +1213,14 @@ app.post('/api/categories', async (req, res) => {
       });
     }
 
-    // Create category using AI
-    const pictogramIds = await createCategory(trimmedName, maxResults);
+    // Create category using AI (user-specific)
+    const pictogramIds = await createUserCategory(userId, trimmedName, maxResults, trimmedDescription);
 
     res.json({
       category: trimmedName,
       pictogramIds,
       count: pictogramIds.length,
-      message: `Categoría "${trimmedName}" creada exitosamente con ${pictogramIds.length} pictogramas`
+      message: `Categoría "${trimmedName}" creada exitosamente con ${pictogramIds.length} pictogramas para el usuario ${userId}`
     });
   } catch (error) {
     console.error('❌ Error creating category:', error);
@@ -1179,10 +1242,12 @@ app.post('/api/categories', async (req, res) => {
 /**
  * DELETE /api/categories/:categoryName
  * Delete a custom category (cannot delete predefined categories)
+ * Header: Authorization: Bearer <userId> (opcional si viene en query)
  */
-app.delete('/api/categories/:categoryName', async (req, res) => {
+app.delete('/api/categories/:categoryName', authenticateUser, async (req, res) => {
   try {
     const { categoryName } = req.params;
+    const userId = req.userId; // Obtenido del middleware authenticateUser
 
     if (isPredefinedCategory(categoryName)) {
       return res.status(400).json({
@@ -1190,10 +1255,10 @@ app.delete('/api/categories/:categoryName', async (req, res) => {
       });
     }
 
-    await deleteCategory(categoryName);
+    await deleteUserCategory(userId, categoryName);
 
     res.json({
-      message: `Categoría "${categoryName}" eliminada exitosamente`
+      message: `Categoría "${categoryName}" eliminada exitosamente para el usuario ${userId}`
     });
   } catch (error) {
     console.error('❌ Error deleting category:', error);

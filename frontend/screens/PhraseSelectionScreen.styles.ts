@@ -50,6 +50,7 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 15,
+    justifyContent: 'flex-start',
   },
   
   // Image Container
@@ -58,6 +59,34 @@ export const styles = StyleSheet.create({
     height: '64%',
     backgroundColor: '#f5f5f5',
     flexShrink: 0,
+    position: 'relative',
+  },
+  // Audio indicator badge
+  audioIndicatorBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  audioIndicatorIcon: {
+    fontSize: 20,
+  },
+  audioIndicatorText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '600',
   },
   phraseImage: {
     width: '100%',
@@ -162,46 +191,56 @@ export const styles = StyleSheet.create({
   },
   selectedActionButtons: {
     padding: 16,
+    flexDirection: 'row',
     gap: 12,
   },
-  deselectButton: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  deselectButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  
-  // Action Buttons
-  actionButtons: {
-    padding: 16,
-    gap: 12,
-  },
-  generateButton: {
-    padding: 16,
+  pcsButtonSelected: {
+    flex: 1,
+    aspectRatio: 1.2,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 3,
+    padding: 8,
   },
-  generateButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  homeButton: {
+  
+  // Action Buttons - PCS style
+  actionButtons: {
     padding: 16,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  pcsButton: {
+    flex: 1,
+    aspectRatio: 1.2,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 3,
+    padding: 8,
   },
-  homeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  pcsButtonImage: {
+    width: 60,
+    height: 60,
+    marginBottom: 6,
+  },
+  pcsButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   
   // Empty State

@@ -65,12 +65,12 @@ export async function searchPictograms(
     );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as { error?: string };
       console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.error || `Error ${response.status}`);
     }
 
-    const pictograms = await response.json();
+    const pictograms = await response.json() as ArasaacPictogram[];
     console.log(`✅ Se encontraron ${pictograms.length} pictogramas`);
     return pictograms;
   } catch (error: any) {
@@ -110,12 +110,12 @@ export async function getPictogramById(
     );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as { error?: string };
       console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.error || `Error ${response.status}`);
     }
 
-    const pictogram = await response.json();
+    const pictogram = await response.json() as ArasaacPictogram;
     console.log(`✅ Pictograma obtenido: ${pictogram._id}`);
     return pictogram;
   } catch (error: any) {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Text,
   View,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   SafeAreaView,
   Image,
 } from 'react-native';
@@ -15,9 +14,10 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
+import { useToast } from '../context/ToastContext';
 import { getUserAvatarUrl } from '../api';
 import { getInitials, isValidEmail, isValidName } from '../utils/index';
-import BackButton from '../components/common/BackButton';
+import Header from '../components/common/Header';
 import { RootStackParamList } from '../types/navigation';
 import { styles } from './ProfileScreen.styles';
 
@@ -30,27 +30,30 @@ type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList,
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { theme } = useTheme();
-  const { user, updateUser, isLoading: userLoading } = useUser();
+  const { user, updateUser, updatePreferences, refreshUser, isLoading: userLoading } = useUser();
 
   // Form states
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [email, setEmail] = useState(user?.email || '');
+  const [childAge, setChildAge] = useState<string>(user?.preferences.childAge?.toString() || '');
   const [isSaving, setIsSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
+  const { showSuccess, showError } = useToast();
 
-  // Load avatar when user changes
-  React.useEffect(() => {
+  // Load avatar and form data when user changes
+  useEffect(() => {
     if (user) {
-      setFullName(user.fullName);
-      setEmail(user.email);
+      setFullName(user.fullName || '');
+      setEmail(user.email || '');
+      setChildAge(user.preferences.childAge?.toString() || '');
       loadAvatar();
     }
-  }, [user?.id, user?.email, user?.fullName]);
+  }, [user?.id, user?.fullName, user?.email, user?.preferences.childAge]);
 
   const loadAvatar = async () => {
     if (!user) return;
-    
+
     try {
       setAvatarLoading(true);
       const url = await getUserAvatarUrl(user);
@@ -67,22 +70,27 @@ export default function ProfileScreen() {
    */
   const validateForm = (): boolean => {
     if (!fullName.trim()) {
-      Alert.alert('Error', 'Name is required');
+      showError('Name is required');
       return false;
     }
 
     if (!isValidName(fullName)) {
-      Alert.alert('Error', 'Name must be at least 2 characters and contain only letters');
+      showError('Name must be at least 2 characters and contain only letters');
       return false;
     }
 
     if (!email.trim()) {
-      Alert.alert('Error', 'Email is required');
+      showError('Email is required');
       return false;
     }
 
     if (!isValidEmail(email)) {
-      Alert.alert('Error', 'Email is not valid');
+      showError('Email is not valid');
+      return false;
+    }
+
+    if (childAge.trim() && (isNaN(Number(childAge)) || Number(childAge) < 0 || Number(childAge) > 120)) {
+      showError('Age must be a valid number between 0 and 120');
       return false;
     }
 
@@ -98,45 +106,22 @@ export default function ProfileScreen() {
     try {
       setIsSaving(true);
       await updateUser({ fullName, email });
-      Alert.alert('Success', 'Profile updated successfully');
+      
+      // Update child age in preferences
+      const ageValue = childAge.trim() ? parseInt(childAge, 10) : undefined;
+      await updatePreferences({ childAge: ageValue });
+      
+      // Refresh user data from Firestore to ensure consistency
+      await refreshUser();
+      
+      showSuccess('Profile updated successfully');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error updating profile');
+      showError(error.message || 'Error updating profile');
     } finally {
       setIsSaving(false);
     }
-  }, [fullName, email, updateUser]);
+  }, [fullName, email, childAge, updateUser, updatePreferences, refreshUser]);
 
-  /**
-   * Resets profile to default values
-   */
-  const handleReset = useCallback(() => {
-    Alert.alert(
-      'Confirm Reset',
-      'Are you sure you want to reset your profile to default values?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsSaving(true);
-              // Reset to default values
-              await updateUser({ 
-                fullName: 'Usuario',
-                email: user?.email || ''
-              });
-              Alert.alert('Success', 'Profile reset successfully');
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Error resetting profile');
-            } finally {
-              setIsSaving(false);
-            }
-          },
-        },
-      ]
-    );
-  }, [updateUser, user?.email]);
 
 
   if (userLoading) {
@@ -156,161 +141,177 @@ export default function ProfileScreen() {
   const initials = getInitials(fullName, email);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar style="auto" />
-      
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.primary }]}>
-        <BackButton />
-        <Text style={styles.headerTitle}>My Profile</Text>
-        <View style={{ width: 48 }} />
-      </View>
+    <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar style="auto" />
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        {/* Avatar */}
-        <View style={styles.avatarSection}>
-          <View style={[styles.avatarContainer, { backgroundColor: 'white' }]}>
-            {avatarLoading ? (
-              <ActivityIndicator size="large" color={theme.primary} />
-            ) : avatarUrl ? (
-              <Image
-                source={{ uri: avatarUrl }}
-                style={styles.avatarImage}
-                onError={() => setAvatarUrl(null)}
-              />
-            ) : (
-              <Text style={styles.avatarInitials}>{initials}</Text>
-            )}
-          </View>
-          <Text style={[styles.avatarLabel, { color: theme.accent }]}>
-            Automatically generated avatar
-          </Text>
-        </View>
+        {/* Header */}
+        <Header
+          title="My Profile"
+          showProfile={false}
+        />
 
-        {/* Formulario */}
-        <View style={styles.form}>
-          {/* Nombre completo */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.primary }]}>Full Name</Text>
-            <TextInput
-              style={[
-                styles.input,
-                { 
-                  backgroundColor: 'white',
-                  color: theme.primary,
-                  borderColor: '#ddd'
-                }
-              ]}
-              value={fullName}
-              onChangeText={setFullName}
-              placeholder="Ex: John Doe"
-              placeholderTextColor={theme.accent}
-              autoCapitalize="words"
-              editable={!isSaving}
-            />
-          </View>
-
-          {/* Email */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.primary }]}>Email</Text>
-            <TextInput
-              style={[
-                styles.input,
-                { 
-                  backgroundColor: 'white',
-                  color: theme.primary,
-                  borderColor: '#ddd'
-                }
-              ]}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="ejemplo@email.com"
-              placeholderTextColor={theme.accent}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!isSaving}
-            />
-          </View>
-
-          {/* Preferencias (solo lectura por ahora) */}
-          <View style={styles.preferencesSection}>
-            <Text style={[styles.sectionTitle, { color: theme.primary }]}>Preferences</Text>
-            
-            <View style={styles.preferenceItem}>
-              <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
-                Language
+        <ScrollView
+          style={[styles.content, { backgroundColor: theme.background }]}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Avatar Section */}
+          <View style={[styles.card, { backgroundColor: 'white' }]}>
+            <View style={styles.avatarSection}>
+              <View style={[styles.avatarContainer, { backgroundColor: theme.primary + '15' }]}>
+                {avatarLoading ? (
+                  <ActivityIndicator size="large" color={theme.primary} />
+                ) : avatarUrl ? (
+                  <Image
+                    source={{ uri: avatarUrl }}
+                    style={styles.avatarImage}
+                    onError={() => setAvatarUrl(null)}
+                  />
+                ) : (
+                  <Text style={[styles.avatarInitials, { color: theme.primary }]}>{initials}</Text>
+                )}
+              </View>
+              <Text style={[styles.avatarLabel, { color: theme.accent }]}>
+                Automatically generated avatar
               </Text>
+            </View>
+          </View>
+
+          {/* Personal Information Card */}
+          <View style={[styles.card, { backgroundColor: 'white' }]}>
+            <Text style={[styles.sectionTitle, { color: theme.primary }]}>👤 Personal Information</Text>
+            
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.primary }]}>Full Name</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: '#f8f9fa',
+                    color: theme.primary,
+                    borderColor: '#e0e0e0'
+                  }
+                ]}
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder="Ex: John Doe"
+                placeholderTextColor={theme.accent}
+                autoCapitalize="words"
+                editable={!isSaving}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.primary }]}>Email</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: '#f8f9fa',
+                    color: theme.primary,
+                    borderColor: '#e0e0e0'
+                  }
+                ]}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="ejemplo@email.com"
+                placeholderTextColor={theme.accent}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSaving}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.primary }]}>Age</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: '#f8f9fa',
+                    color: theme.primary,
+                    borderColor: '#e0e0e0'
+                  }
+                ]}
+                value={childAge}
+                onChangeText={setChildAge}
+                placeholder="Enter age"
+                placeholderTextColor={theme.accent}
+                keyboardType="numeric"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSaving}
+              />
+            </View>
+          </View>
+
+          {/* Preferences Card */}
+          <View style={[styles.card, { backgroundColor: 'white' }]}>
+            <Text style={[styles.sectionTitle, { color: theme.primary }]}>⚙️ Preferences</Text>
+
+            <View style={styles.preferenceItem}>
+              <View style={styles.preferenceLeft}>
+                <Text style={styles.preferenceIcon}>🌐</Text>
+                <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
+                  Language
+                </Text>
+              </View>
               <Text style={[styles.preferenceValue, { color: theme.primary }]}>
-                {user?.preferences.language === 'es' ? 'Spanish' : 'English'}
+                {user?.preferences.language === 'es' ? 'Español' : 'English'}
               </Text>
             </View>
 
+            <View style={styles.preferenceDivider} />
+
             <View style={styles.preferenceItem}>
-              <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
-                Theme
-              </Text>
+              <View style={styles.preferenceLeft}>
+                <Text style={styles.preferenceIcon}>🎨</Text>
+                <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
+                  Theme
+                </Text>
+              </View>
               <Text style={[styles.preferenceValue, { color: theme.primary }]}>
                 Palette {user?.preferences.theme || 1}
               </Text>
             </View>
 
-            <View style={styles.preferenceItem}>
-              <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
-                Font Size
-              </Text>
-              <Text style={[styles.preferenceValue, { color: theme.primary }]}>
-                {user?.preferences.fontSize === 'medium' ? 'Medium' : user?.preferences.fontSize}
-              </Text>
-            </View>
+            <View style={styles.preferenceDivider} />
 
             <View style={styles.preferenceItem}>
-              <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
-                Voice Speed
-              </Text>
+              <View style={styles.preferenceLeft}>
+                <Text style={styles.preferenceIcon}>📝</Text>
+                <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
+                  Font Size
+                </Text>
+              </View>
               <Text style={[styles.preferenceValue, { color: theme.primary }]}>
-                {user?.preferences.voiceSpeed || 1.0}x
+                {user?.preferences.fontSize === 'medium' ? 'Medium' : user?.preferences.fontSize || 'Medium'}
               </Text>
             </View>
           </View>
 
-          {/* Botones */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[
-                styles.saveButton,
-                { backgroundColor: theme.primary },
-                isSaving && styles.disabledButton
-              ]}
-              onPress={handleSave}
-              disabled={isSaving}
-              activeOpacity={0.7}
-            >
-              {isSaving ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text style={styles.saveButtonText}>Save Changes</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.resetButton,
-                { borderColor: '#dc3545' },
-                isSaving && styles.disabledButton
-              ]}
-              onPress={handleReset}
-              disabled={isSaving}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.resetButtonText, { color: '#dc3545' }]}>
-                Reset Profile
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          {/* Save Button */}
+          <TouchableOpacity
+            style={[
+              styles.saveButton,
+              { backgroundColor: theme.primary },
+              isSaving && styles.disabledButton
+            ]}
+            onPress={handleSave}
+            disabled={isSaving}
+            activeOpacity={0.7}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.saveButtonText}>Save Changes</Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 

@@ -1,220 +1,307 @@
-# AAC App - Comunicación Aumentativa y Alternativa
+# 🗣️ WizzWords - Augmentative and Alternative Communication Platform
 
-Aplicación de comunicación aumentativa usando React Native y Expo para ayudar a niños con necesidades especiales a comunicarse mediante símbolos PCS.
+<div align="center">
 
-## 📁 Estructura del Proyecto
+**Augmentative and Alternative Communication (AAC) platform that helps children with special needs communicate through ARASAAC pictograms and AI-powered phrase generation.**
 
-El proyecto está organizado en dos partes principales:
+[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Documentation](#-documentation) • [Technologies](#-technologies)
+
+</div>
+
+---
+
+## 📖 About the Project
+
+**WizzWords** is a mobile application designed to facilitate communication for children with special needs through the use of ARASAAC pictograms (Augmentative and Alternative Communication system). The application uses artificial intelligence to generate natural phrases from selected symbols, enabling more fluid and effective communication.
+
+### 🎯 Objectives
+
+- **Translate** PCS symbols, text, speech, or images into natural language
+- **Convert** caregiver speech or text into PCS symbol sequences
+- **Adapt** to each child's communication profile and privacy constraints
+- **Provide** an accessible and easy-to-use interface
+
+---
+
+## ✨ Features
+
+### 🎨 User Interface
+- ✅ **Accessible design** with large buttons and high readability
+- ✅ **6 customizable color palettes** with WCAG AA contrast compliance
+- ✅ **Dual mode**: Interface for children and menu for parents/caregivers
+- ✅ **Custom notification system** (Toast)
+- ✅ **Clear visual indicators** for all actions
+
+### 🖼️ ARASAAC Pictograms
+- ✅ **Complete integration** with ARASAAC library
+- ✅ **Smart pictogram search** by categories
+- ✅ **User-customizable categories**
+- ✅ **Dynamic pictogram loading** with progress indicators
+- ✅ **Multi-language support** (es, en, fr, it, pt, de, ca)
+
+### 🤖 Artificial Intelligence
+- ✅ **Natural phrase generation** using Google Gemini AI
+- ✅ **Azure OpenAI support** as alternative
+- ✅ **Bidirectional translation**: Symbols → Text and Text → Symbols
+- ✅ **Multiple phrase variants** generation
+
+### 🔊 Text-to-Speech
+- ✅ **Voice playback** integrated with Expo Speech
+- ✅ **Interactive flashcards** with audio indicator
+- ✅ **Tap to play** generated phrases
+
+### 👤 User Management
+- ✅ **Firebase authentication**
+- ✅ **Personalized user profiles**
+- ✅ **User-scoped categories** (data isolation)
+- ✅ **Onboarding system** for new users
+- ✅ **Custom avatar generation**
+
+### 🔒 Security and Accessibility
+- ✅ **Protected parent mode** with password and 5-attempt lockout
+- ✅ **Robust password validation**
+- ✅ **Screen reader support**
+- ✅ **High contrast themes** for better visibility
+
+---
+
+## 🚀 Installation
+
+### Prerequisites
+
+- **Node.js** v18 or higher
+- **npm** or **yarn**
+- **Expo CLI** (installed automatically)
+- **Google Gemini API Key** ([get it here](https://makersuite.google.com/app/apikey))
+- **Firebase** (optional, for authentication and storage)
+
+### Quick Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/pablojhdcoder/wizzwords-aac-platform.git
+   cd wizzwords-aac-platform
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm run install:all
+   ```
+
+3. **Configure environment variables**
+   
+   Create `.env` file in the root:
+   ```env
+   EXPO_PUBLIC_GEMINI_API_KEY=your_api_key_here
+   ```
+   
+   Create `backend/.env` file:
+   ```env
+   GEMINI_API_KEY=your_api_key_here
+   AZURE_OPENAI_API_KEY=your_azure_key_optional
+   AZURE_OPENAI_URL=your_azure_url_optional
+   ```
+
+4. **Start the backend server** (Terminal 1)
+   ```bash
+   npm run server
+   # Or for development with auto-reload:
+   npm run server:dev
+   ```
+
+5. **Start the application** (Terminal 2)
+   ```bash
+   npm start
+   ```
+
+### Platform Configuration
+
+#### Android Emulator
+- Edit `frontend/api.ts` and change `API_BASE_URL` to `http://10.0.2.2:3000`
+
+#### iOS Simulator
+- ✅ Already configured for `http://localhost:3000`
+
+#### Physical Device
+- Change `API_BASE_URL` in `frontend/api.ts` to `http://YOUR_LOCAL_IP:3000`
+- Find your local IP:
+  - **Windows**: `ipconfig` → look for "IPv4"
+  - **Mac/Linux**: `ifconfig` or `ip addr`
+
+---
+
+## 📱 Usage
+
+### Main Flow
+
+1. **Pictogram Selection**
+   - Navigate through categories (Food, Games, School, Family, etc.)
+   - Select pictograms by tapping the symbols
+   - Selected symbols appear in the top bar
+   - Tap a selected symbol to remove it
+
+2. **Phrase Generation**
+   - Press "Generate Phrases" to create natural phrases
+   - Phrases are generated using AI and displayed as flashcards
+   - Tap a phrase to hear it with text-to-speech
+   - Press "Generate More" to get variants
+
+3. **Parent Menu**
+   - Access the password-protected menu
+   - Manage custom categories
+   - Configure user preferences
+   - Edit profile and settings
+
+### Advanced Features
+
+- **Custom Categories**: Create and manage your own pictogram categories
+- **Customizable Themes**: Choose from 6 accessible color palettes
+- **User Profile**: Customize name, email, and preferences
+- **Onboarding**: Initial guide for new users
+
+---
+
+## 🏗️ Project Structure
 
 ```
-AAC/
-├── frontend/          # Aplicación React Native/Expo
-│   ├── App.tsx
-│   ├── assets/
-│   ├── components/
-│   ├── context/
-│   ├── screens/
-│   ├── services/
-│   ├── types/
-│   └── package.json
-├── backend/           # Servidor Node.js/Express
-│   ├── index.js
-│   ├── package.json
-│   └── ...
-└── package.json       # Scripts principales del proyecto
+wizzwords-aac-platform/
+├── frontend/                 # React Native/Expo application
+│   ├── screens/              # Application screens
+│   ├── components/           # Reusable components
+│   ├── services/            # Services (Firebase, API, etc.)
+│   ├── context/             # Context providers (Theme, User, Toast)
+│   ├── types/               # TypeScript definitions
+│   └── assets/             # Images and resources
+│
+├── backend/                 # Node.js/Express server
+│   ├── services/            # Services (ARASAAC, Gemini, Azure, etc.)
+│   ├── data/               # Data and categories
+│   ├── utils/              # Utilities
+│   └── index.js            # Main server
+│
+├── docs/                    # Complete documentation
+│   ├── configuration/      # Configuration guides
+│   ├── development/        # Development documentation
+│   └── technical.md        # Technical documentation
+│
+└── README.md                # This file
 ```
 
-## 🚀 Primeros Pasos
+---
 
-### Requisitos Previos
+## 🛠️ Technologies
 
-- Node.js (v18 o superior)
-- npm o yarn
-- API Key de Google Gemini (obtén una en [Google AI Studio](https://makersuite.google.com/app/apikey))
+### Frontend
+- **React Native** with Expo SDK 54
+- **TypeScript** for type safety
+- **React Navigation** for navigation
+- **Firebase** for authentication and storage
+- **Expo Speech** for text-to-speech
+- **React Context API** for state management
 
-### Instalación
+### Backend
+- **Node.js** (v18+)
+- **Express.js** framework
+- **TypeScript** for services
+- **CORS** middleware
 
-**Opción 1: Instalar todo de una vez**
+### AI Services
+- **Google Gemini AI** (Gemini 1.5 Flash/Pro)
+- **Azure OpenAI** (GPT-4o-mini as alternative)
+- **ARASAAC API** for pictograms
+
+### Storage
+- **Firebase Firestore** for user data
+- **Firebase Storage** for files
+- **AsyncStorage** for local data
+
+---
+
+## 📚 Documentation
+
+Complete documentation is available in the [`docs/`](./docs/) folder:
+
+- **[Configuration Guide](./docs/configuration/)** - API and service configuration
+- **[Technical Documentation](./docs/technical.md)** - Architecture and technical details
+- **[Project Brief](./docs/project-brief.md)** - Project overview
+- **[Project Status](./docs/status.md)** - Current status and roadmap
+
+### Quick Guides
+
+- [API Configuration](./docs/configuration/api-setup.md)
+- [ARASAAC Configuration](./docs/configuration/arasaac-setup.md)
+- [Environment Variables Configuration](./docs/configuration/env-config.md)
+- [Firebase Configuration](./docs/configuration/platform-setup.md)
+
+---
+
+## 🧪 Development
+
+### Available Scripts
+
 ```bash
-npm run install:all
+# Installation
+npm run install:all          # Install all dependencies
+npm run frontend:install     # Install frontend only
+npm run backend:install      # Install backend only
+
+# Development
+npm start                    # Start frontend (Expo)
+npm run frontend:start       # Start frontend specifically
+npm run frontend:android     # Start on Android
+npm run frontend:ios         # Start on iOS
+
+# Backend
+npm run server               # Start backend server
+npm run server:dev           # Start with auto-reload
 ```
 
-**Opción 2: Instalar por separado**
+### Code Structure
 
-1. Instala las dependencias del frontend:
-```bash
-cd frontend
-npm install
-cd ..
-```
+- **Frontend**: TypeScript with functional components and hooks
+- **Backend**: TypeScript with modular services
+- **Styles**: React Native StyleSheet with dynamic themes
+- **Navigation**: React Navigation with custom transitions
 
-2. Instala las dependencias del backend:
-```bash
-cd backend
-npm install
-cd ..
-```
+---
 
-3. Configura tu API Key de Gemini:
-   - El archivo `.env` en la raíz ya tiene tu API key configurada
-   - El archivo `backend/.env` también tiene la misma clave
-   - **IMPORTANTE**: La API key está en `.env` que está en `.gitignore` (no se subirá al repositorio)
+## 🤝 Contributing
 
-### ⚡ Inicio Rápido
+This is an academic project developed for **Advanced User Interfaces** at **Politecnico di Milano (Polimi)**.
 
-**Paso 1: Inicia el servidor backend** (en una terminal):
-```bash
-npm run server
-# O para desarrollo con auto-reload:
-npm run server:dev
-```
+If you want to contribute:
 
-El servidor se ejecutará en `http://localhost:3000`
+1. Fork the project
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-**Paso 2: Inicia la app React Native** (en otra terminal):
-```bash
-npm start
-```
+---
 
-**Paso 3: Configura la URL del backend según tu plataforma:**
+## 📄 License
 
-- **Web/Navegador**: Ya está configurado para `http://localhost:3000` ✅
-- **Android Emulator**: Edita `frontend/services/geminiService.ts` línea 6 y cambia a `http://10.0.2.2:3000`
-- **iOS Simulator**: Ya está configurado para `http://localhost:3000` ✅
-- **Dispositivo Físico**: Cambia a `http://TU_IP_LOCAL:3000` (ej: `http://192.168.1.100:3000`)
+This project is an academic prototype developed for the **Advanced User Interfaces** course at:
 
-### Ejecución
+<div align="center">
 
-**Desde la raíz del proyecto:**
+![Politecnico di Milano](./docs/images/PolimiLogo.png)
 
-Para iniciar la app en modo desarrollo:
-```bash
-npm start
-# o específicamente:
-npm run frontend:start
-```
+**Politecnico di Milano (Polimi)**
 
-Para iniciar el backend:
-```bash
-npm run server
-# o para desarrollo con auto-reload:
-npm run server:dev
-```
+</div>
 
-**Desde las carpetas individuales:**
+---
 
-Frontend:
-```bash
-cd frontend
-npm start
-```
+## 👥 Authors
 
-Backend:
-```bash
-cd backend
-npm start
-```
+Developed as part of the Advanced User Interfaces academic project.
 
-Esto abrirá Expo Dev Tools. Desde ahí puedes:
-- Presionar `w` para abrir en el navegador web
-- Escanear el código QR con la app Expo Go en tu móvil (Android/iOS)
-- Presionar `a` para abrir en emulador Android (si tienes Android Studio)
-- Presionar `i` para abrir en simulador iOS (solo en Mac con Xcode)
+---
 
-### Opción más rápida: Web
+## 🙏 Acknowledgments
 
-```bash
-npm run frontend:web
-```
-
-## ✨ Características Implementadas
-
-✅ **Interfaz Básica** (Punto 1 del Roadmap)
-- Pantalla principal con grilla de símbolos grandes para selección PCS
-- Campo de entrada de texto para cuidadores
-- Área de visualización mostrando la salida traducida
-- Navegación simple y clara
-
-✅ **Integración con Gemini AI** (Basado en prototype.py)
-- Selección de palabras mediante símbolos
-- Generación de frases naturales usando Gemini 2.0 Flash
-- Text-to-Speech para reproducir las frases generadas
-- Generación de más frases sin repetir las existentes
-
-### Componentes Principales
-
-1. **Selección de Palabras**: 9 palabras básicas (I, You, Not, Like, Want, Play, Football, Pizza, School) con imágenes placeholder
-2. **Generación de Frases**: Usa Gemini AI para crear frases naturales y gramaticalmente correctas
-3. **Reproducción de Voz**: Text-to-speech integrado con expo-speech
-4. **Interfaz Dual**: Dos pantallas - selección de palabras y selección de frases
-
-## 🎯 Próximos Pasos
-
-- [ ] Integración con pictogramas ARASAAC reales
-- [ ] Backend con Node.js y Firebase
-- [ ] Entrada de voz con Whisper
-- [ ] Procesamiento de imágenes
-- [ ] Perfiles de usuario personalizados
-
-## 🛠️ Tecnologías
-
-- **React Native** con Expo SDK 54
-- **TypeScript**
-- **Google Gemini AI** (@google/generative-ai)
-- **Expo Speech** para text-to-speech
-- Diseño con componentes nativos para máximo rendimiento
-
-## 📱 Uso de la App
-
-### Flujo Principal:
-
-1. **Selección de Palabras**:
-   - Toca los símbolos para seleccionar palabras
-   - Las palabras seleccionadas aparecen en la parte superior
-   - Presiona "Generar Frases" para crear frases naturales
-
-2. **Selección de Frases**:
-   - Se muestran las frases generadas por Gemini
-   - Toca una frase para reproducirla con text-to-speech
-   - Presiona "Generar Más Frases" para obtener alternativas
-
-3. **Navegación**:
-   - Usa "Volver" para regresar a la selección de palabras
-   - Usa "Limpiar" para resetear todo
-
-## ⚙️ Configuración
-
-### API Key de Gemini
-
-La API key ya está configurada en:
-- `.env` (raíz del proyecto) - para el frontend
-- `backend/.env` - para el backend
-
-Si necesitas cambiarla, edita ambos archivos.
-
-### URL del Backend
-
-Por defecto, la app está configurada para usar `http://localhost:3000`. 
-
-**Para cambiar la URL del backend según tu plataforma:**
-
-Edita `frontend/services/geminiService.ts` línea 6:
-
-```typescript
-// Para Android Emulator:
-const API_BASE_URL = 'http://10.0.2.2:3000';
-
-// Para iOS Simulator o Web:
-const API_BASE_URL = 'http://localhost:3000';
-
-// Para dispositivo físico (reemplaza con tu IP local):
-const API_BASE_URL = 'http://192.168.1.100:3000';
-```
-
-**Para encontrar tu IP local:**
-- Windows: Ejecuta `ipconfig` y busca "IPv4"
-- Mac/Linux: Ejecuta `ifconfig` o `ip addr`
-
-## 📄 Licencia
-
-Este proyecto es un prototipo académico para Advanced User Interfaces - Polimi.
+- **ARASAAC** for providing the open-source pictogram library
+- **Google Gemini** for the AI API
+- **Expo** for the React Native framework
+- **Firebase** for backend services
