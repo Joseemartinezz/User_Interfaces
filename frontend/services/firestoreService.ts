@@ -31,8 +31,6 @@ export async function createUserDocument(
       preferences: {
         language: 'en',
         theme: 1,
-        fontSize: 'medium',
-        preferredFontSize: 'medium',
         customPCSSymbols: [],
         categories: [],
         hiddenCategories: [],

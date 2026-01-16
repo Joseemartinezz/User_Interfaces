@@ -409,7 +409,7 @@ const ParentMenuScreen: React.FC = () => {
                 <Text style={styles.menuIcon}>👤</Text>
                 <View style={styles.menuTextContainer}>
                   <Text style={[styles.menuButtonText, { color: theme.primary }]}>
-                    User Profile
+                    My Profile
                   </Text>
                   <Text style={[styles.menuButtonSubtext, { color: theme.primary }]}>
                     Edit name, email...
@@ -428,10 +428,10 @@ const ParentMenuScreen: React.FC = () => {
                 <Text style={styles.menuIcon}>🎨</Text>
                 <View style={styles.menuTextContainer}>
                   <Text style={[styles.menuButtonText, { color: theme.primary }]}>
-                    Theme Settings
+                    Theme
                   </Text>
                   <Text style={[styles.menuButtonSubtext, { color: theme.primary }]}>
-                    Change colors and appearance
+                    Change app appearance
                   </Text>
                 </View>
                 <Text style={[styles.menuArrow, { color: theme.primary }]}>›</Text>
@@ -491,10 +491,9 @@ const ParentMenuScreen: React.FC = () => {
           <View style={[styles.infoBox, { backgroundColor: theme.secondary, borderColor: theme.accent }]}>
             <Text style={[styles.infoTitle, { color: theme.primary }]}>ℹ️ App Information</Text>
             <Text style={[styles.infoText, { color: theme.primary }]}>
-              WizzWords{'\n'}
-              AAC App - LLM powered{'\n'}
-              Polimi - Advanced User Interfaces{'\n'}
-              Version 0.3.0
+              WizzWords - Version 0.5.0{'\n'}
+              AAC App - AI powered{'\n'}
+              Politecnico di Milano - Advanced User Interfaces
             </Text>
           </View>
         </ScrollView>

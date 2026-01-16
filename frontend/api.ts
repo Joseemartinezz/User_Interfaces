@@ -65,7 +65,7 @@ export async function testConnection(): Promise<boolean> {
 /**
  * Generates natural phrases from selected words using Gemini
  */
-export async function generatePhrases(words: string[]): Promise<string[]> {
+export async function generatePhrases(words: string[], childAge?: number): Promise<string[]> {
   if (!words || words.length === 0) {
     return [];
   }
@@ -76,7 +76,7 @@ export async function generatePhrases(words: string[]): Promise<string[]> {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ words }),
+      body: JSON.stringify({ words, childAge }),
     });
 
     if (!response.ok) {
@@ -97,7 +97,8 @@ export async function generatePhrases(words: string[]): Promise<string[]> {
  */
 export async function generateMorePhrases(
   words: string[],
-  existingPhrases: string[]
+  existingPhrases: string[],
+  childAge?: number
 ): Promise<string[]> {
   if (!words || words.length === 0) {
     return [];
@@ -109,7 +110,7 @@ export async function generateMorePhrases(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ words, existingPhrases }),
+      body: JSON.stringify({ words, existingPhrases, childAge }),
     });
 
     if (!response.ok) {
@@ -333,7 +334,6 @@ export interface User {
   preferences: {
     language: string;
     theme: number;
-    fontSize: string;
   };
 }
 

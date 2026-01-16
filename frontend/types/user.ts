@@ -38,9 +38,6 @@ export interface ActionButtonPictograms {
 export interface UserPreferences {
   language: string;
   theme: number;
-  fontSize: string;
-  // New preferences
-  preferredFontSize: 'small' | 'medium' | 'large' | 'extra-large';
   customPCSSymbols: CustomPCSSymbol[];
   categories: UserCategory[];
   hiddenCategories?: string[]; // Names of default categories hidden by user

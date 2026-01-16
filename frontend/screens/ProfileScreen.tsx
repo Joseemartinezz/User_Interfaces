@@ -29,7 +29,7 @@ type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList,
  */
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
-  const { theme } = useTheme();
+  const { theme, currentPalette } = useTheme();
   const { user, updateUser, updatePreferences, refreshUser, isLoading: userLoading } = useUser();
 
   // Form states
@@ -139,6 +139,22 @@ export default function ProfileScreen() {
   }
 
   const initials = getInitials(fullName, email);
+
+  // Get palette colors based on palette number
+  const getPaletteColors = (paletteNumber: number): string[] => {
+    const palettes: Record<number, string[]> = {
+      1: ['#8470e5', '#daa5f3', '#e9a1f7', '#efbaf9'],
+      2: ['#5b59c5', '#6481e3', '#81A0EE', '#90B3F4'],
+      3: ['#002626', '#0E4749', '#95C623', '#E55812', '#EFE7DA'],
+      4: ['#F8FFE5', '#08D6A0', '#189AAA', '#EF476F', '#FFC43D'],
+      5: ['#FCEFEF', '#7FD8BE', '#A1FCDF', '#FCD29F', '#FCAB64'],
+      6: ['#D8CFAF', '#E6B89C', '#ED9390', '#F374AE', '#32533D'],
+    };
+    return palettes[paletteNumber] || palettes[1];
+  };
+
+  const selectedPalette = currentPalette || user?.preferences.theme || 1;
+  const paletteColors = getPaletteColors(selectedPalette);
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
@@ -272,23 +288,14 @@ export default function ProfileScreen() {
                   Theme
                 </Text>
               </View>
-              <Text style={[styles.preferenceValue, { color: theme.primary }]}>
-                Palette {user?.preferences.theme || 1}
-              </Text>
-            </View>
-
-            <View style={styles.preferenceDivider} />
-
-            <View style={styles.preferenceItem}>
-              <View style={styles.preferenceLeft}>
-                <Text style={styles.preferenceIcon}>📝</Text>
-                <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
-                  Font Size
-                </Text>
+              <View style={styles.themePreview}>
+                {paletteColors.map((color, index) => (
+                  <View
+                    key={index}
+                    style={[styles.colorSwatch, { backgroundColor: color }]}
+                  />
+                ))}
               </View>
-              <Text style={[styles.preferenceValue, { color: theme.primary }]}>
-                {user?.preferences.fontSize === 'medium' ? 'Medium' : user?.preferences.fontSize || 'Medium'}
-              </Text>
             </View>
           </View>
 

@@ -5,12 +5,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { enableScreens } from 'react-native-screens';
 
 // Importar pantallas desde frontend
-import WelcomeScreen from './frontend/screens/WelcomeScreen';
-import SentenceTypeScreen from './frontend/screens/SentenceTypeScreen';
-import TopicSelectionScreen from './frontend/screens/TopicSelectionScreen';
 import PCSScreen from './frontend/screens/PCSScreen';
-import PhraseSelectionScreen from './frontend/screens/PhraseSelectionScreen';
-import SettingsScreen from './frontend/screens/SettingsScreen';
+import FlashcardSelectionScreen from './frontend/screens/FlashcardSelectionScreen';
+import ColorSettingsScreen from './frontend/screens/ColorSettingsScreen';
 import ParentMenuScreen from './frontend/screens/ParentMenuScreen';
 import ProfileScreen from './frontend/screens/ProfileScreen';
 
@@ -56,31 +53,6 @@ export default function App() {
           freezeOnBlur: false, // Mantener pantallas en memoria para navegación rápida
         }}
       >
-        {/* Pantalla de bienvenida */}
-        <Stack.Screen 
-          name="Welcome" 
-          component={WelcomeScreen}
-          options={{
-            animation: 'fade',
-            animationDuration: 250,
-            gestureEnabled: false, // No permitir gesto en la pantalla inicial
-          }}
-        />
-
-        {/* Pantalla de selección de tipo de oración */}
-        <Stack.Screen 
-          name="SentenceType" 
-          component={SentenceTypeScreen}
-          // Sin animation explícita - usa animación nativa hacia atrás
-        />
-
-        {/* Pantalla de selección de tema */}
-        <Stack.Screen 
-          name="TopicSelection"
-          component={TopicSelectionScreen}
-          // Sin animation explícita - usa animación nativa hacia atrás
-        />
-
         {/* Pantalla de selección de palabras (PCS) - PANTALLA PRINCIPAL PARA NIÑOS */}
         <Stack.Screen 
           name="PCS" 
@@ -94,7 +66,7 @@ export default function App() {
         {/* Pantalla de selección de frases */}
         <Stack.Screen 
           name="PhraseSelection" 
-          component={PhraseSelectionScreen}
+          component={FlashcardSelectionScreen}
           // Sin animation explícita - usa animación nativa hacia atrás
         />
 
@@ -108,7 +80,7 @@ export default function App() {
         {/* Pantalla de ajustes */}
         <Stack.Screen 
           name="Settings" 
-          component={SettingsScreen}
+          component={ColorSettingsScreen}
           // Sin animation explícita - usa animación nativa hacia atrás
         />
 

@@ -140,10 +140,14 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
   },
   actionButtons: {
-    padding: 12,
-    paddingBottom: 35,
+    padding: 16,
+    paddingHorizontal: 40,
+    paddingTop: 0,
+    paddingBottom: 37,
+    marginTop: 10,
     flexDirection: 'row',
-    gap: 10,
+    gap: 16,
+    flexShrink: 0,
   },
   pcsButton: {
     flex: 1,
@@ -160,6 +164,7 @@ export const styles = StyleSheet.create({
     elevation: 4,
     borderWidth: 3,
     padding: 8,
+    paddingHorizontal: 12,
   },
   pcsButtonImage: {
     width: 60,

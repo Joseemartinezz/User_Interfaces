@@ -177,23 +177,6 @@ export const styles = StyleSheet.create({
     color: '#4CAF50',
     marginTop: 8,
   },
-  fontSizeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    marginBottom: 12,
-  },
-  fontSizePreview: {
-    fontWeight: 'bold',
-    marginRight: 16,
-  },
-  fontSizeLabel: {
-    fontSize: 16,
-    flex: 1,
-  },
   categoriesHeader: {
     marginBottom: 16,
   },

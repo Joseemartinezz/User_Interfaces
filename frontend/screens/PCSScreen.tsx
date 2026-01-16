@@ -16,6 +16,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { generatePhrases, getPictogramImageUrl, getAllCategories, getCategoryPictogramIds, getPictogramsByIds } from '../api';
 import Header from '../components/common/Header';
+import ImageLoadingScreen from '../components/common/ImageLoadingScreen';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
@@ -230,6 +231,8 @@ const PCSScreen: React.FC = () => {
   const [categoryLoadProgress, setCategoryLoadProgress] = useState<Record<string, number>>({}); // How many pictograms have been loaded per category
   const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0); // Current category index for indicators
+  const [isInitialLoading, setIsInitialLoading] = useState(true); // Track initial loading state
+  const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false); // Track if initial load has been completed
   const categoryFlatListRef = useRef<FlatList>(null); // Reference to FlatList for programmatic navigation
   const indicatorsScrollViewRef = useRef<ScrollView>(null); // Reference to indicators ScrollView
 
@@ -440,13 +443,80 @@ const PCSScreen: React.FC = () => {
     if (Object.keys(backendCategories).length > 0) {
       // Load first 16 pictograms for each visible category
       allCategories.forEach(category => {
-        if (!categorySymbolsCache[category.name] && backendCategories[category.name] && !loadingCategories.has(category.name)) {
-          loadCategoryPictograms(category.name, 0, INITIAL_PAGE_SIZE);
+        // If category exists in backend but has no cache and is not loading, load it
+        if (backendCategories[category.name] !== undefined) {
+          if (!categorySymbolsCache[category.name] && !loadingCategories.has(category.name)) {
+            loadCategoryPictograms(category.name, 0, INITIAL_PAGE_SIZE);
+          }
+        } else {
+          // Category doesn't exist in backend (custom category without backend data)
+          // Mark it as processed by setting empty cache and progress
+          if (!categorySymbolsCache[category.name] && categoryLoadProgress[category.name] === undefined) {
+            setCategorySymbolsCache(prev => ({ ...prev, [category.name]: [] }));
+            setCategoryLoadProgress(prev => ({ ...prev, [category.name]: 0 }));
+          }
         }
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backendCategories, allCategories.length]);
+
+  // Track initial loading state - show loading screen until all initial symbols are loaded
+  // Only show loading screen during initial load, not when loading more symbols
+  useEffect(() => {
+    // If initial load has already been completed, don't show loading screen anymore
+    if (hasCompletedInitialLoad) {
+      setIsInitialLoading(false);
+      return;
+    }
+
+    // If no categories loaded yet, still loading
+    if (Object.keys(backendCategories).length === 0) {
+      setIsInitialLoading(true);
+      return;
+    }
+
+    // Check if all visible categories have at least started loading their symbols
+    // (they may be empty, but we need to know they've been processed)
+    const visibleCategories = allCategories.filter(cat => !hiddenCategories.includes(cat.name));
+    
+    // If no visible categories, we're done
+    if (visibleCategories.length === 0) {
+      setIsInitialLoading(false);
+      setHasCompletedInitialLoad(true);
+      return;
+    }
+
+    // Check if all categories have been processed (have cache or progress set)
+    const allCategoriesProcessed = visibleCategories.every(category => {
+      return categorySymbolsCache[category.name] !== undefined || 
+             categoryLoadProgress[category.name] !== undefined;
+    });
+
+    // Check if any category is loading its INITIAL batch
+    // A category is loading initial if:
+    // 1. It's in loadingCategories AND
+    // 2. It has no progress yet (progress === 0 or undefined) OR
+    // 3. It has progress but less than INITIAL_PAGE_SIZE (still loading first batch)
+    const isAnyCategoryLoadingInitial = visibleCategories.some(category => {
+      if (!loadingCategories.has(category.name)) {
+        return false; // Not loading
+      }
+      const progress = categoryLoadProgress[category.name];
+      // If no progress set yet, it's initial load
+      // If progress is less than INITIAL_PAGE_SIZE, it's still loading initial batch
+      return progress === undefined || progress < INITIAL_PAGE_SIZE;
+    });
+
+    // If all categories are processed and no initial loads are happening, we're done
+    if (allCategoriesProcessed && !isAnyCategoryLoadingInitial) {
+      setIsInitialLoading(false);
+      setHasCompletedInitialLoad(true);
+    } else if (isAnyCategoryLoadingInitial || !allCategoriesProcessed) {
+      // Still loading initial symbols
+      setIsInitialLoading(true);
+    }
+  }, [backendCategories, loadingCategories, categorySymbolsCache, categoryLoadProgress, allCategories, hiddenCategories, hasCompletedInitialLoad]);
 
   // Get symbols for a specific category (from cache)
   const getSymbolsForCategory = useCallback((categoryName: string) => {
@@ -544,7 +614,8 @@ const PCSScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const generatedPhrases = await generatePhrases(selectedWords);
+      const childAge = user?.preferences.childAge;
+      const generatedPhrases = await generatePhrases(selectedWords, childAge);
       // Navigate to phrase selection screen
       navigation.navigate('PhraseSelection', {
         phrases: generatedPhrases,
@@ -557,7 +628,7 @@ const PCSScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWords, navigation, topic]);
+  }, [selectedWords, navigation, topic, user?.preferences.childAge]);
 
   // Clear selection
   const handleClear = useCallback(() => {
@@ -609,6 +680,11 @@ const PCSScreen: React.FC = () => {
       });
     }
   }, [currentCategoryIndex, allCategories.length]);
+
+  // Show loading screen while initial symbols are loading
+  if (isInitialLoading) {
+    return <ImageLoadingScreen message="Loading symbols..." iconEmoji="🗣️" />;
+  }
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
@@ -911,7 +987,7 @@ const PCSScreen: React.FC = () => {
               isLoading && styles.buttonDisabled
             ]}
             onPress={handleGeneratePhrases}
-            disabled={isLoading || selectedWords.length === 0}
+            disabled={isLoading}
             accessible={true}
             accessibilityLabel="Generate phrases from selected words"
             accessibilityRole="button"
@@ -931,7 +1007,7 @@ const PCSScreen: React.FC = () => {
                   style={styles.pcsButtonImage}
                 />
                 <Text style={[styles.pcsButtonText, { color: theme.primary }]}>
-                  Generate Flashcards
+                  Generate
                 </Text>
               </>
             )}

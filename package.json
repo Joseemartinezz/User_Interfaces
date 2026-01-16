@@ -16,6 +16,10 @@
     "server:dev": "npm run backend:dev",
     "backend:install": "cd backend && npm install",
     "frontend:install": "cd frontend && npm install"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "typescript": "^5.1.3"
   }
 }
 

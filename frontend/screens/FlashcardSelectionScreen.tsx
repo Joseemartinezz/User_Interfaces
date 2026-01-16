@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Image,
   Animated,
   Easing,
+  ImageStyle,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -21,7 +22,7 @@ import ImageLoadingScreen from '../components/common/ImageLoadingScreen';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { useUser } from '../context/UserContext';
-import { styles } from './PhraseSelectionScreen.styles';
+import { styles } from './FlashcardSelectionScreen.styles';
 
 // Component to display ARASAAC pictograms with error handling
 interface PictogramImageProps {
@@ -75,11 +76,11 @@ interface PhraseWithImage {
 }
 
 /**
- * Phrase selection screen with flashcard design
+ * Flashcard selection screen with flashcard design
  * Shows AI-generated phrases with images in a swipeable carousel
  * Each phrase is displayed as a flashcard with image and text-to-speech
  */
-const PhraseSelectionScreen: React.FC = () => {
+const FlashcardSelectionScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PhraseSelectionParams }, 'params'>>();
   const { theme } = useTheme();
@@ -109,10 +110,17 @@ const PhraseSelectionScreen: React.FC = () => {
   const buttonsTranslateY = useRef(new Animated.Value(50)).current;
   const imagePulse = useRef(new Animated.Value(1)).current;
   const glowOpacity = useRef(new Animated.Value(0)).current;
+  const imagePulseAnimation = useRef<Animated.CompositeAnimation | null>(null);
+  const previousSelectedIndex = useRef<number | null>(null);
 
   // Clean phrase by removing leading numbers and dots
   const cleanPhrase = useCallback((phrase: string): string => {
     return phrase.trim().replace(/^\d+\.\s*/, "");
+  }, []);
+
+  const resetHeaderAnimation = useCallback(() => {
+    headerTranslateY.setValue(0);
+    headerOpacity.setValue(1);
   }, []);
 
   // Generate images for initial phrases (only first 3)
@@ -165,6 +173,31 @@ const PhraseSelectionScreen: React.FC = () => {
     }
   }, [initialPhrases]);
 
+  // Scroll to correct index when returning from selected view
+  // This runs synchronously before the browser paints, preventing visual jump
+  useLayoutEffect(() => {
+    // Si selectedIndex cambió de un valor a null, hacer scroll al índice correcto
+    if (previousSelectedIndex.current !== null && selectedIndex === null && flatListRef.current) {
+      const indexToScroll = previousSelectedIndex.current;
+      try {
+        flatListRef.current.scrollToIndex({ 
+          index: indexToScroll, 
+          animated: false 
+        });
+        setCurrentIndex(indexToScroll);
+      } catch (error) {
+        // Si falla, usar scrollToOffset como fallback
+        flatListRef.current.scrollToOffset({
+          offset: SCREEN_WIDTH * indexToScroll,
+          animated: false,
+        });
+        setCurrentIndex(indexToScroll);
+      }
+    }
+    // Actualizar el ref con el valor actual
+    previousSelectedIndex.current = selectedIndex;
+  }, [selectedIndex]);
+
   // Animate selection transition
   useEffect(() => {
     if (selectedIndex !== null) {
@@ -173,13 +206,13 @@ const PhraseSelectionScreen: React.FC = () => {
         // Header se desliza hacia arriba y desaparece
         Animated.timing(headerTranslateY, {
           toValue: -100,
-          duration: 400,
+          duration: 250,
           easing: Easing.bezier(0.4, 0.0, 0.2, 1),
           useNativeDriver: true,
         }),
         Animated.timing(headerOpacity, {
           toValue: 0,
-          duration: 300,
+          duration: 150,
           useNativeDriver: true,
         }),
         // Flashcard crece con un efecto de zoom elegante
@@ -239,7 +272,11 @@ const PhraseSelectionScreen: React.FC = () => {
       ]).start();
 
       // Pulso continuo en la imagen
-      Animated.loop(
+      // Detener cualquier animación previa del pulso
+      if (imagePulseAnimation.current) {
+        imagePulseAnimation.current.stop();
+      }
+      imagePulseAnimation.current = Animated.loop(
         Animated.sequence([
           Animated.timing(imagePulse, {
             toValue: 1.02,
@@ -254,9 +291,16 @@ const PhraseSelectionScreen: React.FC = () => {
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      imagePulseAnimation.current.start();
 
     } else {
+      resetHeaderAnimation();
+      // Detener el pulso de imagen cuando se deselecciona
+      if (imagePulseAnimation.current) {
+        imagePulseAnimation.current.stop();
+        imagePulseAnimation.current = null;
+      }
       // Animate OUT - cuando se deselecciona
       Animated.parallel([
         Animated.timing(headerTranslateY, {
@@ -303,9 +347,9 @@ const PhraseSelectionScreen: React.FC = () => {
         }),
       ]).start();
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, resetHeaderAnimation]);
 
-  // Play phrase with text-to-speech with higher volume
+  // Play phrase with text-to-speech
   const handleSpeakPhrase = useCallback((phrase: string) => {
     const cleaned = cleanPhrase(phrase);
     Speech.stop();
@@ -313,7 +357,7 @@ const PhraseSelectionScreen: React.FC = () => {
       language: 'en',
       pitch: 1.2,
       rate: 0.9,
-      volume: 1.0, // Volumen máximo
+      volume: 0.5, // Volumen reducido para evitar distorsión
     });
   }, [cleanPhrase]);
 
@@ -325,7 +369,8 @@ const PhraseSelectionScreen: React.FC = () => {
 
     setIsGeneratingMore(true);
     try {
-      const morePhrases = await generateMorePhrases(words, allPhrases);
+      const childAge = user?.preferences.childAge;
+      const morePhrases = await generateMorePhrases(words, allPhrases, childAge);
 
       // Agregar las nuevas frases con loading state
       const newPhrasesWithLoading: PhraseWithImage[] = morePhrases.map(phrase => ({
@@ -361,14 +406,15 @@ const PhraseSelectionScreen: React.FC = () => {
     } finally {
       setIsGeneratingMore(false);
     }
-  }, [words, allPhrases]);
+  }, [words, allPhrases, user?.preferences.childAge]);
 
   // Go back to PCS screen
   const handleBackToPCS = useCallback(() => {
+    resetHeaderAnimation();
     setSelectedIndex(null);
     setTappedIndex(null);
     (navigation as any).navigate('PCS', { topic });
-  }, [navigation, topic]);
+  }, [navigation, topic, resetHeaderAnimation]);
 
   // Handle card tap - play audio and enable selection
   const handleCardTap = useCallback((index: number) => {
@@ -426,7 +472,7 @@ const PhraseSelectionScreen: React.FC = () => {
               ) : item.imageUrl ? (
                 <Image
                   source={{ uri: item.imageUrl }}
-                  style={styles.phraseImage}
+                  style={styles.phraseImage as ImageStyle}
                   resizeMode="cover"
                 />
               ) : (
@@ -466,7 +512,7 @@ const PhraseSelectionScreen: React.FC = () => {
                 arasaacId={6612}
                 style={styles.selectButtonImage}
               />
-              <Text style={styles.selectButtonText}>Select Phrase</Text>
+              <Text style={styles.selectButtonText}>Select</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -516,7 +562,7 @@ const PhraseSelectionScreen: React.FC = () => {
             }}
           >
             <Header
-              title="Selected Phrase"
+              title="Generated Phrases"
             />
           </Animated.View>
 
@@ -539,49 +585,60 @@ const PhraseSelectionScreen: React.FC = () => {
               }}
             />
             
-            <Animated.View
-              style={{
-                width: '100%',
-                height: '100%',
-                transform: [
-                  { scale: flashcardScale },
-                  { rotate: rotateInterpolate },
-                ],
-              }}
+            <TouchableOpacity
+              activeOpacity={0.95}
+              onPress={() => handleSpeakPhrase(selectedPhrase.phrase)}
+              style={styles.flashcardTouchable}
             >
-              <View style={[styles.flashcard, styles.flashcardSelected, { backgroundColor: theme.white }]}>
-                <Animated.View 
-                  style={[
-                    styles.imageContainer,
-                    {
-                      transform: [{ scale: imagePulse }],
-                    }
-                  ]}
-                >
-                  {selectedPhrase.isLoading ? (
-                    <View style={styles.imageLoadingContainer}>
-                      <ActivityIndicator size="large" color={theme.primary} />
+              <Animated.View
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  transform: [
+                    { scale: flashcardScale },
+                    { rotate: rotateInterpolate },
+                  ],
+                }}
+              >
+                <View style={[styles.flashcard, styles.flashcardSelected, { backgroundColor: theme.white }]}>
+                  <Animated.View 
+                    style={[
+                      styles.imageContainer,
+                      {
+                        transform: [{ scale: imagePulse }],
+                      }
+                    ]}
+                  >
+                    {/* Audio indicator badge - shows that tapping plays audio */}
+                    <View style={styles.audioIndicatorBadge}>
+                      <Text style={styles.audioIndicatorIcon}>🔊</Text>
                     </View>
-                  ) : selectedPhrase.imageUrl ? (
-                    <Image
-                      source={{ uri: selectedPhrase.imageUrl }}
-                      style={styles.phraseImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={[styles.imagePlaceholder, { backgroundColor: theme.accent }]}>
-                      <Text style={styles.placeholderEmoji}>🖼️</Text>
-                    </View>
-                  )}
-                </Animated.View>
+                    
+                    {selectedPhrase.isLoading ? (
+                      <View style={styles.imageLoadingContainer}>
+                        <ActivityIndicator size="large" color={theme.primary} />
+                      </View>
+                    ) : selectedPhrase.imageUrl ? (
+                      <Image
+                        source={{ uri: selectedPhrase.imageUrl }}
+                        style={styles.phraseImage as ImageStyle}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={[styles.imagePlaceholder, { backgroundColor: theme.accent }]}>
+                        <Text style={styles.placeholderEmoji}>🖼️</Text>
+                      </View>
+                    )}
+                  </Animated.View>
 
-                <View style={[styles.phraseTextContainer, { flex: 1, justifyContent: 'center' }]}>
-                  <Text style={[styles.phraseText, styles.phraseTextLarge, { color: theme.primary }]}>
-                    {cleanPhrase(selectedPhrase.phrase)}
-                  </Text>
+                  <View style={[styles.phraseTextContainer, { flex: 1, justifyContent: 'center' }]}>
+                    <Text style={[styles.phraseText, styles.phraseTextLarge, { color: theme.primary }]}>
+                      {cleanPhrase(selectedPhrase.phrase)}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </Animated.View>
+              </Animated.View>
+            </TouchableOpacity>
           </View>
 
           {/* Action buttons animados - aparecen desde abajo */}
@@ -598,24 +655,13 @@ const PhraseSelectionScreen: React.FC = () => {
             <TouchableOpacity
               style={[
                 styles.pcsButtonSelected,
-                { backgroundColor: 'white', borderColor: theme.accent }
+                { backgroundColor: 'white', borderColor: theme.primary }
               ]}
               onPress={() => {
-                // Mantener la posición del carrusel en la flashcard seleccionada
-                const indexToMaintain = selectedIndex;
+                resetHeaderAnimation();
+                // Simplemente cambiar el estado - el useLayoutEffect se encargará del scroll
                 setSelectedIndex(null);
                 setTappedIndex(null);
-                
-                // Hacer scroll a la flashcard que estaba seleccionada después de la transición
-                setTimeout(() => {
-                  if (indexToMaintain !== null) {
-                    flatListRef.current?.scrollToIndex({ 
-                      index: indexToMaintain, 
-                      animated: false 
-                    });
-                    setCurrentIndex(indexToMaintain);
-                  }
-                }, 50);
               }}
               accessible={true}
               accessibilityLabel="Back to phrase list"
@@ -626,8 +672,8 @@ const PhraseSelectionScreen: React.FC = () => {
                 arasaacId={38219}
                 style={styles.pcsButtonSelectedImage}
               />
-              <Text style={[styles.pcsButtonSelectedText, { color: theme.accent }]}>
-                Back to{'\n'}Flashcards
+              <Text style={[styles.pcsButtonSelectedText, { color: theme.primary }]} numberOfLines={1}>
+                Back
               </Text>
             </TouchableOpacity>
 
@@ -647,8 +693,8 @@ const PhraseSelectionScreen: React.FC = () => {
                 arasaacId={38249}
                 style={styles.pcsButtonSelectedImage}
               />
-              <Text style={[styles.pcsButtonSelectedText, { color: theme.tertiary }]}>
-                Back to{'\n'}Words
+              <Text style={[styles.pcsButtonSelectedText, { color: theme.tertiary }]} numberOfLines={1}>
+                Back to Words
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -770,8 +816,8 @@ const PhraseSelectionScreen: React.FC = () => {
                   arasaacId={user?.preferences?.actionButtonPictograms?.generateMore || 9172}
                   style={styles.pcsButtonImage}
                 />
-                <Text style={[styles.pcsButtonText, { color: theme.primary }]}>
-                  Generate{'\n'}More
+                <Text style={[styles.pcsButtonText, { color: theme.primary }]} numberOfLines={1}>
+                  Generate More
                 </Text>
               </>
             )}
@@ -793,8 +839,8 @@ const PhraseSelectionScreen: React.FC = () => {
               arasaacId={user?.preferences?.actionButtonPictograms?.back || 38249}
               style={styles.pcsButtonImage}
             />
-            <Text style={[styles.pcsButtonText, { color: theme.tertiary }]}>
-              Back to{'\n'}Words
+            <Text style={[styles.pcsButtonText, { color: theme.tertiary }]} numberOfLines={1}>
+              Back to Words
             </Text>
           </TouchableOpacity>
         </View>
@@ -803,4 +849,4 @@ const PhraseSelectionScreen: React.FC = () => {
   );
 };
 
-export default React.memo(PhraseSelectionScreen);
+export default React.memo(FlashcardSelectionScreen);

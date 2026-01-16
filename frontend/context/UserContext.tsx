@@ -69,8 +69,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       preferences: userData.preferences || {
         language: 'en',
         theme: 1,
-        fontSize: 'medium',
-        preferredFontSize: 'medium',
         customPCSSymbols: [],
         categories: [],
         hiddenCategories: [],

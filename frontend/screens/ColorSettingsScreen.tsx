@@ -13,16 +13,16 @@ import Header from '../components/common/Header';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
-import { styles } from './SettingsScreen.styles';
+import { styles } from './ColorSettingsScreen.styles';
 
-type SettingsScreenProps = {
+type ColorSettingsScreenProps = {
   navigation: NativeStackNavigationProp<any>;
 };
 
 /**
  * Settings screen with user preferences
  */
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
+const ColorSettingsScreen: React.FC<ColorSettingsScreenProps> = ({ navigation }) => {
   const { theme, currentPalette, setTheme } = useTheme();
   const { user, updatePreferences } = useUser();
   const { showSuccess, showError } = useToast();
@@ -49,20 +49,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleFontSizeChange = async (size: 'small' | 'medium' | 'large' | 'extra-large') => {
-    setIsSaving(true);
-    try {
-      await updatePreferences({ preferredFontSize: size });
-      showSuccess('Font size updated');
-    } catch (error: any) {
-      showError(error.message || 'Error updating font size');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-
-
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -70,7 +56,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
         {/* Header */}
         <Header
-          title="Settings"
+          title="Color Theme"
           showProfile={false}
         />
 
@@ -249,47 +235,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             </View>
           </View>
 
-          {/* Section: Font Size */}
-          <View style={[styles.section, { backgroundColor: theme.white }]}>
-            <Text style={[styles.sectionTitle, { color: theme.primary }]}>📏 Font Size (Not implemented)</Text>
-            <Text style={[styles.sectionDescription, { color: theme.primary }]}>
-              Text size in the app
-            </Text>
-
-            <View style={styles.optionsList}>
-              {(['small', 'medium', 'large', 'extra-large'] as const).map((size) => (
-                <TouchableOpacity
-                  key={size}
-                  style={[
-                    styles.optionItem,
-                    {
-                      borderColor: user?.preferences.preferredFontSize === size ? theme.primary : '#ddd',
-                      borderWidth: user?.preferences.preferredFontSize === size ? 2 : 1,
-                      backgroundColor: user?.preferences.preferredFontSize === size ? theme.secondary : 'white',
-                    }
-                  ]}
-                  onPress={() => handleFontSizeChange(size)}
-                  disabled={isSaving}
-                >
-                  <Text
-                    style={[
-                      styles.optionText,
-                      {
-                        color: theme.primary,
-                        fontSize: size === 'small' ? 14 : size === 'medium' ? 16 : size === 'large' ? 18 : 20
-                      }
-                    ]}
-                  >
-                    {size === 'small' && 'Small'}
-                    {size === 'medium' && 'Medium'}
-                    {size === 'large' && 'Large'}
-                    {size === 'extra-large' && 'Extra Large'}
-                    {user?.preferences.preferredFontSize === size && ' ✓'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -297,4 +242,4 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 };
 
 // Memoize component to avoid unnecessary re-renders
-export default React.memo(SettingsScreen);
+export default React.memo(ColorSettingsScreen);

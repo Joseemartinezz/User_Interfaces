@@ -5,6 +5,7 @@ import { styles } from './ImageLoadingScreen.styles';
 
 interface ImageLoadingScreenProps {
   message?: string;
+  iconEmoji?: string;
 }
 
 /**
@@ -12,7 +13,8 @@ interface ImageLoadingScreenProps {
  * Muestra una animación suave mientras se generan las imágenes
  */
 const ImageLoadingScreen: React.FC<ImageLoadingScreenProps> = ({ 
-  message = 'Creating your flashcards...' 
+  message = 'Creating your flashcards...',
+  iconEmoji = '🎨'
 }) => {
   const { theme } = useTheme();
   
@@ -80,7 +82,7 @@ const ImageLoadingScreen: React.FC<ImageLoadingScreenProps> = ({
             },
           ]}
         >
-          <Text style={styles.iconEmoji}>🎨</Text>
+          <Text style={styles.iconEmoji}>{iconEmoji}</Text>
         </Animated.View>
 
         {/* Texto principal */}

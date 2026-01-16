@@ -2,7 +2,7 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export const styles = StyleSheet.create({
+export const styles: ReturnType<typeof StyleSheet.create> = StyleSheet.create({
   rootWrapper: {
     flex: 1,
   },
@@ -17,7 +17,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 30,
     marginHorizontal: SCREEN_WIDTH * 0.05,
   },
   flashcardContainerSelected: {
@@ -62,13 +62,14 @@ export const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     flexShrink: 0,
     position: 'relative',
+    overflow: 'hidden', // Contiene sombras durante animaciones de escala
   },
   // Audio indicator badge
   audioIndicatorBadge: {
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Fondo sólido más opaco para visibilidad sin sombras
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 14,
@@ -76,11 +77,8 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    overflow: 'hidden', // Previene artefactos durante transformaciones
+    // Sin sombras ni elevation - elementos escalados no deben tener sombras
   },
   audioIndicatorIcon: {
     fontSize: 20,
@@ -199,51 +197,23 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 30,
-    maxHeight: SCREEN_HEIGHT * 0.7,
+    maxHeight: SCREEN_HEIGHT * 0.65,
   },
   selectedActionButtons: {
     padding: 16,
     paddingHorizontal: 40,
     paddingTop: 30,
-    marginTop: 20,
+    paddingBottom: 20,
+    marginTop: 10,
     flexDirection: 'row',
     gap: 16,
+    flexShrink: 0,
   },
   pcsButtonSelected: {
     flex: 1,
-    aspectRatio: 1.4,
-    maxHeight: 100,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-    borderWidth: 3,
-    padding: 6,
-  },
-  pcsButtonSelectedImage: {
-    width: 40,
-    height: 40,
-    marginBottom: 4,
-  },
-  pcsButtonSelectedText: {
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  
-  // Action Buttons - PCS style
-  actionButtons: {
-    padding: 16,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  pcsButton: {
-    flex: 1,
     aspectRatio: 1.2,
+    minHeight: 120,
+    maxHeight: 120,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -254,6 +224,46 @@ export const styles = StyleSheet.create({
     elevation: 4,
     borderWidth: 3,
     padding: 8,
+    paddingHorizontal: 12,
+  },
+  pcsButtonSelectedImage: {
+    width: 60,
+    height: 60,
+    marginBottom: 6,
+  },
+  pcsButtonSelectedText: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  
+  // Action Buttons - PCS style
+  actionButtons: {
+    padding: 16,
+    paddingHorizontal: 40,
+    paddingTop: 20,
+    paddingBottom: 37,
+    marginTop: 10,
+    flexDirection: 'row',
+    gap: 16,
+    flexShrink: 0,
+  },
+  pcsButton: {
+    flex: 1,
+    aspectRatio: 1.2,
+    minHeight: 120,
+    maxHeight: 120,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 3,
+    padding: 8,
+    paddingHorizontal: 12,
   },
   pcsButtonImage: {
     width: 60,
@@ -261,7 +271,7 @@ export const styles = StyleSheet.create({
     marginBottom: 6,
   },
   pcsButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     textAlign: 'center',
   },
@@ -285,6 +295,8 @@ export const styles = StyleSheet.create({
   carouselWrapper: {
     position: 'relative',
     flex: 1,
+    flexShrink: 1,
+    minHeight: 0,
   },
   
   // FlatList Content
@@ -326,9 +338,10 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 4,
     gap: 8,
-    marginTop: -8,
+    marginTop: 0,
+    marginBottom: 0,
   },
   dot: {
     width: 8,

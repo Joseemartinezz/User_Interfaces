@@ -161,5 +161,39 @@ export const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.6,
   },
+  // Theme preview styles
+  themePreview: {
+    flexDirection: 'row',
+    gap: 8,
+    position: 'relative',
+    alignItems: 'center',
+  },
+  colorSwatch: {
+    width: 30,
+    height: 30,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  selectedBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  selectedCheckmark: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
 

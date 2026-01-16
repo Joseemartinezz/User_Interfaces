@@ -36,13 +36,6 @@ const LANGUAGE_OPTIONS = [
   { code: 'it', label: 'Italiano', emoji: '🇮🇹' },
 ];
 
-// Font size options
-const FONT_SIZE_OPTIONS = [
-  { value: 'small', label: 'Small' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'large', label: 'Large' },
-  { value: 'extra-large', label: 'Extra Large' },
-];
 
 /**
  * Welcome and initial setup screen for new users
@@ -62,14 +55,13 @@ const OnboardingScreen: React.FC = () => {
   // Configuration states
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [selectedTheme, setSelectedTheme] = useState(1);
-  const [selectedFontSize, setSelectedFontSize] = useState<'small' | 'medium' | 'large' | 'extra-large'>('medium');
   const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
   const [childAge, setChildAge] = useState('');
   const [parentPassword, setParentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
-  const totalSteps = 6;
+  const totalSteps = 5;
 
   // ============================================================================
   // PASSWORD VALIDATION UTILITIES
@@ -173,8 +165,6 @@ const OnboardingScreen: React.FC = () => {
       await updatePreferences({
         language: selectedLanguage,
         theme: selectedTheme,
-        fontSize: selectedFontSize,
-        preferredFontSize: selectedFontSize,
         hiddenCategories,
         childAge: parseInt(childAge),
         parentMenuPassword: parentPassword,
@@ -459,63 +449,6 @@ const OnboardingScreen: React.FC = () => {
       case 4:
         return (
           <View style={styles.stepContainer}>
-            <Text style={[styles.stepTitle, { color: theme.primary }]}>
-              📏 Font Size
-            </Text>
-            <Text style={[styles.stepDescription, { color: theme.text }]}>
-              Select the most comfortable text size:
-            </Text>
-            <View style={styles.optionsContainer}>
-              {FONT_SIZE_OPTIONS.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.fontSizeButton,
-                    {
-                      borderColor: selectedFontSize === option.value ? theme.primary : theme.textSecondary,
-                      backgroundColor: selectedFontSize === option.value ? theme.secondary : theme.white,
-                    },
-                  ]}
-                  onPress={() => setSelectedFontSize(option.value as any)}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.fontSizePreview,
-                      {
-                        color: selectedFontSize === option.value ? theme.primary : theme.text,
-                        fontSize:
-                          option.value === 'small'
-                            ? 14
-                            : option.value === 'medium'
-                              ? 18
-                              : option.value === 'large'
-                                ? 22
-                                : 26,
-                      },
-                    ]}
-                  >
-                    Aa
-                  </Text>
-                  <Text
-                    style={[
-                      styles.fontSizeLabel,
-                      {
-                        color: selectedFontSize === option.value ? theme.primary : theme.text,
-                      },
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        );
-
-      case 5:
-        return (
-          <View style={styles.stepContainer}>
             <View style={styles.categoriesHeader}>
               <Text style={[styles.stepTitle, { color: theme.primary }]}>
                 📂 Categories
@@ -572,7 +505,7 @@ const OnboardingScreen: React.FC = () => {
           </View>
         );
 
-      case 6:
+      case 5:
         // Calculate password strength for visual indicator
         const strength = getPasswordStrength(parentPassword);
         const strengthColors = {

@@ -166,7 +166,7 @@ function extractPhrases(text) {
  */
 app.post('/api/generate-phrases', async (req, res) => {
   try {
-    const { words } = req.body;
+    const { words, childAge } = req.body;
 
     if (!words || !Array.isArray(words) || words.length === 0) {
       return res.status(400).json({ error: 'An array of words is required' });
@@ -176,7 +176,7 @@ app.post('/api/generate-phrases', async (req, res) => {
     if (AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) {
       try {
         console.log('🔄 Attempting to generate phrases with Azure OpenAI (Primary Provider)...');
-        const phrases = await generateAzurePhrases(words);
+        const phrases = await generateAzurePhrases(words, childAge);
         console.log('✅ Phrases generated successfully with Azure OpenAI');
         return res.json({ phrases });
       } catch (azureError) {
@@ -195,8 +195,14 @@ app.post('/api/generate-phrases', async (req, res) => {
       });
     }
 
+    // Build age-specific context for the prompt
+    const ageContext = childAge 
+      ? `The child is ${childAge} years old. Adjust the language complexity, vocabulary, and sentence structure to be age-appropriate for a ${childAge}-year-old child.`
+      : 'Adjust the language complexity and vocabulary to be appropriate for a child.';
+
     const basePrompt = `
 You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
+${ageContext}
 Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
 ${words.join(', ')}
 
@@ -204,6 +210,7 @@ Guidelines:
 - The phrases must be short but contain ALL information provided.
 - They should sound natural when spoken aloud.
 - They must be grammatically correct and easy for a child.
+- Use vocabulary and sentence complexity appropriate for the child's age.
 - Generate exactly 3 different phrases.
 - Return one phrase per line, numbered starting from 1.
 `;
@@ -285,7 +292,7 @@ Guidelines:
  */
 app.post('/api/generate-more-phrases', async (req, res) => {
   try {
-    const { words, existingPhrases } = req.body;
+    const { words, existingPhrases, childAge } = req.body;
 
     if (!words || !Array.isArray(words) || words.length === 0) {
       return res.status(400).json({ error: 'An array of words is required' });
@@ -299,7 +306,7 @@ app.post('/api/generate-more-phrases', async (req, res) => {
     if (AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) {
       try {
         console.log('🔄 Attempting to generate more phrases with Azure OpenAI (Primary Provider)...');
-        const phrases = await generateMoreAzurePhrases(words, existingPhrases);
+        const phrases = await generateMoreAzurePhrases(words, existingPhrases, childAge);
         // Limit to exactly 1 phrase for "Generate More" (solo una frase adicional)
         const limitedPhrases = phrases.slice(0, 1);
         console.log(`📊 Frases de Azure: ${phrases.length}, limitadas a: ${limitedPhrases.length}`);
@@ -324,8 +331,14 @@ app.post('/api/generate-more-phrases', async (req, res) => {
       });
     }
 
+    // Build age-specific context for the prompt
+    const ageContext = childAge 
+      ? `The child is ${childAge} years old. Adjust the language complexity, vocabulary, and sentence structure to be age-appropriate for a ${childAge}-year-old child.`
+      : 'Adjust the language complexity and vocabulary to be appropriate for a child.';
+
     const basePrompt = `
 You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
+${ageContext}
 Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
 ${words.join(', ')}
 
@@ -335,6 +348,7 @@ Guidelines:
 - The phrase must be short but contain ALL information provided.
 - It should sound natural when spoken aloud.
 - It must be grammatically correct and easy for a child.
+- Use vocabulary and sentence complexity appropriate for the child's age.
 - Generate EXACTLY 1 phrase. Do not generate 2, 3, or any other number. Only 1.
 - Return exactly 1 phrase.
 `;
@@ -998,8 +1012,7 @@ let userData = {
   fullName: 'Usuario',
   preferences: {
     language: 'es',
-    theme: 1,
-    fontSize: 'medium'
+    theme: 1
   }
 };
 

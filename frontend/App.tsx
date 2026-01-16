@@ -9,8 +9,8 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import CategoriesScreen from './screens/CategoriesScreen';
 import CategoryDetailScreen from './screens/CategoryDetailScreen';
 import PCSScreen from './screens/PCSScreen';
-import PhraseSelectionScreen from './screens/PhraseSelectionScreen';
-import SettingsScreen from './screens/SettingsScreen';
+import FlashcardSelectionScreen from './screens/FlashcardSelectionScreen';
+import ColorSettingsScreen from './screens/ColorSettingsScreen';
 import ParentMenuScreen from './screens/ParentMenuScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import LoginScreen from './screens/LoginScreen';
@@ -159,7 +159,7 @@ function AppNavigator() {
       {/* Phrase selection screen */}
       <Stack.Screen
         name="PhraseSelection"
-        component={PhraseSelectionScreen}
+        component={FlashcardSelectionScreen}
         options={{
           animation: 'slide_from_bottom', // Natural forward flow
           animationDuration: 300,
@@ -180,7 +180,7 @@ function AppNavigator() {
       {/* Settings screen */}
       <Stack.Screen
         name="Settings"
-        component={SettingsScreen}
+        component={ColorSettingsScreen}
         options={{
           animation: 'fade_from_bottom',
           animationDuration: 250,

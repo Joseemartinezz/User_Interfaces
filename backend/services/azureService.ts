@@ -48,7 +48,7 @@ function testAzureConnection() {
 /**
  * Generates natural phrases from selected words using Azure OpenAI
  */
-async function generateAzurePhrases(words) {
+async function generateAzurePhrases(words, childAge) {
   if (!words || words.length === 0) return [];
 
   const config = getAzureConfig();
@@ -57,9 +57,15 @@ async function generateAzurePhrases(words) {
   }
 
   try {
+    // Build age-specific context for the prompt
+    const ageContext = childAge 
+      ? `The child is ${childAge} years old. Adjust the language complexity, vocabulary, and sentence structure to be age-appropriate for a ${childAge}-year-old child.`
+      : 'Adjust the language complexity and vocabulary to be appropriate for a child.';
+
     const instructions = 'You are a helpful assistant that creates natural, child-friendly phrases for AAC communication devices.';
     const input = `
 You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
+${ageContext}
 Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
 ${words.join(', ')}
 
@@ -69,6 +75,7 @@ Guidelines:
 - The phrases must be short but contain ALL information provided.
 - They should sound natural when spoken aloud.
 - They must be grammatically correct and easy for a child.
+- Use vocabulary and sentence complexity appropriate for the child's age.
 - Generate EXACTLY 3 different phrases. Do not generate 1, 2, 4, 5, or any other number. Only 3.
 - Return exactly 3 phrases, one per line, numbered starting from 1.
 `;
@@ -140,7 +147,7 @@ Guidelines:
 /**
  * Generate more Azure phrases not repeating existing ones
  */
-async function generateMoreAzurePhrases(words, existingPhrases) {
+async function generateMoreAzurePhrases(words, existingPhrases, childAge) {
   if (!words || words.length === 0) return [];
 
   const config = getAzureConfig();
@@ -149,18 +156,25 @@ async function generateMoreAzurePhrases(words, existingPhrases) {
   }
 
   try {
+    // Build age-specific context for the prompt
+    const ageContext = childAge 
+      ? `The child is ${childAge} years old. Adjust the language complexity, vocabulary, and sentence structure to be age-appropriate for a ${childAge}-year-old child.`
+      : 'Adjust the language complexity and vocabulary to be appropriate for a child.';
+
     const instructions = 'You are a helpful assistant that creates natural, child-friendly phrases for AAC communication devices.';
     const input = `
 You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
+${ageContext}
 Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
 ${words.join(', ')}
 
-IMPORTANT: You MUST generate EXACTLY 3 phrases. No more, no less. Generate exactly 3 phrases.
+IMPORTANT: You MUST generate EXACTLY 1 phrase. No more, no less. Just one single phrase.
 
 Guidelines:
-- The phrases must be short but contain ALL information provided.
-- They should sound natural when spoken aloud.
-- They must be grammatically correct and easy for a child.
+- The phrase must be short but contain ALL information provided.
+- It should sound natural when spoken aloud.
+- It must be grammatically correct and easy for a child.
+- Use vocabulary and sentence complexity appropriate for the child's age.
 - Generate EXACTLY 1 phrase. No more, no less. Just one single phrase.
 - Return exactly 1 phrase.
 

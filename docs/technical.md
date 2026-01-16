@@ -29,7 +29,7 @@ The AAC (Augmentative and Alternative Communication) app is a React Native/Expo 
 2. PCSScreen → PCS symbol selection
 3. PhraseSelectionScreen → Generated phrases display
 4. ParentMenuScreen → Parent/caregiver interface
-5. SettingsScreen → App configuration
+5. ColorSettingsScreen → App configuration
 
 ### Backend Architecture
 
