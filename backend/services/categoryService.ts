@@ -35,14 +35,15 @@ const MIN_RELEVANCE_SCORE = 3;
 
 /**
  * Score weights for different match types
+ * Note: Only AI weights are used now (local search has been removed)
  */
 const SCORE_WEIGHTS = {
-  EXACT_KEYWORD_MATCH: 15,      // Exact match in keywords
-  EXACT_TAG_MATCH: 12,          // Exact match in tags
-  PARTIAL_KEYWORD_MATCH: 6,     // Keyword contains search term or vice versa
-  PARTIAL_TAG_MATCH: 4,         // Tag contains search term or vice versa
-  WORD_IN_KEYWORD: 3,           // Individual word matches keyword
-  WORD_IN_TAG: 2,               // Individual word matches tag
+  EXACT_KEYWORD_MATCH: 15,      // Exact match in keywords (legacy, not used)
+  EXACT_TAG_MATCH: 12,          // Exact match in tags (legacy, not used)
+  PARTIAL_KEYWORD_MATCH: 6,     // Keyword contains search term or vice versa (legacy, not used)
+  PARTIAL_TAG_MATCH: 4,         // Tag contains search term or vice versa (legacy, not used)
+  WORD_IN_KEYWORD: 3,           // Individual word matches keyword (legacy, not used)
+  WORD_IN_TAG: 2,               // Individual word matches tag (legacy, not used)
   AI_KEYWORD_MATCH: 8,          // AI-suggested keyword matches
   AI_TAG_MATCH: 6,              // AI-suggested tag matches
 };
@@ -484,13 +485,14 @@ async function initializePredefinedCategories(): Promise<Record<string, number[]
 
 /**
  * Use Azure OpenAI to find relevant pictograms for a new category
- * Uses a hybrid approach: local search + AI refinement with scoring and ranking
+ * Uses AI-only approach for better quality results
  * 
  * OPTIMIZED VERSION with:
+ * - AI-driven keyword/tag generation
  * - Detailed scoring system
  * - Quality filtering (minimum score threshold)
  * - Ranking by relevance
- * - Better AI prompts with real database tags
+ * - Fallback to Gemini if Azure fails
  * - Comprehensive logging for debugging
  */
 async function findPictogramsWithAI(
@@ -506,8 +508,7 @@ async function findPictogramsWithAI(
   const config = {
     url: process.env.AZURE_OPENAI_PHRASE_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_URL || '',
     key: process.env.AZURE_OPENAI_PHRASE_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_KEY || '',
-    deployment: process.env.AZURE_OPENAI_PHRASE_DEPLOYMENT || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_DEPLOYMENT || 'gpt-4o-mini',
-    apiVersion: process.env.AZURE_OPENAI_PHRASE_API_VERSION || '2023-03-15-preview'
+    model: process.env.AZURE_OPENAI_PHRASE_DEPLOYMENT || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_DEPLOYMENT || 'gpt-5-mini'
   };
 
   if (!config.url || !config.key) {
@@ -520,74 +521,25 @@ async function findPictogramsWithAI(
 
   console.log(`📊 Database stats: ${pictograms.length} pictograms, ${uniqueTags.length} unique tags`);
 
-  // Prepare search context
-  const categoryNameLower = categoryName.toLowerCase();
-  const categoryWords = categoryNameLower.split(/\s+/).filter(w => w.length >= 3);
-  const descriptionWords = description 
-    ? description.toLowerCase().split(/\s+/).filter(w => w.length >= 3)
-    : [];
-  const allSearchWords = [...new Set([...categoryWords, ...descriptionWords])];
-
-  console.log(`🔤 Search words: [${allSearchWords.join(', ')}]`);
-
   // ============================================================================
-  // STEP 1: LOCAL SEARCH WITH SCORING
+  // STEP 1: AI-DRIVEN KEYWORD/TAG GENERATION
   // ============================================================================
-  console.log('\n📍 STEP 1: Local search with scoring...');
-
-  const localSearchTerms = {
-    keywords: new Set([categoryNameLower, ...allSearchWords]),
-    tags: new Set([categoryNameLower, ...allSearchWords])
-  };
-
-  const scoredPictograms: ScoredPictogram[] = [];
-
-  for (const pictogram of pictograms) {
-    const scored = calculatePictogramScore(pictogram, localSearchTerms, allSearchWords, false);
-    if (scored.score >= MIN_RELEVANCE_SCORE) {
-      scoredPictograms.push(scored);
-    }
-  }
-
-  // Sort by score descending
-  scoredPictograms.sort((a, b) => b.score - a.score);
-
-  console.log(`   Found ${scoredPictograms.length} pictograms above threshold (min score: ${MIN_RELEVANCE_SCORE})`);
-  if (scoredPictograms.length > 0) {
-    console.log(`   Top 5 local matches:`);
-    scoredPictograms.slice(0, 5).forEach((p, i) => {
-      const pict = pictograms.find(x => x.id === p.id);
-      console.log(`      ${i + 1}. ID ${p.id} (score: ${p.score}) - keywords: [${pict?.keywords?.slice(0, 3).join(', ')}]`);
-    });
-  }
-
-  // ============================================================================
-  // STEP 2: AI-ENHANCED SEARCH
-  // ============================================================================
-  console.log('\n🤖 STEP 2: AI-enhanced search...');
-
-  // Get sample pictograms for AI context (best local matches)
-  const sampleSize = Math.min(15, scoredPictograms.length);
-  const sampleIds = scoredPictograms.slice(0, sampleSize).map(p => p.id);
-  const samplePictograms = pictograms
-    .filter(p => sampleIds.includes(p.id))
-    .map(p => ({
-      id: p.id,
-      keywords: (p.keywords || []).slice(0, 5),
-      tags: (p.tags || []).slice(0, 5)
-    }));
+  console.log('\n🤖 STEP 1: AI-driven keyword/tag generation...');
 
   // Get relevant tags from database for AI context
+  const categoryNameLower = categoryName.toLowerCase();
+  const categoryWords = categoryNameLower.split(/\s+/).filter(w => w.length >= 3);
+  
   const relevantDatabaseTags = uniqueTags.filter(tag => {
-    for (const word of allSearchWords) {
+    for (const word of categoryWords) {
       if (tag.includes(word) || word.includes(tag)) return true;
     }
     return false;
   }).slice(0, 30);
 
-  console.log(`   Relevant database tags found: [${relevantDatabaseTags.slice(0, 10).join(', ')}${relevantDatabaseTags.length > 10 ? '...' : ''}]`);
+  console.log(`   Relevant database tags: [${relevantDatabaseTags.slice(0, 10).join(', ')}${relevantDatabaseTags.length > 10 ? '...' : ''}]`);
 
-  // Build optimized prompt
+  // Build optimized prompt (without local search contamination)
   const categoryContext = description
     ? `Category name: "${categoryName}"\nCategory description: "${description}"`
     : `Category name: "${categoryName}"`;
@@ -600,9 +552,6 @@ ${categoryContext}
 AVAILABLE DATABASE TAGS (use these exact terms when relevant):
 ${JSON.stringify(relevantDatabaseTags.length > 0 ? relevantDatabaseTags : uniqueTags.slice(0, 50), null, 2)}
 
-${samplePictograms.length > 0 ? `SAMPLE MATCHING PICTOGRAMS (analyze their patterns):
-${JSON.stringify(samplePictograms, null, 2)}` : 'No sample pictograms available - generate terms based on the category semantics.'}
-
 YOUR TASK:
 Generate keywords and tags that will match pictograms belonging to this category.
 
@@ -612,11 +561,13 @@ IMPORTANT GUIDELINES:
 3. Focus on terms a child would understand and relate to
 4. Include common synonyms and related concepts
 5. Prioritize concrete, visual concepts over abstract ones
+6. Generate 15-30 keywords for comprehensive coverage
+7. Generate 1-5 tags for semantic categorization
 
 EXAMPLES:
-- For "Emotions": keywords=["happy","sad","angry","scared","surprised","tired","excited"], tags=["emotion","feeling","psychology"]
-- For "Furniture": keywords=["chair","table","bed","sofa","desk","lamp","wardrobe"], tags=["furniture","household","home","object"]
-- For "Weather": keywords=["sun","rain","cloud","snow","wind","storm","rainbow"], tags=["weather","nature","climate"]
+- For "Emotions": keywords=["happy","sad","angry","scared","surprised","tired","excited","cry","laugh","smile"], tags=["emotion","feeling","psychology"]
+- For "Furniture": keywords=["chair","table","bed","sofa","desk","lamp","wardrobe","shelf","drawer","closet"], tags=["furniture","household","home","object"]
+- For "Weather": keywords=["sun","rain","cloud","snow","wind","storm","rainbow","thunder","lightning","fog"], tags=["weather","nature","climate"]
 
 Return ONLY valid JSON (no markdown, no explanation):
 {"keywords": ["word1", "word2", ...], "tags": ["tag1", "tag2", ...]}`;
@@ -626,7 +577,7 @@ Return ONLY valid JSON (no markdown, no explanation):
   try {
     console.log('   Calling Azure OpenAI...');
     const response = await fetch(
-      `${config.url}/openai/deployments/${config.deployment}/chat/completions?api-version=${config.apiVersion}`,
+      config.url,
       {
         method: 'POST',
         headers: {
@@ -634,19 +585,13 @@ Return ONLY valid JSON (no markdown, no explanation):
           'api-key': config.key,
         },
         body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a semantic analysis expert for AAC pictogram databases. Return only valid JSON with relevant keywords and tags. Be precise and child-appropriate.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: 600,
-          temperature: 0.3,
-          n: 1,
+          model: config.model,
+          instructions: 'You are a semantic analysis expert for AAC pictogram databases. Return only valid JSON with relevant keywords and tags. Be precise and child-appropriate.',
+          input: prompt,
+          max_output_tokens: 1000,
+          reasoning: {
+            effort: 'minimal'
+          },
         }),
       }
     );
@@ -657,8 +602,23 @@ Return ONLY valid JSON (no markdown, no explanation):
       throw new Error(errorMessage || `HTTP ${response.status}`);
     }
 
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const output = data.choices?.[0]?.message?.content;
+    const data = await response.json() as { output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }> };
+    
+    // Extract text from output array
+    let output = '';
+    if (data.output && Array.isArray(data.output)) {
+      for (const item of data.output) {
+        if (item.type === 'message' && item.content && Array.isArray(item.content)) {
+          for (const contentItem of item.content) {
+            if (contentItem.type === 'output_text' && contentItem.text) {
+              output = contentItem.text;
+              break;
+            }
+          }
+          if (output) break;
+        }
+      }
+    }
 
     if (!output) {
       throw new Error('Empty response from AI');
@@ -764,12 +724,11 @@ Return ONLY valid JSON (no markdown, no explanation):
   }
 
   // ============================================================================
-  // STEP 3: COMBINE AND SCORE AI RESULTS
+  // STEP 2: SCORE AND RANK PICTOGRAMS USING AI-GENERATED TERMS
   // ============================================================================
-  console.log('\n🔄 STEP 3: Combining local and AI results...');
+  console.log('\n📊 STEP 2: Scoring and ranking pictograms...');
 
-  const existingIds = new Set(scoredPictograms.map(p => p.id));
-  const aiScoredPictograms: ScoredPictogram[] = [];
+  const scoredPictograms: ScoredPictogram[] = [];
 
   if (aiSearchTerms.keywords.length > 0 || aiSearchTerms.tags.length > 0) {
     const aiTerms = {
@@ -778,52 +737,49 @@ Return ONLY valid JSON (no markdown, no explanation):
     };
 
     for (const pictogram of pictograms) {
-      if (existingIds.has(pictogram.id)) continue;
-
       const scored = calculatePictogramScore(pictogram, aiTerms, [], true);
       if (scored.score >= MIN_RELEVANCE_SCORE) {
-        aiScoredPictograms.push(scored);
+        scoredPictograms.push(scored);
       }
     }
 
-    aiScoredPictograms.sort((a, b) => b.score - a.score);
-    console.log(`   AI search found ${aiScoredPictograms.length} additional pictograms`);
+    scoredPictograms.sort((a, b) => b.score - a.score);
+    console.log(`   Found ${scoredPictograms.length} pictograms above threshold (min score: ${MIN_RELEVANCE_SCORE})`);
+    
+    if (scoredPictograms.length > 0) {
+      console.log(`   Top 5 matches:`);
+      scoredPictograms.slice(0, 5).forEach((p, i) => {
+        const pict = pictograms.find(x => x.id === p.id);
+        console.log(`      ${i + 1}. ID ${p.id} (score: ${p.score}) - keywords: [${pict?.keywords?.slice(0, 3).join(', ')}]`);
+      });
+    }
+  } else {
+    console.warn('   ⚠️ No AI keywords/tags generated, returning empty results');
   }
 
   // ============================================================================
-  // STEP 4: MERGE, RANK, AND FILTER FINAL RESULTS
+  // STEP 3: FILTER AND LIMIT FINAL RESULTS
   // ============================================================================
-  console.log('\n📊 STEP 4: Final ranking and filtering...');
+  console.log('\n📋 STEP 3: Filtering and limiting results...');
 
-  // Combine all scored pictograms
-  const allScoredPictograms = [...scoredPictograms, ...aiScoredPictograms];
-  
-  // Sort by score and take top results
-  allScoredPictograms.sort((a, b) => b.score - a.score);
-  
-  // Deduplicate and limit
-  const seenIds = new Set<number>();
-  const finalResults: number[] = [];
-  
-  for (const scored of allScoredPictograms) {
-    if (seenIds.has(scored.id)) continue;
-    seenIds.add(scored.id);
-    finalResults.push(scored.id);
-    if (finalResults.length >= maxResults) break;
-  }
+  // Take top results up to maxResults
+  const finalResults = scoredPictograms
+    .slice(0, maxResults)
+    .map(p => p.id);
 
   // Log final results summary
   console.log('\n' + '='.repeat(80));
   console.log(`✅ SEARCH COMPLETE: Found ${finalResults.length} pictograms for "${categoryName}"`);
-  console.log(`   - Local matches: ${scoredPictograms.length}`);
-  console.log(`   - AI matches: ${aiScoredPictograms.length}`);
-  console.log(`   - Final (after dedup & limit): ${finalResults.length}`);
+  console.log(`   - AI-generated keywords: ${aiSearchTerms.keywords.length}`);
+  console.log(`   - AI-generated tags: ${aiSearchTerms.tags.length}`);
+  console.log(`   - Total matches: ${scoredPictograms.length}`);
+  console.log(`   - Final (after limit): ${finalResults.length}`);
   
   if (finalResults.length > 0) {
     console.log('\n   Top 10 final results:');
     finalResults.slice(0, 10).forEach((id, i) => {
       const pict = pictograms.find(p => p.id === id);
-      const scored = allScoredPictograms.find(s => s.id === id);
+      const scored = scoredPictograms.find(s => s.id === id);
       console.log(`      ${i + 1}. ID ${id} (score: ${scored?.score || 0}) - "${pict?.keywords?.[0] || 'unknown'}"`);
     });
   }

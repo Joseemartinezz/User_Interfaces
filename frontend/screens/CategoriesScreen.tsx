@@ -217,7 +217,7 @@ const CategoriesScreen: React.FC = () => {
         <StatusBar style="auto" />
 
         {/* Header */}
-        <Header title="Categories" backgroundColor={selectedColor} />
+        <Header title="Categories" backgroundColor={selectedColor} showProfile={false} />
 
         {/* Contenido principal */}
         <View style={[styles.content, { backgroundColor: theme.background }]}>

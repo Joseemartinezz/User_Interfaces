@@ -207,7 +207,7 @@ wizzwords-aac-platform/
 
 ### AI Services
 - **Google Gemini AI** (Gemini 1.5 Flash/Pro)
-- **Azure OpenAI** (GPT-4o-mini as alternative)
+- **Azure OpenAI** (GPT-5-mini as alternative)
 - **ARASAAC API** for pictograms
 
 ### Storage

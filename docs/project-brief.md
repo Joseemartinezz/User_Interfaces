@@ -78,7 +78,7 @@ We are building a tablet/mobile app that:
    - Build simple word → symbol ID mapping.
 
 3. **LLM integration (prototype)**:  
-   - Connect to LLM API (GPT-4o-mini or Gemini 1.5 Flash for cost efficiency).  
+   - Connect to LLM API (GPT-5-mini or Gemini 1.5 Flash for cost efficiency).  
    - Implement basic prompts: text → PCS sequence, PCS sequence → text.  
    - *Optional for demo: image input with vision model.*
 
@@ -123,7 +123,7 @@ Displayed on tablet
 | Purpose | Recommended Tool |
 |----------|------------------|
 | Speech-to-text | Whisper |
-| Multimodal LLM | GPT-4o / GPT-4o-mini / Gemini 1.5 Pro / Claude 3 |
+| Multimodal LLM | GPT-4o / GPT-5-mini / Gemini 1.5 Pro / Claude 3 |
 | Mobile App | React Native |
 | Backend | Node.js |
 | DB + Auth | Firebase (Firestore + Authentication) |

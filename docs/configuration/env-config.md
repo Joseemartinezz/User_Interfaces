@@ -67,11 +67,11 @@ AZURE_OPENAI_KEY=your_azure_api_key_here
 ```
 
 #### AZURE_OPENAI_DEPLOYMENT
-Azure OpenAI deployment name. Defaults to `gpt-4o-mini` if not specified.
+Azure OpenAI deployment name. Defaults to `gpt-5-mini` if not specified.
 
 **Example:**
 ```env
-AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
+AZURE_OPENAI_DEPLOYMENT=gpt-5-mini
 ```
 
 **Note:** Azure OpenAI is optional. The app works with just Gemini, but Azure OpenAI provides an alternative option.
@@ -96,7 +96,7 @@ GEMINI_API_KEY=AIzaSyExample123456789
 OPENAI_API_KEY=sk-example123456789
 AZURE_OPENAI_URL=https://your-resource-name.openai.azure.com
 AZURE_OPENAI_KEY=your_azure_api_key_here
-AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
+AZURE_OPENAI_DEPLOYMENT=gpt-5-mini
 PORT=3000
 ```
 

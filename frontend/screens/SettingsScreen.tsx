@@ -71,7 +71,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         {/* Header */}
         <Header
           title="Settings"
-          showProfile={true}
+          showProfile={false}
         />
 
         {/* Contenido */}

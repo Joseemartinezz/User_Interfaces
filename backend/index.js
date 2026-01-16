@@ -241,7 +241,13 @@ Guidelines:
     }
 
     const phrases = extractPhrases(text);
-    res.json({ phrases });
+    // Limitar a exactamente 3 frases para la generación inicial
+    const limitedPhrases = phrases.slice(0, 3);
+    console.log(`📊 Extracted phrases: ${phrases.length}, limited to: ${limitedPhrases.length}`);
+    if (limitedPhrases.length !== 3) {
+      console.warn(`⚠️ Warning: Expected 3 phrases but got ${limitedPhrases.length}`);
+    }
+    res.json({ phrases: limitedPhrases });
   } catch (error) {
     console.error('❌ Error generating phrases:', error);
     console.error('Error details:', {
@@ -294,13 +300,13 @@ app.post('/api/generate-more-phrases', async (req, res) => {
       try {
         console.log('🔄 Attempting to generate more phrases with Azure OpenAI (Primary Provider)...');
         const phrases = await generateMoreAzurePhrases(words, existingPhrases);
-        // Limit to exactly 3 phrases as a security measure (double verification)
-        const limitedPhrases = phrases.slice(0, 3);
+        // Limit to exactly 1 phrase for "Generate More" (solo una frase adicional)
+        const limitedPhrases = phrases.slice(0, 1);
         console.log(`📊 Frases de Azure: ${phrases.length}, limitadas a: ${limitedPhrases.length}`);
-        if (limitedPhrases.length !== 3) {
-          console.warn(`⚠️ Advertencia: Se esperaban 3 frases pero se obtuvieron ${limitedPhrases.length}`);
+        if (limitedPhrases.length !== 1) {
+          console.warn(`⚠️ Advertencia: Se esperaba 1 frase pero se obtuvieron ${limitedPhrases.length}`);
         }
-        console.log('✅ Frases generadas exitosamente con Azure OpenAI');
+        console.log('✅ Frase generada exitosamente con Azure OpenAI');
         return res.json({ phrases: limitedPhrases });
       } catch (azureError) {
         console.error('❌ Azure OpenAI failed:', azureError.message);
@@ -323,17 +329,17 @@ You are helping a child who uses an Augmentative and Alternative Communication (
 Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
 ${words.join(', ')}
 
-IMPORTANT: You MUST generate EXACTLY 3 phrases. No more, no less. Generate exactly 3 phrases.
+IMPORTANT: You MUST generate EXACTLY 1 phrase. No more, no less. Just one single phrase.
 
 Guidelines:
-- The phrases must be short but contain ALL information provided.
-- They should sound natural when spoken aloud.
-- They must be grammatically correct and easy for a child.
-- Generate EXACTLY 3 different phrases. Do not generate 4, 5, or any other number. Only 3.
-- Return exactly 3 phrases, one per line, numbered starting from 1.
+- The phrase must be short but contain ALL information provided.
+- It should sound natural when spoken aloud.
+- It must be grammatically correct and easy for a child.
+- Generate EXACTLY 1 phrase. Do not generate 2, 3, or any other number. Only 1.
+- Return exactly 1 phrase.
 `;
 
-    const promptMore = basePrompt + '\n\nDo NOT repeat any of these phrases:\n' + existingPhrases.join('\n') + '\n\nRemember: Generate EXACTLY 3 new phrases, no more, no less.';
+    const promptMore = basePrompt + '\n\nDo NOT repeat any of these phrases:\n' + existingPhrases.join('\n') + '\n\nRemember: Generate EXACTLY 1 new phrase only.';
 
     // Intentar con diferentes modelos de Gemini en orden de preferencia
     const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro'];
@@ -366,11 +372,11 @@ Guidelines:
     }
 
     const phrases = extractPhrases(text);
-    // Limit to exactly 3 phrases as a security measure
-    const limitedPhrases = phrases.slice(0, 3);
+    // Limit to exactly 1 phrase for "Generate More" (solo una frase adicional)
+    const limitedPhrases = phrases.slice(0, 1);
     console.log(`📊 Extracted phrases: ${phrases.length}, limited to: ${limitedPhrases.length}`);
-    if (limitedPhrases.length !== 3) {
-      console.warn(`⚠️ Warning: Expected 3 phrases but got ${limitedPhrases.length}`);
+    if (limitedPhrases.length !== 1) {
+      console.warn(`⚠️ Warning: Expected 1 phrase but got ${limitedPhrases.length}`);
     }
     res.json({ phrases: limitedPhrases });
   } catch (error) {

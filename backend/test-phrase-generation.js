@@ -14,21 +14,20 @@ async function testPhraseGeneration() {
     return {
       url: process.env.AZURE_OPENAI_PHRASE_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_URL || '',
       key: process.env.AZURE_OPENAI_PHRASE_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_KEY || '',
-      deployment: process.env.AZURE_OPENAI_PHRASE_DEPLOYMENT || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_DEPLOYMENT || 'gpt-4o-mini',
-      apiVersion: process.env.AZURE_OPENAI_PHRASE_API_VERSION || '2023-03-15-preview'
+      model: process.env.AZURE_OPENAI_PHRASE_DEPLOYMENT || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_DEPLOYMENT || 'gpt-5-mini'
     };
   }
 
   const config = getAzureConfig();
   
   console.log('\n📋 Configuration (from getAzureConfig):');
-  console.log(`   URL: ${config.url}`);
+  console.log(`   URL (complete): ${config.url}`);
   console.log(`   Key: ***${config.key.substring(config.key.length - 4)}`);
-  console.log(`   Deployment: ${config.deployment}`);
-  console.log(`   API Version: ${config.apiVersion}`);
+  console.log(`   Model: ${config.model}`);
 
   const words = ['happy', 'play', 'home'];
-  const prompt = `
+  const instructions = 'You are a helpful assistant that creates natural, child-friendly phrases for AAC communication devices.';
+  const input = `
 You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
 Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
 ${words.join(', ')}
@@ -45,23 +44,22 @@ Guidelines:
   console.log('\n🧪 Testing phrase generation with words:', words);
 
   try {
-    const fullEndpoint = `${config.url}/openai/deployments/${config.deployment}/chat/completions?api-version=${config.apiVersion}`;
-    console.log(`\n🌐 Endpoint: ${fullEndpoint}`);
+    console.log(`\n🌐 Endpoint URL: ${config.url}`);
 
-    const response = await fetch(fullEndpoint, {
+    const response = await fetch(config.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'api-key': config.key,
       },
       body: JSON.stringify({
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant that creates natural, child-friendly phrases for AAC communication devices.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 150,
-        temperature: 0.7,
-        n: 1,
+        model: config.model,
+        instructions: instructions,
+        input: input,
+        max_output_tokens: 500,
+        reasoning: {
+          effort: 'minimal'
+        }
       }),
     });
 
@@ -83,10 +81,26 @@ Guidelines:
     }
 
     const data = await response.json();
-    const output = data.choices?.[0]?.message?.content;
+    
+    // Extract text from output array
+    let output = '';
+    if (data.output && Array.isArray(data.output)) {
+      for (const item of data.output) {
+        if (item.type === 'message' && item.content && Array.isArray(item.content)) {
+          for (const contentItem of item.content) {
+            if (contentItem.type === 'output_text' && contentItem.text) {
+              output = contentItem.text;
+              break;
+            }
+          }
+          if (output) break;
+        }
+      }
+    }
     
     if (!output) {
       console.error('❌ No output from AI');
+      console.error('   Full response:', JSON.stringify(data, null, 2));
       return;
     }
 

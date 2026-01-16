@@ -7,7 +7,7 @@
  * Make sure to set environment variables before running:
  * - AZURE_OPENAI_PHRASE_URL
  * - AZURE_OPENAI_PHRASE_KEY
- * - AZURE_OPENAI_PHRASE_DEPLOYMENT (optional, defaults to gpt-4o-mini)
+ * - AZURE_OPENAI_PHRASE_DEPLOYMENT (optional, defaults to gpt-5-mini)
  */
 
 // Register ts-node to handle TypeScript imports
@@ -249,7 +249,7 @@ async function runTests() {
     log(colors.yellow, '\nPlease set the following in your .env file:');
     console.log('   AZURE_OPENAI_PHRASE_URL=https://your-resource.openai.azure.com');
     console.log('   AZURE_OPENAI_PHRASE_KEY=your-api-key');
-    console.log('   AZURE_OPENAI_PHRASE_DEPLOYMENT=gpt-4o-mini (optional)');
+    console.log('   AZURE_OPENAI_PHRASE_DEPLOYMENT=gpt-5-mini (optional)');
     process.exit(1);
   }
   

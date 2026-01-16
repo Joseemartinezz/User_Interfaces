@@ -6,6 +6,23 @@
 // Para web en Expo: a veces necesita http://127.0.0.1:3000 en lugar de localhost
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
+interface ErrorResponse {
+  error?: string;
+  message?: string;
+}
+
+interface PhrasesResponse {
+  phrases?: string[];
+}
+
+interface SymbolsResponse {
+  symbols?: string[];
+}
+
+interface TextResponse {
+  text?: string;
+}
+
 /**
  * Prueba la conexión con el servidor backend
  */
@@ -28,11 +45,11 @@ export async function testConnection(): Promise<boolean> {
  * Genera frases naturales a partir de palabras seleccionadas usando OpenAI
  * Usa el backend proxy para evitar problemas de CORS
  * @param words Array de palabras seleccionadas
- * @param model Modelo de OpenAI a usar (por defecto: 'gpt-4o-mini')
+ * @param model Modelo de OpenAI a usar (por defecto: 'gpt-5-mini')
  */
 export async function generatePhrases(
   words: string[],
-  model: string = 'gpt-4o-mini'
+  model: string = 'gpt-5-mini'
 ): Promise<string[]> {
   if (!words || words.length === 0) {
     return [];
@@ -49,12 +66,12 @@ export async function generatePhrases(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as ErrorResponse;
       console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as PhrasesResponse;
     return data.phrases || [];
   } catch (error: any) {
     console.error('Error generating phrases:', error);
@@ -78,12 +95,12 @@ export async function generatePhrases(
  * Usa el backend proxy para evitar problemas de CORS
  * @param words Array de palabras seleccionadas
  * @param existingPhrases Frases ya generadas que no se deben repetir
- * @param model Modelo de OpenAI a usar (por defecto: 'gpt-4o-mini')
+ * @param model Modelo de OpenAI a usar (por defecto: 'gpt-5-mini')
  */
 export async function generateMorePhrases(
   words: string[],
   existingPhrases: string[],
-  model: string = 'gpt-4o-mini'
+  model: string = 'gpt-5-mini'
 ): Promise<string[]> {
   if (!words || words.length === 0) {
     return [];
@@ -100,12 +117,12 @@ export async function generateMorePhrases(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as ErrorResponse;
       console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as PhrasesResponse;
     return data.phrases || [];
   } catch (error: any) {
     console.error('Error generating more phrases:', error);
@@ -128,11 +145,11 @@ export async function generateMorePhrases(
  * Convierte texto a secuencia de PCS symbols usando OpenAI
  * Útil para cuando un cuidador escribe texto y necesita ver los símbolos correspondientes
  * @param text Texto a convertir
- * @param model Modelo de OpenAI a usar (por defecto: 'gpt-4o-mini')
+ * @param model Modelo de OpenAI a usar (por defecto: 'gpt-5-mini')
  */
 export async function textToPCSSequence(
   text: string,
-  model: string = 'gpt-4o-mini'
+  model: string = 'gpt-5-mini'
 ): Promise<string[]> {
   if (!text || text.trim() === '') {
     return [];
@@ -149,12 +166,12 @@ export async function textToPCSSequence(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as ErrorResponse;
       console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.error || errorData.message || `Error ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as SymbolsResponse;
     return data.symbols || [];
   } catch (error: any) {
     console.error('Error converting text to PCS:', error);
@@ -166,11 +183,11 @@ export async function textToPCSSequence(
  * Convierte una secuencia de PCS symbols a texto natural usando OpenAI
  * Útil para cuando un niño selecciona símbolos y necesita ver el texto correspondiente
  * @param symbols Array de palabras/símbolos seleccionados
- * @param model Modelo de OpenAI a usar (por defecto: 'gpt-4o-mini')
+ * @param model Modelo de OpenAI a usar (por defecto: 'gpt-5-mini')
  */
 export async function pcsSequenceToText(
   symbols: string[],
-  model: string = 'gpt-4o-mini'
+  model: string = 'gpt-5-mini'
 ): Promise<string> {
   if (!symbols || symbols.length === 0) {
     return '';
@@ -187,12 +204,12 @@ export async function pcsSequenceToText(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as ErrorResponse;
       console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.error || errorData.message || `Error ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as TextResponse;
     return data.text || '';
   } catch (error: any) {
     console.error('Error converting PCS to text:', error);

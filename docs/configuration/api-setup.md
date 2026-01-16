@@ -57,7 +57,7 @@ OPENAI_API_KEY=sk-your_openai_api_key_here
 
 ### Available Models
 
-- `gpt-4o-mini`: Cost-effective and fast (default)
+- `gpt-5-mini`: Cost-effective and fast (default)
 - `gpt-4o`: More powerful but expensive
 
 ### Endpoints
@@ -94,7 +94,7 @@ Guidelines:
 ```
 
 **Recommended Settings:**
-- Model: `gpt-4o-mini` (cost-effective) or `gpt-4o` (more powerful)
+- Model: `gpt-5-mini` (cost-effective) or `gpt-4o` (more powerful)
 - Temperature: `0.7`
 - Max tokens: `200`
 
@@ -127,7 +127,7 @@ Now process this text: "I want to play football"
 ```
 
 **Recommended Settings:**
-- Model: `gpt-4o-mini`
+- Model: `gpt-5-mini`
 - Temperature: `0.3` (more deterministic)
 - Max tokens: `100`
 
@@ -155,7 +155,7 @@ The server will display which API keys are configured:
 
 ### Error: "Rate limit exceeded"
 - Check your API usage in the provider dashboard
-- Consider using a more cost-effective model (gemini-1.5-flash or gpt-4o-mini)
+- Consider using a more cost-effective model (gemini-1.5-flash or gpt-5-mini)
 - Implement request throttling if needed
 
 ### Error: "Invalid API key"
@@ -167,10 +167,10 @@ The server will display which API keys are configured:
 
 - **Gemini 1.5 Flash**: Most cost-effective option
 - **Gemini 1.5 Pro**: More expensive but more capable
-- **GPT-4o-mini**: Cost-effective OpenAI option
-- **GPT-4o**: Most expensive but most capable
+- **GPT-5-mini**: Latest cost-effective OpenAI option
+- **GPT-4o**: More expensive but very capable
 
-**Recommendation:** Use Gemini 1.5 Flash for development and general use. Use GPT-4o only when you need the highest quality.
+**Recommendation:** Use Gemini 1.5 Flash for development and general use. Use GPT-5-mini for production with Azure OpenAI.
 
 ## Security Best Practices
 
@@ -187,24 +187,32 @@ The server will display which API keys are configured:
 1. Go to [Azure Portal](https://portal.azure.com)
 2. Create or navigate to your Azure OpenAI resource
 3. Go to "Keys and Endpoint" section
-4. Copy the endpoint URL and one of the API keys
-5. Note the deployment name (e.g., `gpt-4o-mini`)
+4. Copy the complete endpoint URL including the `/openai/responses` path and API version
+5. Copy one of the API keys
+6. Note the deployment/model name (e.g., `gpt-5-mini`)
 
 ### Configuration
 
 **Backend (`backend/.env`):**
 ```env
-AZURE_OPENAI_URL=https://your-resource-name.openai.azure.com
-AZURE_OPENAI_KEY=your_azure_api_key_here
-AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
-AZURE_OPENAI_API_VERSION=2023-03-15-preview
+# IMPORTANT: URL must be COMPLETE including endpoint and API version
+AZURE_OPENAI_PHRASE_URL=https://your-resource.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview
+AZURE_OPENAI_PHRASE_KEY=your_azure_api_key_here
+AZURE_OPENAI_PHRASE_DEPLOYMENT=gpt-5-mini
+
+# For image generation (DALL-E)
+AZURE_OPENAI_IMAGE_ENDPOINT=https://your-resource.cognitiveservices.azure.com/openai/deployments/dall-e-3/images/generations?api-version=2024-02-01
+AZURE_OPENAI_IMAGE_API_KEY=your_azure_api_key_here
 ```
 
-**Note:** Azure OpenAI is optional. The app works with just Gemini, but Azure OpenAI provides an alternative option.
+**Note:** 
+- Azure OpenAI is optional. The app works with just Gemini, but Azure OpenAI provides an alternative option.
+- The URL format has changed to use the new `/openai/responses` endpoint for GPT-5-mini
+- URLs should be complete and not require additional path construction
 
 ### Available Models
 
-- `gpt-4o-mini`: Cost-effective (default)
+- `gpt-5-mini`: Latest cost-effective model (default)
 - `gpt-4o`: More powerful but expensive
 - Any other model deployed in your Azure OpenAI resource
 

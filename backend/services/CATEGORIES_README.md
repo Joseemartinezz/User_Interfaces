@@ -192,7 +192,7 @@ Initialize predefined categories (useful for first-time setup or reset).
 
 1. User requests a new category via `POST /api/categories`
 2. System performs a **hybrid search**:
-   - **Local search**: Finds pictograms matching the category name in keywords/tags
+   - **AI-driven search**: Uses Azure OpenAI to generate relevant keywords/tags, then finds matching pictograms
    - **AI search**: Uses Azure OpenAI to identify relevant keywords/tags, then searches locally
    - **Combines results**: Merges both searches and removes duplicates
 3. Saves the new category to `categories.json` (NOT to predefinedCategories.json)
@@ -213,11 +213,13 @@ Initialize predefined categories (useful for first-time setup or reset).
 The system uses Azure OpenAI to find relevant pictograms for new categories. Required environment variables:
 
 ```env
-AZURE_OPENAI_PHRASE_URL=https://your-resource.openai.azure.com
+# IMPORTANT: URL must be COMPLETE including the endpoint and API version
+AZURE_OPENAI_PHRASE_URL=https://your-resource.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview
 AZURE_OPENAI_PHRASE_KEY=your_api_key
-AZURE_OPENAI_PHRASE_DEPLOYMENT=gpt-4o-mini
-AZURE_OPENAI_PHRASE_API_VERSION=2023-03-15-preview
+AZURE_OPENAI_PHRASE_DEPLOYMENT=gpt-5-mini
 ```
+
+**Note**: The URL format has changed to use the new `/openai/responses` endpoint with GPT-5-mini model. The URL should be complete and include the API version as a query parameter.
 
 ### AI Prompt Strategy
 
@@ -304,7 +306,7 @@ isPredefinedCategory(categoryName: string): boolean
 ## Performance Considerations
 
 - **Initialization**: First-time initialization may take 10-30 seconds (processing 186k+ pictograms)
-- **Category Creation**: AI-based creation takes 2-5 seconds (Azure OpenAI API call + local search)
+- **Category Creation**: AI-based creation takes 2-5 seconds (Azure OpenAI API call)
 - **Queries**: O(1) lookup - instant response
 - **Storage**: JSON file is small (~few KB even with many categories)
 

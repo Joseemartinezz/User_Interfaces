@@ -9,8 +9,7 @@ function getAzureConfig() {
   return {
     url: process.env.AZURE_OPENAI_PHRASE_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_URL || '',
     key: process.env.AZURE_OPENAI_PHRASE_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_KEY || '',
-    deployment: process.env.AZURE_OPENAI_PHRASE_DEPLOYMENT || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_DEPLOYMENT || 'gpt-4o-mini',
-    apiVersion: process.env.AZURE_OPENAI_PHRASE_API_VERSION || '2023-03-15-preview'
+    model: process.env.AZURE_OPENAI_PHRASE_DEPLOYMENT || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_DEPLOYMENT || 'gpt-5-mini'
   };
 }
 
@@ -23,15 +22,20 @@ function testAzureConnection() {
     return false;
   }
 
-  return fetch(`${config.url}/openai/deployments/${config.deployment}/chat/completions?api-version=${config.apiVersion}`, {
+  return fetch(config.url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'api-key': config.key,
     },
     body: JSON.stringify({
-      messages: [{ role: 'system', content: 'ping' }, { role: 'user', content: 'ping' }],
-      max_tokens: 5,
+      model: config.model,
+      instructions: 'You are a helpful assistant.',
+      input: 'ping',
+      max_output_tokens: 10,
+      reasoning: {
+        effort: 'minimal'
+      }
     }),
   })
     .then(response => response.ok)
@@ -53,34 +57,36 @@ async function generateAzurePhrases(words) {
   }
 
   try {
-    const prompt = `
+    const instructions = 'You are a helpful assistant that creates natural, child-friendly phrases for AAC communication devices.';
+    const input = `
 You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
 Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
 ${words.join(', ')}
+
+IMPORTANT: You MUST generate EXACTLY 3 phrases. No more, no less. Generate exactly 3 phrases.
 
 Guidelines:
 - The phrases must be short but contain ALL information provided.
 - They should sound natural when spoken aloud.
 - They must be grammatically correct and easy for a child.
-- If one phrase is enough, return one.
-- If more than one makes sense, return multiple (up to 5).
-- Return one phrase per line, numbered starting from 1.
+- Generate EXACTLY 3 different phrases. Do not generate 1, 2, 4, 5, or any other number. Only 3.
+- Return exactly 3 phrases, one per line, numbered starting from 1.
 `;
 
-    const response = await fetch(`${config.url}/openai/deployments/${config.deployment}/chat/completions?api-version=${config.apiVersion}`, {
+    const response = await fetch(config.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'api-key': config.key,
       },
       body: JSON.stringify({
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant that creates natural, child-friendly phrases for AAC communication devices.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 150,
-        temperature: 0.7,
-        n: 1,
+        model: config.model,
+        instructions: instructions,
+        input: input,
+        max_output_tokens: 500,
+        reasoning: {
+          effort: 'minimal'
+        }
       }),
     });
 
@@ -90,8 +96,24 @@ Guidelines:
       throw new Error(errorMessage || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
 
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const output = data.choices?.[0]?.message?.content;
+    const data = await response.json() as { output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }> };
+    
+    // Extract text from output array
+    let output = '';
+    if (data.output && Array.isArray(data.output)) {
+      for (const item of data.output) {
+        if (item.type === 'message' && item.content && Array.isArray(item.content)) {
+          for (const contentItem of item.content) {
+            if (contentItem.type === 'output_text' && contentItem.text) {
+              output = contentItem.text;
+              break;
+            }
+          }
+          if (output) break;
+        }
+      }
+    }
+    
     if (!output) return [];
 
     // Extract phrases from numbered list
@@ -106,7 +128,9 @@ Guidelines:
       }
     }
 
-    return phrases.length > 0 ? phrases : [output.trim()];
+    const extractedPhrases = phrases.length > 0 ? phrases : [output.trim()];
+    // Limitar a exactamente 3 frases para la generación inicial
+    return extractedPhrases.slice(0, 3);
   } catch (error) {
     console.error('❌ Error generating phrases with Azure OpenAI:', error);
     throw new Error(error.message || 'Error al generar frases con Azure OpenAI.');
@@ -125,7 +149,8 @@ async function generateMoreAzurePhrases(words, existingPhrases) {
   }
 
   try {
-    const prompt = `
+    const instructions = 'You are a helpful assistant that creates natural, child-friendly phrases for AAC communication devices.';
+    const input = `
 You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
 Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
 ${words.join(', ')}
@@ -136,27 +161,27 @@ Guidelines:
 - The phrases must be short but contain ALL information provided.
 - They should sound natural when spoken aloud.
 - They must be grammatically correct and easy for a child.
-- Generate EXACTLY 3 different phrases. Do not generate 4, 5, or any other number. Only 3.
-- Return exactly 3 phrases, one per line, numbered starting from 1.
+- Generate EXACTLY 1 phrase. No more, no less. Just one single phrase.
+- Return exactly 1 phrase.
 
 Do NOT repeat these already generated phrases: ${existingPhrases.join(', ')}.
 
-Remember: Generate EXACTLY 3 new phrases, no more, no less.`;
+Remember: Generate EXACTLY 1 new phrase only.`;
 
-    const response = await fetch(`${config.url}/openai/deployments/${config.deployment}/chat/completions?api-version=${config.apiVersion}`, {
+    const response = await fetch(config.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'api-key': config.key,
       },
       body: JSON.stringify({
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant that creates natural, child-friendly phrases for AAC communication devices.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 150,
-        temperature: 0.9,
-        n: 1,
+        model: config.model,
+        instructions: instructions,
+        input: input,
+        max_output_tokens: 500,
+        reasoning: {
+          effort: 'minimal'
+        }
       }),
     });
 
@@ -166,8 +191,24 @@ Remember: Generate EXACTLY 3 new phrases, no more, no less.`;
       throw new Error(errorMessage || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
 
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const output = data.choices?.[0]?.message?.content;
+    const data = await response.json() as { output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }> };
+    
+    // Extract text from output array
+    let output = '';
+    if (data.output && Array.isArray(data.output)) {
+      for (const item of data.output) {
+        if (item.type === 'message' && item.content && Array.isArray(item.content)) {
+          for (const contentItem of item.content) {
+            if (contentItem.type === 'output_text' && contentItem.text) {
+              output = contentItem.text;
+              break;
+            }
+          }
+          if (output) break;
+        }
+      }
+    }
+    
     if (!output) return [];
 
     // Extract phrases from numbered list
@@ -183,8 +224,8 @@ Remember: Generate EXACTLY 3 new phrases, no more, no less.`;
     }
 
     const extractedPhrases = phrases.length > 0 ? phrases : [output.trim()];
-    // Limitar a exactamente 3 frases como medida de seguridad
-    return extractedPhrases.slice(0, 3);
+    // Limitar a exactamente 1 frase para "Generate More"
+    return extractedPhrases.slice(0, 1);
   } catch (error) {
     console.error('❌ Error generating more phrases with Azure OpenAI:', error);
     throw new Error(error.message || 'Error al generar más frases con Azure OpenAI.');

@@ -208,7 +208,14 @@ const PCSScreen: React.FC = () => {
   const params = route.params;
   const topic = params?.topic;
 
-  const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  // Changed from string[] to store unique symbol IDs to fix duplicate selection bug
+  const [selectedSymbols, setSelectedSymbols] = useState<Array<{
+    id: string;
+    text: string;
+    arasaacId: number | null;
+    imageUrl: string;
+    isCustom: boolean;
+  }>>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // State for categories and pictograms loaded from the backend
@@ -307,9 +314,16 @@ const PCSScreen: React.FC = () => {
     // Backend categories (predefined + custom)
     Object.keys(backendCategories).forEach(categoryName => {
       if (!hiddenCategories.includes(categoryName)) {
-        // Look for emoji in DEFAULT_CATEGORIES or use a default one
-        const defaultCat = DEFAULT_CATEGORIES.find(c => c.name === categoryName);
-        const emoji = defaultCat?.emoji || '📁';
+        // First check if user has a custom emoji for this category
+        const userCategory = (user?.preferences.categories || []).find(c => c.name === categoryName);
+        let emoji = userCategory?.emoji;
+        
+        // If no custom emoji, look in DEFAULT_CATEGORIES
+        if (!emoji) {
+          const defaultCat = DEFAULT_CATEGORIES.find(c => c.name === categoryName);
+          emoji = defaultCat?.emoji || '📁';
+        }
+        
         const isCustom = !DEFAULT_CATEGORIES.some(c => c.name === categoryName);
 
         categoriesList.push({
@@ -378,8 +392,9 @@ const PCSScreen: React.FC = () => {
       // Convert to symbol format
       const newSymbols = pictogramsData
         .filter(item => item.pictogram !== null)
-        .map((item) => ({
-          id: `pictogram_${item.id}`,
+        .map((item, index) => ({
+          // Use unique ID combining arasaacId with index to handle color variants
+          id: `pictogram_${item.id}_${startIndex + index}`,
           text: item.text,
           arasaacId: item.id,
           imageUrl: getPictogramImageUrl(item.id, { color: true, backgroundColor: 'white' }),
@@ -391,9 +406,9 @@ const PCSScreen: React.FC = () => {
       // Update cache combining with existing symbols
       setCategorySymbolsCache(prev => {
         const existing = prev[categoryName] || [];
-        // Avoid duplicates
-        const existingIds = new Set(existing.map(s => s.arasaacId));
-        const uniqueNewSymbols = newSymbols.filter(s => !existingIds.has(s.arasaacId));
+        // Avoid duplicates by unique ID (not just arasaacId to allow variants)
+        const existingIds = new Set(existing.map(s => s.id));
+        const uniqueNewSymbols = newSymbols.filter(s => !existingIds.has(s.id));
         return {
           ...prev,
           [categoryName]: [...existing, ...uniqueNewSymbols],
@@ -482,29 +497,40 @@ const PCSScreen: React.FC = () => {
     return allSymbolsList;
   }, [categorySymbolsCache, getSymbolsForCategory, user?.preferences.customPCSSymbols]);
 
-  // Create a fast lookup map for symbols by text (O(1) instead of O(n))
-  const symbolsByText = useMemo(() => {
+  // Create a fast lookup map for symbols by ID (O(1) instead of O(n))
+  const symbolsById = useMemo(() => {
     const map = new Map<string, typeof allSymbols[0]>();
     allSymbols.forEach(symbol => {
-      map.set(symbol.text, symbol);
+      map.set(symbol.id, symbol);
     });
     return map;
   }, [allSymbols]);
 
-  // Optimized function to select/deselect words
+  // Get selected words as string array for API calls
+  const selectedWords = useMemo(() => {
+    return selectedSymbols.map(s => s.text);
+  }, [selectedSymbols]);
+
+  // Optimized function to select/deselect symbols by unique ID
   // Uses immediate state update for instant visual feedback
-  const handleWordPress = useCallback((word: string) => {
+  const handleSymbolPress = useCallback((symbol: {
+    id: string;
+    text: string;
+    arasaacId: number | null;
+    imageUrl: string;
+    isCustom: boolean;
+  }) => {
     // Use functional update for immediate state change
-    setSelectedWords(prev => {
-      const index = prev.indexOf(word);
+    setSelectedSymbols(prev => {
+      const index = prev.findIndex(s => s.id === symbol.id);
       if (index !== -1) {
-        // Remove word - create new array without the word for instant update
+        // Remove symbol - create new array without the symbol for instant update
         const newArray = [...prev];
         newArray.splice(index, 1);
         return newArray;
       } else {
-        // Add word
-        return [...prev, word];
+        // Add symbol
+        return [...prev, symbol];
       }
     });
   }, []);
@@ -535,7 +561,7 @@ const PCSScreen: React.FC = () => {
 
   // Clear selection
   const handleClear = useCallback(() => {
-    setSelectedWords([]);
+    setSelectedSymbols([]);
   }, []);
 
   // Navigate to previous category
@@ -600,7 +626,7 @@ const PCSScreen: React.FC = () => {
         {/* Tap on symbols to remove them from selection */}
         <View style={[styles.outputArea, { backgroundColor: theme.white }]}>
           <View style={styles.selectedWordsWrapper}>
-            {selectedWords.length > 0 ? (
+            {selectedSymbols.length > 0 ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={true}
@@ -610,22 +636,18 @@ const PCSScreen: React.FC = () => {
                 removeClippedSubviews={true}
                 scrollEventThrottle={16}
               >
-                {selectedWords.map((word) => {
-                  // Use fast O(1) lookup instead of O(n) find
-                  const symbol = symbolsByText.get(word);
-                  if (!symbol) return null;
-
+                {selectedSymbols.map((symbol) => {
                   return (
                     <TouchableOpacity
-                      key={`${symbol.id}_${word}`}
+                      key={symbol.id}
                       style={[
                         styles.selectedWordItem,
                         { borderColor: theme.primary }
                       ]}
-                      onPress={() => handleWordPress(word)}
+                      onPress={() => handleSymbolPress(symbol)}
                       activeOpacity={0.5}
                       accessible={true}
-                      accessibilityLabel={`Remove ${word} from selection`}
+                      accessibilityLabel={`Remove ${symbol.text} from selection`}
                       accessibilityRole="button"
                       accessibilityHint="Tap to remove this word"
                     >
@@ -640,7 +662,7 @@ const PCSScreen: React.FC = () => {
                           style={styles.selectedWordImage}
                         />
                       )}
-                      <Text style={[styles.selectedWordText, { color: theme.text }]}>{word}</Text>
+                      <Text style={[styles.selectedWordText, { color: theme.text }]}>{symbol.text}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -693,7 +715,8 @@ const PCSScreen: React.FC = () => {
                     >
                       <View style={styles.grid3x3}>
                         {categorySymbols.map((symbol) => {
-                          const isSelected = selectedWords.includes(symbol.text);
+                          // Check if THIS specific symbol is selected (by unique ID, not text)
+                          const isSelected = selectedSymbols.some(s => s.id === symbol.id);
                           return (
                             <TouchableOpacity
                               key={symbol.id}
@@ -702,7 +725,7 @@ const PCSScreen: React.FC = () => {
                                 { backgroundColor: 'white', borderColor: theme.accent },
                                 isSelected && { borderColor: theme.primary, backgroundColor: 'white', borderWidth: 3 }
                               ]}
-                              onPress={() => handleWordPress(symbol.text)}
+                              onPress={() => handleSymbolPress(symbol)}
                               activeOpacity={0.7}
                             >
                               {symbol.isCustom ? (
@@ -908,7 +931,7 @@ const PCSScreen: React.FC = () => {
                   style={styles.pcsButtonImage}
                 />
                 <Text style={[styles.pcsButtonText, { color: theme.primary }]}>
-                  Generate Phrases
+                  Generate Flashcards
                 </Text>
               </>
             )}

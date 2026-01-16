@@ -105,7 +105,7 @@ The AAC (Augmentative and Alternative Communication) app is a React Native/Expo 
 ### OpenAI
 
 **Models Used:**
-- `gpt-4o-mini`: Cost-effective (default)
+- `gpt-5-mini`: Cost-effective (default)
 - `gpt-4o`: More powerful but expensive
 
 **Configuration:**
@@ -122,7 +122,7 @@ The AAC (Augmentative and Alternative Communication) app is a React Native/Expo 
 **Configuration:**
 - Endpoint URL stored in `backend/.env` as `AZURE_OPENAI_URL`
 - API key stored in `backend/.env` as `AZURE_OPENAI_KEY`
-- Deployment name stored in `backend/.env` as `AZURE_OPENAI_DEPLOYMENT` (default: `gpt-4o-mini`)
+- Deployment name stored in `backend/.env` as `AZURE_OPENAI_DEPLOYMENT` (default: `gpt-5-mini`)
 - API version: `2023-03-15-preview` (configurable via `AZURE_OPENAI_API_VERSION`)
 
 **Use Cases:**

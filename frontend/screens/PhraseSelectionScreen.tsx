@@ -8,6 +8,8 @@ import {
   FlatList,
   Dimensions,
   Image,
+  Animated,
+  Easing,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -98,6 +100,16 @@ const PhraseSelectionScreen: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tappedIndex, setTappedIndex] = useState<number | null>(null);
 
+  // Animation values
+  const headerTranslateY = useRef(new Animated.Value(0)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+  const flashcardScale = useRef(new Animated.Value(1)).current;
+  const flashcardRotate = useRef(new Animated.Value(0)).current;
+  const buttonsOpacity = useRef(new Animated.Value(0)).current;
+  const buttonsTranslateY = useRef(new Animated.Value(50)).current;
+  const imagePulse = useRef(new Animated.Value(1)).current;
+  const glowOpacity = useRef(new Animated.Value(0)).current;
+
   // Clean phrase by removing leading numbers and dots
   const cleanPhrase = useCallback((phrase: string): string => {
     return phrase.trim().replace(/^\d+\.\s*/, "");
@@ -152,6 +164,146 @@ const PhraseSelectionScreen: React.FC = () => {
       loadImagesForPhrases();
     }
   }, [initialPhrases]);
+
+  // Animate selection transition
+  useEffect(() => {
+    if (selectedIndex !== null) {
+      // Animate IN - cuando se selecciona una frase
+      Animated.parallel([
+        // Header se desliza hacia arriba y desaparece
+        Animated.timing(headerTranslateY, {
+          toValue: -100,
+          duration: 400,
+          easing: Easing.bezier(0.4, 0.0, 0.2, 1),
+          useNativeDriver: true,
+        }),
+        Animated.timing(headerOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        // Flashcard crece con un efecto de zoom elegante
+        Animated.spring(flashcardScale, {
+          toValue: 1.08,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+        // Pequeña rotación para efecto dinámico
+        Animated.sequence([
+          Animated.timing(flashcardRotate, {
+            toValue: 2,
+            duration: 200,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(flashcardRotate, {
+            toValue: 0,
+            duration: 300,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Efecto de resplandor (glow)
+        Animated.sequence([
+          Animated.timing(glowOpacity, {
+            toValue: 0.6,
+            duration: 400,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowOpacity, {
+            toValue: 0.2,
+            duration: 600,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+        // Botones aparecen desde abajo
+        Animated.sequence([
+          Animated.delay(200),
+          Animated.parallel([
+            Animated.timing(buttonsOpacity, {
+              toValue: 1,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+            Animated.spring(buttonsTranslateY, {
+              toValue: 0,
+              friction: 9,
+              tension: 40,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
+      ]).start();
+
+      // Pulso continuo en la imagen
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(imagePulse, {
+            toValue: 1.02,
+            duration: 2000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(imagePulse, {
+            toValue: 1,
+            duration: 2000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+
+    } else {
+      // Animate OUT - cuando se deselecciona
+      Animated.parallel([
+        Animated.timing(headerTranslateY, {
+          toValue: 0,
+          duration: 350,
+          easing: Easing.bezier(0.4, 0.0, 0.2, 1),
+          useNativeDriver: true,
+        }),
+        Animated.timing(headerOpacity, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+        Animated.spring(flashcardScale, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+        Animated.timing(flashcardRotate, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonsOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonsTranslateY, {
+          toValue: 50,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(imagePulse, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [selectedIndex]);
 
   // Play phrase with text-to-speech with higher volume
   const handleSpeakPhrase = useCallback((phrase: string) => {
@@ -262,7 +414,6 @@ const PhraseSelectionScreen: React.FC = () => {
               {/* Audio indicator badge - shows that tapping plays audio */}
               <View style={styles.audioIndicatorBadge}>
                 <Text style={styles.audioIndicatorIcon}>🔊</Text>
-                <Text style={styles.audioIndicatorText}>Tap to hear</Text>
               </View>
               
               {item.isLoading ? (
@@ -311,6 +462,10 @@ const PhraseSelectionScreen: React.FC = () => {
               activeOpacity={0.7}
               disabled={!isTapped && !isSelected}
             >
+              <PictogramImage
+                arasaacId={6612}
+                style={styles.selectButtonImage}
+              />
               <Text style={styles.selectButtonText}>Select Phrase</Text>
             </TouchableOpacity>
           </View>
@@ -343,47 +498,102 @@ const PhraseSelectionScreen: React.FC = () => {
   if (selectedIndex !== null) {
     const selectedPhrase = phrasesWithImages[selectedIndex];
 
+    const rotateInterpolate = flashcardRotate.interpolate({
+      inputRange: [0, 360],
+      outputRange: ['0deg', '360deg'],
+    });
+
     return (
       <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
           <StatusBar style="auto" />
 
-          <Header
-            title="Selected Phrase"
-            subtitle="Your chosen phrase"
-          />
+          {/* Header animado - se desliza hacia arriba y desaparece */}
+          <Animated.View
+            style={{
+              transform: [{ translateY: headerTranslateY }],
+              opacity: headerOpacity,
+            }}
+          >
+            <Header
+              title="Selected Phrase"
+            />
+          </Animated.View>
 
-          {/* Flashcard seleccionada (más grande) */}
+          {/* Flashcard seleccionada (más grande) con animación */}
           <View style={styles.selectedFlashcardWrapper}>
-            <View style={[styles.flashcard, styles.flashcardSelected, { backgroundColor: theme.white }]}>
-              <View style={styles.imageContainer}>
-                {selectedPhrase.isLoading ? (
-                  <View style={styles.imageLoadingContainer}>
-                    <ActivityIndicator size="large" color={theme.primary} />
-                  </View>
-                ) : selectedPhrase.imageUrl ? (
-                  <Image
-                    source={{ uri: selectedPhrase.imageUrl }}
-                    style={styles.phraseImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={[styles.imagePlaceholder, { backgroundColor: theme.accent }]}>
-                    <Text style={styles.placeholderEmoji}>🖼️</Text>
-                  </View>
-                )}
-              </View>
+            {/* Efecto de resplandor de fondo */}
+            <Animated.View
+              style={{
+                position: 'absolute',
+                width: '105%',
+                height: '105%',
+                borderRadius: 24,
+                backgroundColor: theme.accent,
+                opacity: glowOpacity,
+                shadowColor: theme.accent,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.8,
+                shadowRadius: 30,
+                elevation: 25,
+              }}
+            />
+            
+            <Animated.View
+              style={{
+                width: '100%',
+                height: '100%',
+                transform: [
+                  { scale: flashcardScale },
+                  { rotate: rotateInterpolate },
+                ],
+              }}
+            >
+              <View style={[styles.flashcard, styles.flashcardSelected, { backgroundColor: theme.white }]}>
+                <Animated.View 
+                  style={[
+                    styles.imageContainer,
+                    {
+                      transform: [{ scale: imagePulse }],
+                    }
+                  ]}
+                >
+                  {selectedPhrase.isLoading ? (
+                    <View style={styles.imageLoadingContainer}>
+                      <ActivityIndicator size="large" color={theme.primary} />
+                    </View>
+                  ) : selectedPhrase.imageUrl ? (
+                    <Image
+                      source={{ uri: selectedPhrase.imageUrl }}
+                      style={styles.phraseImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.imagePlaceholder, { backgroundColor: theme.accent }]}>
+                      <Text style={styles.placeholderEmoji}>🖼️</Text>
+                    </View>
+                  )}
+                </Animated.View>
 
-              <View style={[styles.phraseTextContainer, { flex: 1, justifyContent: 'center' }]}>
-                <Text style={[styles.phraseText, styles.phraseTextLarge, { color: theme.primary }]}>
-                  {cleanPhrase(selectedPhrase.phrase)}
-                </Text>
+                <View style={[styles.phraseTextContainer, { flex: 1, justifyContent: 'center' }]}>
+                  <Text style={[styles.phraseText, styles.phraseTextLarge, { color: theme.primary }]}>
+                    {cleanPhrase(selectedPhrase.phrase)}
+                  </Text>
+                </View>
               </View>
-            </View>
+            </Animated.View>
           </View>
 
-          {/* Action buttons - PCS style */}
-          <View style={styles.selectedActionButtons}>
+          {/* Action buttons animados - aparecen desde abajo */}
+          <Animated.View
+            style={[
+              styles.selectedActionButtons,
+              {
+                opacity: buttonsOpacity,
+                transform: [{ translateY: buttonsTranslateY }],
+              },
+            ]}
+          >
             {/* Back to Phrases button */}
             <TouchableOpacity
               style={[
@@ -391,8 +601,21 @@ const PhraseSelectionScreen: React.FC = () => {
                 { backgroundColor: 'white', borderColor: theme.accent }
               ]}
               onPress={() => {
+                // Mantener la posición del carrusel en la flashcard seleccionada
+                const indexToMaintain = selectedIndex;
                 setSelectedIndex(null);
                 setTappedIndex(null);
+                
+                // Hacer scroll a la flashcard que estaba seleccionada después de la transición
+                setTimeout(() => {
+                  if (indexToMaintain !== null) {
+                    flatListRef.current?.scrollToIndex({ 
+                      index: indexToMaintain, 
+                      animated: false 
+                    });
+                    setCurrentIndex(indexToMaintain);
+                  }
+                }, 50);
               }}
               accessible={true}
               accessibilityLabel="Back to phrase list"
@@ -400,11 +623,11 @@ const PhraseSelectionScreen: React.FC = () => {
             >
               {/* Back arrow pictogram */}
               <PictogramImage
-                arasaacId={38195}
-                style={styles.pcsButtonImage}
+                arasaacId={38219}
+                style={styles.pcsButtonSelectedImage}
               />
-              <Text style={[styles.pcsButtonText, { color: theme.accent }]}>
-                Back to{'\n'}Phrases
+              <Text style={[styles.pcsButtonSelectedText, { color: theme.accent }]}>
+                Back to{'\n'}Flashcards
               </Text>
             </TouchableOpacity>
 
@@ -419,16 +642,16 @@ const PhraseSelectionScreen: React.FC = () => {
               accessibilityLabel="Go back to word selection"
               accessibilityRole="button"
             >
-              {/* Home/Words pictogram - ARASAAC ID 4008 (house/home) */}
+              {/* Home/Words pictogram - ARASAAC ID 38249 (house/home) */}
               <PictogramImage
-                arasaacId={4008}
-                style={styles.pcsButtonImage}
+                arasaacId={38249}
+                style={styles.pcsButtonSelectedImage}
               />
-              <Text style={[styles.pcsButtonText, { color: theme.tertiary }]}>
+              <Text style={[styles.pcsButtonSelectedText, { color: theme.tertiary }]}>
                 Back to{'\n'}Words
               </Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         </SafeAreaView>
       </View>
     );
@@ -440,10 +663,17 @@ const PhraseSelectionScreen: React.FC = () => {
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <StatusBar style="auto" />
 
-        <Header
-          title="Generated Phrases"
-          subtitle="Swipe to see more phrases"
-        />
+        {/* Header animado */}
+        <Animated.View
+          style={{
+            transform: [{ translateY: headerTranslateY }],
+            opacity: headerOpacity,
+          }}
+        >
+          <Header
+            title="Generated Phrases"
+          />
+        </Animated.View>
 
         {/* Carrusel de flashcards */}
         {phrasesWithImages.length > 0 ? (
@@ -535,9 +765,9 @@ const PhraseSelectionScreen: React.FC = () => {
               </>
             ) : (
               <>
-                {/* Plus/Add pictogram - ARASAAC ID 5270 (plus sign) */}
+                {/* Plus/Add pictogram - ARASAAC ID 9172 (plus sign) */}
                 <PictogramImage
-                  arasaacId={user?.preferences?.actionButtonPictograms?.generateMore || 5270}
+                  arasaacId={user?.preferences?.actionButtonPictograms?.generateMore || 9172}
                   style={styles.pcsButtonImage}
                 />
                 <Text style={[styles.pcsButtonText, { color: theme.primary }]}>
@@ -558,9 +788,9 @@ const PhraseSelectionScreen: React.FC = () => {
             accessibilityLabel="Go back to word selection"
             accessibilityRole="button"
           >
-            {/* Back arrow pictogram - ARASAAC ID 38195 (back arrow) */}
+            {/* Back arrow pictogram - ARASAAC ID 38249 (back arrow) */}
             <PictogramImage
-              arasaacId={user?.preferences?.actionButtonPictograms?.back || 38195}
+              arasaacId={user?.preferences?.actionButtonPictograms?.back || 38249}
               style={styles.pcsButtonImage}
             />
             <Text style={[styles.pcsButtonText, { color: theme.tertiary }]}>
