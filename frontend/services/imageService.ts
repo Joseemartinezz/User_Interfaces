@@ -1,6 +1,6 @@
-// Servicio frontend para generar imágenes con DALL-E para frases AAC
-// Este servicio hace llamadas al backend que maneja toda la lógica de generación
-// Evita problemas de CORS y mantiene las API keys seguras en el servidor
+// Frontend service to generate images with DALL-E for AAC phrases
+// This service makes calls to the backend that handles all generation logic
+// Avoids CORS issues and keeps API keys secure on the server
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -11,14 +11,14 @@ export interface GeneratedImage {
 }
 
 /**
- * Genera una imagen para una frase usando DALL-E a través del backend
- * El backend maneja la construcción del prompt y la llamada a OpenAI
- * @param phrase La frase para la cual generar la imagen
- * @returns URL de la imagen en formato data:image/png;base64,...
+ * Generates an image for a phrase using DALL-E through the backend
+ * The backend handles prompt construction and the OpenAI call
+ * @param phrase The phrase for which to generate the image
+ * @returns Image URL in data:image/png;base64,... format
  */
 export async function generateImageForPhrase(phrase: string): Promise<string> {
   if (!phrase || phrase.trim().length === 0) {
-    throw new Error('La frase no puede estar vacía');
+    throw new Error('The phrase cannot be empty');
   }
 
   try {
@@ -39,7 +39,7 @@ export async function generateImageForPhrase(phrase: string): Promise<string> {
     const data = await response.json();
     
     if (!data.imageBase64) {
-      throw new Error('No se recibió imagen en la respuesta del servidor');
+      throw new Error('No image received in server response');
     }
 
     // Retornar la imagen en base64 con el prefijo data:image
@@ -48,7 +48,7 @@ export async function generateImageForPhrase(phrase: string): Promise<string> {
     console.error('Error generating image:', error);
     
     if (error.message?.includes('Network') || error.message?.includes('Failed to fetch')) {
-      throw new Error('No se pudo conectar al servidor. Verifica que el backend esté ejecutándose.');
+      throw new Error('Could not connect to server. Verify that the backend is running.');
     }
     
     throw new Error(error.message || 'Error generando imagen para la frase');
@@ -56,9 +56,9 @@ export async function generateImageForPhrase(phrase: string): Promise<string> {
 }
 
 /**
- * Genera imágenes para múltiples frases en paralelo usando el endpoint batch del backend
- * @param phrases Array de frases para las cuales generar imágenes
- * @returns Array de objetos con frase e imagen
+ * Generates images for multiple phrases in parallel using the backend batch endpoint
+ * @param phrases Array of phrases for which to generate images
+ * @returns Array of objects with phrase and image
  */
 export async function generateImagesForPhrases(phrases: string[]): Promise<GeneratedImage[]> {
   if (!phrases || phrases.length === 0) {
@@ -91,8 +91,8 @@ export async function generateImagesForPhrases(phrases: string[]): Promise<Gener
   } catch (error: any) {
     console.error('Error generating images for phrases:', error);
     
-    // Fallback: generar imágenes una por una si el endpoint batch falla
-    console.log('⚠️ Fallback: generando imágenes individualmente...');
+    // Fallback: generate images one by one if batch endpoint fails
+    console.log('⚠️ Fallback: generating images individually...');
     const imagePromises = phrases.map(async (phrase) => {
       try {
         const imageUrl = await generateImageForPhrase(phrase);

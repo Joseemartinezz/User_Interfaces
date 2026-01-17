@@ -69,7 +69,7 @@ export const styles: ReturnType<typeof StyleSheet.create> = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Fondo sólido más opaco para visibilidad sin sombras
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Solid darker background for visibility without shadows
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 14,

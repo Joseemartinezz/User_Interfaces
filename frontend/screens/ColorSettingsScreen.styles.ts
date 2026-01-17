@@ -134,7 +134,7 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  // Estilos para navegación (igual que ParentMenuScreen)
+  // Styles for navigation (same as ParentMenuScreen)
   menuButton: {
     backgroundColor: 'white',
     borderRadius: 12,

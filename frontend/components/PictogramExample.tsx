@@ -14,15 +14,15 @@ import {
   getPictogramImageUrl,
   convertWordsToPictograms,
   ArasaacPictogram,
-} from '../api';
+} from '../services/arasaacService';
 import { styles } from './PictogramExample.styles';
 
 /**
- * Componente de ejemplo para demostrar el uso del servicio de ARASAAC
- * Este componente permite:
- * - Buscar pictogramas por palabra
- * - Mostrar los resultados en una galería
- * - Convertir frases completas en secuencias de pictogramas
+ * Example component to demonstrate ARASAAC service usage
+ * This component allows:
+ * - Searching pictograms by word
+ * - Displaying results in a gallery
+ * - Converting complete phrases into pictogram sequences
  */
 export default function PictogramExample() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -132,7 +132,7 @@ export default function PictogramExample() {
         </View>
       </View>
 
-      {/* Búsqueda de pictogramas */}
+      {/* Pictogram search */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>1. Buscar Pictogramas</Text>
         <TextInput
@@ -150,7 +150,7 @@ export default function PictogramExample() {
           <Text style={styles.buttonText}>Buscar</Text>
         </TouchableOpacity>
 
-        {/* Resultados de búsqueda */}
+        {/* Search results */}
         {isLoading && <ActivityIndicator size="large" color="#4A90E2" />}
         
         {pictograms.length > 0 && !isLoading && (
@@ -187,7 +187,7 @@ export default function PictogramExample() {
           <Text style={styles.buttonText}>Convertir</Text>
         </TouchableOpacity>
 
-        {/* Resultado de conversión */}
+        {/* Conversion result */}
         {phraseResult.length > 0 && !isLoading && (
           <View style={styles.phraseResultContainer}>
             <Text style={styles.resultsTitle}>Resultado:</Text>

@@ -93,7 +93,7 @@ export async function generatePhrases(words: string[], childAge?: number): Promi
 }
 
 /**
- * Genera más frases sin repetir las existentes
+ * Generates more phrases without repeating existing ones
  */
 export async function generateMorePhrases(
   words: string[],
@@ -124,200 +124,6 @@ export async function generateMorePhrases(
     console.error('Error generating more phrases:', error);
     throw new Error(error.message || 'Error generating more phrases. Verify that the backend server is running.');
   }
-}
-
-/**
- * ARASAAC pictogram type
- */
-export interface ArasaacPictogram {
-  _id: number;
-  keywords: Array<{
-    keyword: string;
-    hasLocution: boolean;
-  }>;
-  synsets?: string[];
-  categories?: string[];
-  schematic?: boolean;
-  sex?: boolean;
-  violence?: boolean;
-  aac?: boolean;
-  aacColor?: boolean;
-  skin?: boolean;
-  hair?: boolean;
-  downloads?: number;
-  variations?: any;
-}
-
-/**
- * Opciones para obtener la URL de una imagen de pictograma
- */
-export interface PictogramImageOptions {
-  size?: 'small' | 'medium' | 'large';
-  plural?: boolean;
-  color?: boolean;
-  backgroundColor?: 'white' | 'black' | 'transparent';
-  skinColor?: string;
-  hairColor?: string;
-  action?: 'present' | 'past' | 'future';
-}
-
-/**
- * Searches ARASAAC pictograms by search term
- */
-export async function searchPictograms(
-  searchTerm: string,
-  language: string = 'en'
-): Promise<ArasaacPictogram[]> {
-  if (!searchTerm || searchTerm.trim() === '') {
-    return [];
-  }
-
-  try {
-    const response = await fetch(
-      `${API_BASE_URL}/api/arasaac/search/${language}/${encodeURIComponent(searchTerm)}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(errorData.error || `Error ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error: any) {
-    console.error('Error searching pictograms:', error);
-    throw new Error(error.message || 'Error searching pictograms. Verify that the backend server is running.');
-  }
-}
-
-/**
- * Gets information for a specific pictogram by its ID
- */
-export async function getPictogramById(
-  pictogramId: number,
-  language: string = 'en'
-): Promise<ArasaacPictogram> {
-  const url = `${API_BASE_URL}/api/arasaac/pictogram/${language}/${pictogramId}`;
-  
-  try {
-    console.log(`   🌐 Llamando a: ${url}`);
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      const errorMessage = errorData.error || `Error ${response.status}`;
-      console.error(`   ❌ Error ${response.status} getting pictogram ${pictogramId}:`, errorMessage);
-      throw new Error(errorMessage);
-    }
-
-    const pictogram = await response.json();
-    return pictogram;
-  } catch (error: any) {
-    console.error(`   ❌ Error getting pictogram ${pictogramId}:`, error.message || error);
-    if (error.message?.includes('Network request failed') || error.message?.includes('Failed to fetch')) {
-      throw new Error(`Could not connect to backend. Verify it is running at ${API_BASE_URL}`);
-    }
-    throw new Error(error.message || 'Error getting pictogram. Verify that the backend server is running.');
-  }
-}
-
-/**
- * Gets the URL of a pictogram image
- */
-export function getPictogramImageUrl(
-  pictogramId: number,
-  options: PictogramImageOptions = {}
-): string {
-  const { size = 'medium', plural = false, color = true, backgroundColor = 'white', skinColor, hairColor, action } = options;
-  
-  let url = `${API_BASE_URL}/api/arasaac/image/${pictogramId}`;
-  const params: string[] = [];
-  
-  // FIX: Asegurar que el parámetro sea "color" (no "collor" o "ccolor")
-  if (color !== undefined) params.push(`color=${color}`);
-  if (plural) params.push('plural=true');
-  if (backgroundColor) params.push(`backgroundColor=${encodeURIComponent(backgroundColor)}`);
-  if (skinColor) params.push(`skin=${encodeURIComponent(skinColor)}`);
-  if (hairColor) params.push(`hair=${encodeURIComponent(hairColor)}`);
-  if (action) params.push(`action=${encodeURIComponent(action)}`);
-  
-  if (params.length > 0) {
-    url += '?' + params.join('&');
-  }
-  
-  return url;
-}
-
-/**
- * Searches pictograms for multiple words
- */
-export async function searchMultiplePictograms(
-  words: string[],
-  language: string = 'en'
-): Promise<Array<{ word: string; pictogram: ArasaacPictogram | null; imageUrl: string }>> {
-  if (!words || words.length === 0) {
-    return [];
-  }
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/arasaac/search-multiple`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ words, language }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(errorData.error || `Error ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error: any) {
-    console.error('Error searching multiple pictograms:', error);
-    throw new Error(error.message || 'Error searching pictograms. Verify that the backend server is running.');
-  }
-}
-
-/**
- * Gets the best pictogram for a word
- */
-export async function getBestPictogramForWord(
-  word: string,
-  language: string = 'en'
-): Promise<ArasaacPictogram | null> {
-  try {
-    const pictograms = await searchPictograms(word, language);
-    if (pictograms.length === 0) {
-      return null;
-    }
-    // Return the first one (you can add more sophisticated selection logic)
-    return pictograms[0];
-  } catch (error) {
-    console.error('Error getting best pictogram:', error);
-    return null;
-  }
-}
-
-/**
- * Convierte palabras en pictogramas con sus URLs de imagen
- */
-export async function convertWordsToPictograms(
-  words: string[],
-  language: string = 'en'
-): Promise<Array<{ word: string; pictogram: ArasaacPictogram | null; imageUrl: string }>> {
-  return await searchMultiplePictograms(words, language);
 }
 
 // ============================================================================
@@ -496,7 +302,7 @@ export async function getAllCategories(userId?: string): Promise<Record<string, 
     return data.categories || {};
   } catch (error: any) {
     console.error('Error getting categories:', error);
-    throw new Error(error.message || 'Error al obtener categorías. Verifica que el servidor backend esté ejecutándose.');
+    throw new Error(error.message || 'Error getting categories. Verify that the backend server is running.');
   }
 }
 
@@ -645,44 +451,4 @@ export async function deleteCategoryWithPictograms(
   }
 }
 
-/**
- * Gets pictogram information by their IDs
- * Obtiene los detalles completos de múltiples pictogramas desde ARASAAC
- */
-export async function getPictogramsByIds(
-  pictogramIds: number[],
-  language: string = 'en'
-): Promise<Array<{ id: number; pictogram: ArasaacPictogram | null; text: string }>> {
-  if (!pictogramIds || pictogramIds.length === 0) {
-    return [];
-  }
-
-  console.log(`🔍 Getting ${pictogramIds.length} pictograms from ARASAAC (language: ${language})`);
-  console.log(`   IDs: ${pictogramIds.slice(0, 10).join(', ')}${pictogramIds.length > 10 ? '...' : ''}`);
-
-  try {
-    // Get information for each pictogram in parallel
-    const promises = pictogramIds.map(async (id) => {
-      try {
-        console.log(`   📥 Getting pictogram ID: ${id}`);
-        const pictogram = await getPictogramById(id, language);
-        // Get main text (first keyword)
-        const text = pictogram.keywords?.[0]?.keyword || `Pictogram ${id}`;
-        console.log(`   ✅ Pictogram ${id} obtained: "${text}"`);
-        return { id, pictogram, text };
-      } catch (error: any) {
-        console.warn(`⚠️ Could not get pictogram ${id}:`, error.message || error);
-        return { id, pictogram: null, text: `Pictogram ${id}` };
-      }
-    });
-
-    const results = await Promise.all(promises);
-    const successful = results.filter(r => r.pictogram !== null).length;
-    console.log(`✅ Obtained ${successful}/${pictogramIds.length} pictograms successfully`);
-    return results;
-  } catch (error: any) {
-    console.error('❌ Error getting pictograms by IDs:', error);
-    throw new Error(error.message || 'Error getting pictograms.');
-  }
-}
 

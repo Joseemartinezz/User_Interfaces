@@ -20,18 +20,24 @@ const {
   isPredefinedCategory,
   PREDEFINED_CATEGORIES
 } = require('./services/categoryService.ts');
+const {
+  searchPictograms,
+  getPictogramById,
+  getPictogramImage,
+  searchMultiplePictograms
+} = require('./services/arasaacService.ts');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware que se ejecuta en todas las peticiones
-// 1. CORS - Permite peticiones desde el frontend
-app.use(cors());
+    // Middleware that runs on all requests
+    // 1. CORS - Allows requests from frontend
+    app.use(cors());
 
-// 2. JSON Parser - Convierte el body de JSON a objeto JavaScript
-app.use(express.json());
+    // 2. JSON Parser - Converts JSON body to JavaScript object
+    app.use(express.json());
 
-// Middleware de logging para todas las peticiones
+// Middleware logging for all requests
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
   console.log(`\n📥 [${timestamp}] ${req.method} ${req.path}`);
@@ -44,7 +50,7 @@ app.use((req, res, next) => {
     console.log(`   Body:`, JSON.stringify(req.body).substring(0, 200));
   }
   
-  // Interceptar la respuesta para loggear el status
+  // Intercept response to log status
   const originalSend = res.send;
   res.send = function(data) {
     console.log(`📤 [${timestamp}] ${req.method} ${req.path} → ${res.statusCode}`);
@@ -56,7 +62,7 @@ app.use((req, res, next) => {
 
 /**
  * Simple authentication middleware
- * Extrae userId del header Authorization o del body
+ * Extracts userId from Authorization header or body
  * In production, should verify Firebase token with Admin SDK
  */
 const authenticateUser = (req, res, next) => {
@@ -65,7 +71,7 @@ const authenticateUser = (req, res, next) => {
   let userId = null;
   
   if (authHeader) {
-    // Si viene como "Bearer userId", extraer userId
+    // If it comes as "Bearer userId", extract userId
     const parts = authHeader.split(' ');
     userId = parts.length > 1 ? parts[1] : parts[0];
   }
@@ -118,7 +124,7 @@ if (!GEMINI_API_KEY) {
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY || '');
 
 /**
- * Lista los modelos disponibles de Gemini
+ * Lists available Gemini models
  * Useful for debugging
  */
 async function listAvailableModels() {
@@ -136,13 +142,13 @@ async function listAvailableModels() {
       return [];
     }
   } catch (error) {
-    console.error('❌ Error listando modelos:', error.message);
+    console.error('❌ Error listing models:', error.message);
     return [];
   }
 }
 
 /**
- * Extrae frases numeradas del texto de respuesta
+ * Extracts numbered phrases from the response text
  */
 function extractPhrases(text) {
   const lines = text.split('\n');
@@ -162,7 +168,7 @@ function extractPhrases(text) {
 
 /**
  * Endpoint to generate phrases
- * Usa Azure OpenAI como proveedor principal, Gemini como fallback
+ * Uses Azure OpenAI as primary provider, Gemini as fallback
  */
 app.post('/api/generate-phrases', async (req, res) => {
   try {
@@ -248,7 +254,7 @@ Guidelines:
     }
 
     const phrases = extractPhrases(text);
-    // Limitar a exactamente 3 frases para la generación inicial
+    // Limit to exactly 3 phrases for initial generation
     const limitedPhrases = phrases.slice(0, 3);
     console.log(`📊 Extracted phrases: ${phrases.length}, limited to: ${limitedPhrases.length}`);
     if (limitedPhrases.length !== 3) {
@@ -265,7 +271,7 @@ Guidelines:
       stack: error.stack?.split('\n').slice(0, 5).join('\n')
     });
     
-    // Mensaje de error más útil
+    // More useful error message
     let errorMessage = error.message || 'Unknown error';
     if (error.message?.includes('404') || error.message?.includes('not found')) {
       errorMessage = 'Gemini model is not available. Verify your API key and available models.';
@@ -299,21 +305,21 @@ app.post('/api/generate-more-phrases', async (req, res) => {
     }
 
     if (!existingPhrases || !Array.isArray(existingPhrases)) {
-      return res.status(400).json({ error: 'Se requiere un array de frases existentes' });
+      return res.status(400).json({ error: 'An array of existing phrases is required' });
     }
 
-    // Intentar primero con Azure OpenAI (Proveedor Principal)
+    // Try first with Azure OpenAI (Primary Provider)
     if (AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) {
       try {
         console.log('🔄 Attempting to generate more phrases with Azure OpenAI (Primary Provider)...');
         const phrases = await generateMoreAzurePhrases(words, existingPhrases, childAge);
-        // Limit to exactly 1 phrase for "Generate More" (solo una frase adicional)
+        // Limit to exactly 1 phrase for "Generate More" (one additional phrase)
         const limitedPhrases = phrases.slice(0, 1);
-        console.log(`📊 Frases de Azure: ${phrases.length}, limitadas a: ${limitedPhrases.length}`);
+        console.log(`📊 Azure phrases: ${phrases.length}, limited to: ${limitedPhrases.length}`);
         if (limitedPhrases.length !== 1) {
-          console.warn(`⚠️ Advertencia: Se esperaba 1 frase pero se obtuvieron ${limitedPhrases.length}`);
+          console.warn(`⚠️ Warning: Expected 1 phrase but got ${limitedPhrases.length}`);
         }
-        console.log('✅ Frase generada exitosamente con Azure OpenAI');
+        console.log('✅ Phrase generated successfully with Azure OpenAI');
         return res.json({ phrases: limitedPhrases });
       } catch (azureError) {
         console.error('❌ Azure OpenAI failed:', azureError.message);
@@ -327,7 +333,7 @@ app.post('/api/generate-more-phrases', async (req, res) => {
     if (!GEMINI_API_KEY) {
       return res.status(500).json({ 
         error: 'No AI provider is configured',
-        message: 'Configura AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY, o GEMINI_API_KEY en backend/.env'
+        message: 'Configure AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY, or GEMINI_API_KEY in backend/.env'
       });
     }
 
@@ -355,7 +361,7 @@ Guidelines:
 
     const promptMore = basePrompt + '\n\nDo NOT repeat any of these phrases:\n' + existingPhrases.join('\n') + '\n\nRemember: Generate EXACTLY 1 new phrase only.';
 
-    // Intentar con diferentes modelos de Gemini en orden de preferencia
+    // Try with different Gemini models in order of preference
     const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro'];
     let text = null;
     let lastError = null;
@@ -386,7 +392,7 @@ Guidelines:
     }
 
     const phrases = extractPhrases(text);
-    // Limit to exactly 1 phrase for "Generate More" (solo una frase adicional)
+    // Limit to exactly 1 phrase for "Generate More" (one additional phrase)
     const limitedPhrases = phrases.slice(0, 1);
     console.log(`📊 Extracted phrases: ${phrases.length}, limited to: ${limitedPhrases.length}`);
     if (limitedPhrases.length !== 1) {
@@ -403,7 +409,7 @@ Guidelines:
       stack: error.stack?.split('\n').slice(0, 5).join('\n')
     });
     
-    // Mensaje de error más útil
+    // More useful error message
     let errorMessage = error.message || 'Unknown error';
     if (error.message?.includes('404') || error.message?.includes('not found')) {
       errorMessage = 'Gemini model is not available. Verify your API key and available models.';
@@ -414,7 +420,7 @@ Guidelines:
     }
     
     res.status(500).json({ 
-      error: 'Error al generar más frases',
+      error: 'Error generating more phrases',
       message: errorMessage,
       details: process.env.NODE_ENV === 'development' ? {
         originalError: error.message,
@@ -440,7 +446,7 @@ app.post('/api/generate-image', async (req, res) => {
     if (!phrase || typeof phrase !== 'string' || phrase.trim().length === 0) {
       return res.status(400).json({ 
         error: 'A valid phrase is required',
-        message: 'El campo "phrase" es obligatorio y debe ser un string no vacío'
+        message: 'The "phrase" field is required and must be a non-empty string'
       });
     }
 
@@ -454,18 +460,18 @@ app.post('/api/generate-image', async (req, res) => {
     console.error('❌ Error generating image:', error);
     
     let statusCode = 500;
-    let errorMessage = error.message || 'Error desconocido al generar imagen';
+    let errorMessage = error.message || 'Unknown error generating image';
     
-    if (error.message?.includes('API key') || error.message?.includes('API Key') || error.message?.includes('no está configurada')) {
+    if (error.message?.includes('API key') || error.message?.includes('API Key') || error.message?.includes('not configured')) {
       statusCode = 500;
-      errorMessage = 'Azure OpenAI API Key no configurada. Configura AZURE_OPENAI_IMAGE_API_KEY en backend/.env';
+      errorMessage = 'Azure OpenAI API Key not configured. Configure AZURE_OPENAI_IMAGE_API_KEY in backend/.env';
     } else if (error.message?.includes('quota') || error.message?.includes('limit')) {
       statusCode = 429;
-      errorMessage = 'Se ha excedido la cuota de Azure OpenAI. Verifica tu plan.';
+      errorMessage = 'Azure OpenAI quota exceeded. Verify your plan.';
     }
     
     res.status(statusCode).json({ 
-      error: 'Error al generar imagen',
+      error: 'Error generating image',
       message: errorMessage,
       details: process.env.NODE_ENV === 'development' ? {
         originalError: error.message,
@@ -476,7 +482,7 @@ app.post('/api/generate-image', async (req, res) => {
 });
 
 /**
- * Endpoint para generar múltiples imágenes en paralelo
+ * Endpoint to generate multiple images in parallel
  * POST /api/generate-images
  * Body: { phrases: string[] }
  */
@@ -486,20 +492,20 @@ app.post('/api/generate-images', async (req, res) => {
 
     if (!phrases || !Array.isArray(phrases) || phrases.length === 0) {
       return res.status(400).json({ 
-        error: 'Se requiere un array de frases',
-        message: 'El campo "phrases" debe ser un array no vacío'
+        error: 'An array of phrases is required',
+        message: 'The "phrases" field must be a non-empty array'
       });
     }
 
-    // Validar que todas las frases sean strings
+    // Validate that all phrases are strings
     const validPhrases = phrases
       .filter(p => typeof p === 'string' && p.trim().length > 0)
       .map(p => p.trim());
 
     if (validPhrases.length === 0) {
       return res.status(400).json({ 
-        error: 'No hay frases válidas',
-        message: 'Todas las frases deben ser strings no vacíos'
+        error: 'No valid phrases',
+        message: 'All phrases must be non-empty strings'
       });
     }
 
@@ -514,8 +520,8 @@ app.post('/api/generate-images', async (req, res) => {
     console.error('❌ Error generating images:', error);
     
     res.status(500).json({ 
-      error: 'Error al generar imágenes',
-      message: error.message || 'Error desconocido',
+      error: 'Error generating images',
+      message: error.message || 'Unknown error',
       details: process.env.NODE_ENV === 'development' ? {
         originalError: error.message
       } : undefined
@@ -542,29 +548,29 @@ app.post('/api/azure/generate-phrases', async (req, res) => {
 
     if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
       return res.status(500).json({
-        error: 'Azure OpenAI no está configurado',
-        message: 'Agrega AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY al archivo backend/.env'
+        error: 'Azure OpenAI is not configured',
+        message: 'Add AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY to backend/.env file'
       });
     }
 
-    console.log('🔄 Llamando a Azure OpenAI API con palabras:', words);
+    console.log('🔄 Calling Azure OpenAI API with words:', words);
     
     try {
       const phrases = await generateAzurePhrases(words);
-      console.log(`✅ Respuesta recibida de Azure OpenAI`);
-      console.log('📄 Frases generadas:', phrases);
+      console.log(`✅ Response received from Azure OpenAI`);
+      console.log('📄 Generated phrases:', phrases);
 
       res.json({ phrases });
     } catch (azureError) {
-      console.error('❌ Error de Azure OpenAI:', azureError);
+      console.error('❌ Azure OpenAI error:', azureError);
       
-      let errorMessage = azureError.message || 'Error desconocido';
+      let errorMessage = azureError.message || 'Unknown error';
       if (azureError.message?.includes('401') || azureError.message?.includes('Unauthorized')) {
-        errorMessage = 'API Key de Azure OpenAI inválida. Verifica tu API key.';
+        errorMessage = 'Azure OpenAI API Key invalid. Verify your API key.';
       } else if (azureError.message?.includes('429') || azureError.message?.includes('rate limit')) {
-        errorMessage = 'Se ha excedido la cuota de la API de Azure OpenAI. Verifica tu plan.';
+        errorMessage = 'Azure OpenAI API quota exceeded. Verify your plan.';
       } else if (azureError.message?.includes('404') || azureError.message?.includes('Not Found')) {
-        errorMessage = 'El deployment de Azure OpenAI no está disponible. Verifica la configuración.';
+        errorMessage = 'Azure OpenAI deployment is not available. Verify the configuration.';
       }
       
       throw new Error(errorMessage);
@@ -601,29 +607,29 @@ app.post('/api/azure/generate-phrases', async (req, res) => {
 
     if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
       return res.status(500).json({
-        error: 'Azure OpenAI no está configurado',
-        message: 'Agrega AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY al archivo backend/.env'
+        error: 'Azure OpenAI is not configured',
+        message: 'Add AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY to backend/.env file'
       });
     }
 
-    console.log('🔄 Llamando a Azure OpenAI API con palabras:', words);
+    console.log('🔄 Calling Azure OpenAI API with words:', words);
     
     try {
       const phrases = await generateAzurePhrases(words);
-      console.log(`✅ Respuesta recibida de Azure OpenAI`);
-      console.log('📄 Frases generadas:', phrases);
+      console.log(`✅ Response received from Azure OpenAI`);
+      console.log('📄 Generated phrases:', phrases);
 
       res.json({ phrases });
     } catch (azureError) {
-      console.error('❌ Error de Azure OpenAI:', azureError);
+      console.error('❌ Azure OpenAI error:', azureError);
       
-      let errorMessage = azureError.message || 'Error desconocido';
+      let errorMessage = azureError.message || 'Unknown error';
       if (azureError.message?.includes('401') || azureError.message?.includes('Unauthorized')) {
-        errorMessage = 'API Key de Azure OpenAI inválida. Verifica tu API key.';
+        errorMessage = 'Azure OpenAI API Key invalid. Verify your API key.';
       } else if (azureError.message?.includes('429') || azureError.message?.includes('rate limit')) {
-        errorMessage = 'Se ha excedido la cuota de la API de Azure OpenAI. Verifica tu plan.';
+        errorMessage = 'Azure OpenAI API quota exceeded. Verify your plan.';
       } else if (azureError.message?.includes('404') || azureError.message?.includes('Not Found')) {
-        errorMessage = 'El deployment de Azure OpenAI no está disponible. Verifica la configuración.';
+        errorMessage = 'Azure OpenAI deployment is not available. Verify the configuration.';
       }
       
       throw new Error(errorMessage);
@@ -642,7 +648,7 @@ app.post('/api/azure/generate-phrases', async (req, res) => {
 });
 
 /**
- * Endpoint para generar más frases con Azure OpenAI
+ * Endpoint to generate more phrases with Azure OpenAI
  * POST /api/azure/generate-more-phrases
  */
 app.post('/api/azure/generate-more-phrases', async (req, res) => {
@@ -654,36 +660,36 @@ app.post('/api/azure/generate-more-phrases', async (req, res) => {
     }
 
     if (!existingPhrases || !Array.isArray(existingPhrases)) {
-      return res.status(400).json({ error: 'Se requiere un array de frases existentes' });
+      return res.status(400).json({ error: 'An array of existing phrases is required' });
     }
 
     if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
       return res.status(500).json({
-        error: 'Azure OpenAI no está configurado',
-        message: 'Agrega AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY al archivo backend/.env'
+        error: 'Azure OpenAI is not configured',
+        message: 'Add AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY to backend/.env file'
       });
     }
 
-    console.log('🔄 Llamando a Azure OpenAI API para generar más frases...');
-    console.log('   Palabras:', words);
-    console.log('   Frases existentes:', existingPhrases);
+    console.log('🔄 Calling Azure OpenAI API to generate more phrases...');
+    console.log('   Words:', words);
+    console.log('   Existing phrases:', existingPhrases);
     
     try {
       const phrases = await generateMoreAzurePhrases(words, existingPhrases);
-      console.log(`✅ Respuesta recibida de Azure OpenAI`);
-      console.log('📄 Frases generadas:', phrases);
+      console.log(`✅ Response received from Azure OpenAI`);
+      console.log('📄 Generated phrases:', phrases);
 
       res.json({ phrases });
     } catch (azureError) {
-      console.error('❌ Error de Azure OpenAI:', azureError);
+      console.error('❌ Azure OpenAI error:', azureError);
       
-      let errorMessage = azureError.message || 'Error desconocido';
+      let errorMessage = azureError.message || 'Unknown error';
       if (azureError.message?.includes('401') || azureError.message?.includes('Unauthorized')) {
-        errorMessage = 'API Key de Azure OpenAI inválida. Verifica tu API key.';
+        errorMessage = 'Azure OpenAI API Key invalid. Verify your API key.';
       } else if (azureError.message?.includes('429') || azureError.message?.includes('rate limit')) {
-        errorMessage = 'Se ha excedido la cuota de la API de Azure OpenAI. Verifica tu plan.';
+        errorMessage = 'Azure OpenAI API quota exceeded. Verify your plan.';
       } else if (azureError.message?.includes('404') || azureError.message?.includes('Not Found')) {
-        errorMessage = 'El deployment de Azure OpenAI no está disponible. Verifica la configuración.';
+        errorMessage = 'Azure OpenAI deployment is not available. Verify the configuration.';
       }
       
       throw new Error(errorMessage);
@@ -692,8 +698,8 @@ app.post('/api/azure/generate-more-phrases', async (req, res) => {
     console.error('❌ Error generating more phrases with Azure OpenAI:', error);
     
     res.status(500).json({ 
-      error: 'Error al generar más frases',
-      message: error.message || 'Error desconocido',
+      error: 'Error generating more phrases',
+      message: error.message || 'Unknown error',
       details: process.env.NODE_ENV === 'development' ? {
         originalError: error.message
       } : undefined
@@ -706,16 +712,11 @@ app.post('/api/azure/generate-more-phrases', async (req, res) => {
 // ==========================================
 
 /**
- * Base URL de la API de ARASAAC
- */
-const ARASAAC_BASE_URL = 'https://api.arasaac.org/api';
-
-/**
- * Endpoint para servir imágenes de pictogramas como proxy
+ * Endpoint to serve pictogram images as proxy
  * GET /api/arasaac/image/:idPictogram
  * 
- * IMPORTANTE: Esta ruta debe ir ANTES de otras rutas de ARASAAC
- * para evitar conflictos de enrutamiento
+ * IMPORTANT: This route must go BEFORE other ARASAAC routes
+ * to avoid routing conflicts
  */
 app.get('/api/arasaac/image/:idPictogram', async (req, res) => {
   try {
@@ -729,72 +730,15 @@ app.get('/api/arasaac/image/:idPictogram', async (req, res) => {
     console.log(`🖼️ Serving pictogram image ID: ${idPictogram}`);
     console.log(`   Request from: ${req.headers['user-agent'] || 'Unknown'}`);
 
-    // Build ARASAAC URL with optional parameters
-    let url = `${ARASAAC_BASE_URL}/pictograms/${idPictogram}`;
-    const params = [];
-    
-    if (color !== undefined) {
-      params.push(`color=${color}`);
-    }
-    if (backgroundColor) {
-      params.push(`backgroundColor=${encodeURIComponent(backgroundColor)}`);
-    }
-    if (plural === 'true') {
-      params.push('plural=true');
-    }
-    if (skin) {
-      params.push(`skin=${encodeURIComponent(skin)}`);
-    }
-    if (hair) {
-      params.push(`hair=${encodeURIComponent(hair)}`);
-    }
-    if (action) {
-      params.push(`action=${encodeURIComponent(action)}`);
-    }
-    
-    if (params.length > 0) {
-      url += '?' + params.join('&');
-    }
-
-    console.log(`📡 URL de ARASAAC: ${url}`);
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'image/png,image/*,*/*',
-      },
+    // Use ARASAAC service to get image
+    const { buffer: imageBuffer, contentType } = await getPictogramImage(parseInt(idPictogram), {
+      color: color !== undefined ? color === 'true' : undefined,
+      backgroundColor,
+      plural: plural === 'true',
+      skin,
+      hair,
+      action,
     });
-
-    if (!response.ok) {
-      console.error(`❌ Error de ARASAAC: ${response.status} ${response.statusText}`);
-      
-      if (response.status === 404) {
-        return res.status(404).json({ 
-          error: 'Pictograma no encontrado',
-          message: `No se encontró el pictograma con ID ${idPictogram}`
-        });
-      }
-      
-      return res.status(response.status).json({ 
-        error: 'Error al obtener la imagen de ARASAAC',
-        message: `Status ${response.status}: ${response.statusText}`
-      });
-    }
-
-    // Obtener el buffer de la imagen
-    // node-fetch v2 usa .buffer(), v3 usa .arrayBuffer()
-    let imageBuffer;
-    try {
-      imageBuffer = await response.buffer();
-    } catch (error) {
-      // If buffer() is not available, use arrayBuffer()
-      const arrayBuffer = await response.arrayBuffer();
-      imageBuffer = Buffer.from(arrayBuffer);
-    }
-    
-    const contentType = response.headers.get('content-type') || 'image/png';
-
-    console.log(`✅ Image obtained: ${imageBuffer.length} bytes, type: ${contentType}`);
 
     // Send image with correct headers for React Native
     res.setHeader('Content-Type', contentType);
@@ -806,15 +750,23 @@ app.get('/api/arasaac/image/:idPictogram', async (req, res) => {
     res.send(imageBuffer);
   } catch (error) {
     console.error('❌ Error getting image from ARASAAC:', error);
+    
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ 
+        error: 'Pictogram not found',
+        message: error.message
+      });
+    }
+    
     res.status(500).json({ 
-      error: 'Error al obtener la imagen',
+      error: 'Error getting image',
       message: error.message
     });
   }
 });
 
 /**
- * Busca pictogramas de ARASAAC por término de búsqueda
+ * Searches ARASAAC pictograms by search term
  * GET /api/arasaac/search/:language/:searchTerm
  */
 app.get('/api/arasaac/search/:language/:searchTerm', async (req, res) => {
@@ -822,44 +774,24 @@ app.get('/api/arasaac/search/:language/:searchTerm', async (req, res) => {
     const { language, searchTerm } = req.params;
 
     if (!searchTerm || searchTerm.trim() === '') {
-      return res.status(400).json({ error: 'Se requiere un término de búsqueda' });
+      return res.status(400).json({ error: 'A search term is required' });
     }
 
-    console.log(`🔍 Buscando pictogramas ARASAAC: "${searchTerm}" en idioma: ${language}`);
-
-    const url = `${ARASAAC_BASE_URL}/pictograms/${language}/search/${encodeURIComponent(searchTerm)}`;
-    console.log(`📡 URL de ARASAAC: ${url}`);
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      console.error(`❌ Error de ARASAAC: ${response.status} ${response.statusText}`);
-      return res.status(response.status).json({ 
-        error: 'Error al buscar en ARASAAC',
-        message: `Status ${response.status}: ${response.statusText}`
-      });
-    }
-
-    const pictograms = await response.json();
-    console.log(`✅ Se encontraron ${pictograms.length} pictogramas en ARASAAC`);
+    // Use ARASAAC service to search pictograms
+    const pictograms = await searchPictograms(searchTerm, language);
 
     res.json(pictograms);
   } catch (error) {
-    console.error('❌ Error buscando pictogramas en ARASAAC:', error);
+    console.error('❌ Error searching pictograms in ARASAAC:', error);
     res.status(500).json({ 
-      error: 'Error al buscar pictogramas',
+      error: 'Error searching pictograms',
       message: error.message
     });
   }
 });
 
 /**
- * Obtiene información de un pictograma específico por ID
+ * Gets information for a specific pictogram by ID
  * GET /api/arasaac/pictogram/:language/:idPictogram
  */
 app.get('/api/arasaac/pictogram/:language/:idPictogram', async (req, res) => {
@@ -870,49 +802,29 @@ app.get('/api/arasaac/pictogram/:language/:idPictogram', async (req, res) => {
       return res.status(400).json({ error: 'Se requiere un ID de pictograma' });
     }
 
-    console.log(`🔍 Obteniendo pictograma ARASAAC ID: ${idPictogram} en idioma: ${language}`);
-
-    const url = `${ARASAAC_BASE_URL}/pictograms/${language}/${idPictogram}`;
-    console.log(`📡 URL de ARASAAC: ${url}`);
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      console.error(`❌ Error de ARASAAC: ${response.status} ${response.statusText}`);
-      
-      if (response.status === 404) {
-        return res.status(404).json({ 
-          error: 'Pictograma no encontrado',
-          message: `No se encontró el pictograma con ID ${idPictogram}`
-        });
-      }
-      
-      return res.status(response.status).json({ 
-        error: 'Error al obtener el pictograma de ARASAAC',
-        message: `Status ${response.status}: ${response.statusText}`
-      });
-    }
-
-    const pictogram = await response.json();
-    console.log(`✅ Pictograma obtenido: ${pictogram._id}`);
+    // Use ARASAAC service to get pictogram
+    const pictogram = await getPictogramById(parseInt(idPictogram), language);
 
     res.json(pictogram);
   } catch (error) {
-    console.error('❌ Error obteniendo pictograma de ARASAAC:', error);
+    console.error('❌ Error getting pictogram from ARASAAC:', error);
+    
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ 
+        error: 'Pictogram not found',
+        message: error.message
+      });
+    }
+    
     res.status(500).json({ 
-      error: 'Error al obtener el pictograma',
+      error: 'Error getting pictogram',
       message: error.message
     });
   }
 });
 
 /**
- * Endpoint para buscar pictogramas para múltiples palabras
+ * Endpoint to search pictograms for multiple words
  * POST /api/arasaac/search-multiple
  */
 app.post('/api/arasaac/search-multiple', async (req, res) => {
@@ -923,58 +835,25 @@ app.post('/api/arasaac/search-multiple', async (req, res) => {
       return res.status(400).json({ error: 'An array of words is required' });
     }
 
-    console.log(`🔍 Buscando pictogramas para ${words.length} palabras en idioma: ${language}`);
-
-    // Buscar pictogramas para cada palabra en paralelo
-    const searchPromises = words.map(async (word) => {
-      try {
-        const url = `${ARASAAC_BASE_URL}/pictograms/${language}/search/${encodeURIComponent(word)}`;
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          console.error(`❌ Error buscando "${word}": ${response.status}`);
-          return { word, pictograms: [], error: true };
-        }
-
-        const pictograms = await response.json();
-        return { word, pictograms, error: false };
-      } catch (error) {
-        console.error(`❌ Error buscando "${word}":`, error.message);
-        return { word, pictograms: [], error: true };
-      }
-    });
-
-    const results = await Promise.all(searchPromises);
-    
-    // Convertir a objeto para facilitar el acceso
-    const resultsMap = {};
-    results.forEach(({ word, pictograms, error }) => {
-      resultsMap[word] = { pictograms, error };
-    });
-
-    console.log(`✅ Búsqueda completada para ${words.length} palabras`);
+    // Use ARASAAC service to search multiple pictograms
+    const resultsMap = await searchMultiplePictograms(words, language);
 
     res.json(resultsMap);
   } catch (error) {
-    console.error('❌ Error en búsqueda múltiple:', error);
+    console.error('❌ Error in multiple search:', error);
     res.status(500).json({ 
-      error: 'Error al buscar múltiples pictogramas',
+      error: 'Error searching multiple pictograms',
       message: error.message
     });
   }
 });
 
 /**
- * Ruta raíz - Información del servidor
+ * Root route - Server information
  */
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'AAC Backend Server está funcionando correctamente',
+    message: 'AAC Backend Server is running correctly',
     status: 'ok',
     endpoints: {
       health: '/api/health',
@@ -1032,39 +911,39 @@ app.get('/api/user', (req, res) => {
 });
 
 /**
- * PUT /api/user - Actualiza datos del usuario
+ * PUT /api/user - Updates user data
  */
 app.put('/api/user', (req, res) => {
   try {
     const { email, fullName, preferences } = req.body;
     
-    // Validar datos
+    // Validate data
     if (!email && !fullName && !preferences) {
       return res.status(400).json({ 
-        error: 'Se requiere al menos un campo para actualizar' 
+        error: 'At least one field is required to update' 
       });
     }
     
-    // Actualizar datos
+    // Update data
     if (email !== undefined) userData.email = email;
     if (fullName !== undefined) userData.fullName = fullName;
     if (preferences !== undefined) {
       userData.preferences = { ...userData.preferences, ...preferences };
     }
     
-    console.log('✅ Usuario actualizado:', userData);
+    console.log('✅ User updated:', userData);
     res.json({ user: userData });
   } catch (error) {
-    console.error('❌ Error actualizando usuario:', error);
+    console.error('❌ Error updating user:', error);
     res.status(500).json({ 
-      error: 'Error al actualizar usuario',
+      error: 'Error updating user',
       message: error.message
     });
   }
 });
 
 /**
- * POST /api/user/reset - Resetea el usuario a valores por defecto
+ * POST /api/user/reset - Resets the user to default values
  */
 app.post('/api/user/reset', (req, res) => {
   try {
@@ -1079,21 +958,21 @@ app.post('/api/user/reset', (req, res) => {
       }
     };
     
-    console.log('🔄 Usuario reseteado a valores por defecto');
+    console.log('🔄 User reset to default values');
     res.json({ user: userData });
   } catch (error) {
-    console.error('❌ Error reseteando usuario:', error);
+    console.error('❌ Error resetting user:', error);
     res.status(500).json({ 
-      error: 'Error al resetear usuario',
+      error: 'Error resetting user',
       message: error.message
     });
   }
 });
 
 /**
- * Endpoint para generar avatares de usuario
+ * Endpoint to generate user avatars
  * POST /api/avatar
- * Retorna PNG base64 data URL (compatible con React Native)
+ * Returns PNG base64 data URL (compatible with React Native)
  */
 app.post('/api/avatar', async (req, res) => {
   try {
@@ -1120,7 +999,7 @@ app.post('/api/avatar', async (req, res) => {
 });
 
 /**
- * GET /api/user/initials - Obtiene las iniciales del usuario
+ * GET /api/user/initials - Gets the initials of the user
  */
 app.get('/api/user/initials', (req, res) => {
   try {
@@ -1129,9 +1008,9 @@ app.get('/api/user/initials', (req, res) => {
     
     res.json({ initials });
   } catch (error) {
-    console.error('❌ Error obteniendo iniciales:', error);
+    console.error('❌ Error getting initials:', error);
     res.status(500).json({ 
-      error: 'Error al obtener iniciales',
+      error: 'Error getting initials',
       message: error.message
     });
   }
@@ -1167,7 +1046,7 @@ app.get('/api/categories', async (req, res) => {
   } catch (error) {
     console.error('❌ Error getting categories:', error);
     res.status(500).json({
-      error: 'Error al obtener categorías',
+      error: 'Error getting categories',
       message: error.message
     });
   }
@@ -1176,7 +1055,7 @@ app.get('/api/categories', async (req, res) => {
 /**
  * GET /api/categories/:categoryName
  * Get pictogram IDs for a specific category
- * Si se proporciona userId, busca en las categorías del usuario
+ * If userId is provided, searches in the user's categories
  */
 app.get('/api/categories/:categoryName', async (req, res) => {
   try {
@@ -1199,7 +1078,7 @@ app.get('/api/categories/:categoryName', async (req, res) => {
   } catch (error) {
     console.error('❌ Error getting category pictograms:', error);
     res.status(500).json({
-      error: 'Error al obtener pictogramas de la categoría',
+      error: 'Error getting category pictograms',
       message: error.message
     });
   }
@@ -1214,11 +1093,11 @@ app.get('/api/categories/:categoryName', async (req, res) => {
 app.post('/api/categories', authenticateUser, async (req, res) => {
   try {
     const { categoryName, maxResults = 50, description } = req.body;
-    const userId = req.userId; // Obtenido del middleware authenticateUser
+    const userId = req.userId; // Obtained from authenticateUser middleware
 
     if (!categoryName || typeof categoryName !== 'string' || categoryName.trim() === '') {
       return res.status(400).json({
-        error: 'Se requiere un nombre de categoría válido'
+        error: 'A valid category name is required'
       });
     }
 
@@ -1228,7 +1107,7 @@ app.post('/api/categories', authenticateUser, async (req, res) => {
     // Validate category name
     if (isPredefinedCategory(trimmedName)) {
       return res.status(400).json({
-        error: `La categoría "${trimmedName}" es una categoría predefinida y no puede ser recreada`
+        error: `Category "${trimmedName}" is a predefined category and cannot be recreated`
       });
     }
 
@@ -1239,7 +1118,7 @@ app.post('/api/categories', authenticateUser, async (req, res) => {
       category: trimmedName,
       pictogramIds,
       count: pictogramIds.length,
-      message: `Categoría "${trimmedName}" creada exitosamente con ${pictogramIds.length} pictogramas para el usuario ${userId}`
+      message: `Category "${trimmedName}" created successfully with ${pictogramIds.length} pictograms for user ${userId}`
     });
   } catch (error) {
     console.error('❌ Error creating category:', error);
@@ -1252,7 +1131,7 @@ app.post('/api/categories', authenticateUser, async (req, res) => {
     }
 
     res.status(500).json({
-      error: 'Error al crear categoría',
+      error: 'Error creating category',
       message: error.message
     });
   }
@@ -1261,23 +1140,23 @@ app.post('/api/categories', authenticateUser, async (req, res) => {
 /**
  * DELETE /api/categories/:categoryName
  * Delete a custom category (cannot delete predefined categories)
- * Header: Authorization: Bearer <userId> (opcional si viene en query)
+ * Header: Authorization: Bearer <userId> (optional if coming in body)
  */
 app.delete('/api/categories/:categoryName', authenticateUser, async (req, res) => {
   try {
     const { categoryName } = req.params;
-    const userId = req.userId; // Obtenido del middleware authenticateUser
+    const userId = req.userId; // Obtained from authenticateUser middleware
 
     if (isPredefinedCategory(categoryName)) {
       return res.status(400).json({
-        error: `No se puede eliminar la categoría predefinida "${categoryName}"`
+        error: `Cannot delete predefined category "${categoryName}"`
       });
     }
 
     await deleteUserCategory(userId, categoryName);
 
     res.json({
-      message: `Categoría "${categoryName}" eliminada exitosamente para el usuario ${userId}`
+      message: `Category "${categoryName}" deleted successfully for user ${userId}`
     });
   } catch (error) {
     console.error('❌ Error deleting category:', error);
@@ -1289,7 +1168,7 @@ app.delete('/api/categories/:categoryName', authenticateUser, async (req, res) =
     }
 
     res.status(500).json({
-      error: 'Error al eliminar categoría',
+      error: 'Error deleting custom category',
       message: error.message
     });
   }
@@ -1304,21 +1183,21 @@ app.post('/api/categories/initialize', async (req, res) => {
     const categories = await initializePredefinedCategories();
     
     res.json({
-      message: 'Categorías predefinidas inicializadas exitosamente',
+      message: 'Predefined categories initialized successfully',
       categories,
       predefinedCategories: PREDEFINED_CATEGORIES
     });
   } catch (error) {
     console.error('❌ Error initializing categories:', error);
     res.status(500).json({
-      error: 'Error al inicializar categorías',
+      error: 'Error initializing categories',
       message: error.message
     });
   }
 });
 
 /**
- * Endpoint de salud
+ * Health check endpoint
  */
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -1328,29 +1207,29 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Escuchar en todas las interfaces (0.0.0.0) para permitir conexiones desde emuladores y dispositivos
+// Listen on all interfaces (0.0.0.0) to allow connections from emulators and devices
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`🚀 Servidor backend ejecutándose en http://localhost:${PORT}`);
-  console.log(`🌐 También disponible en http://127.0.0.1:${PORT}`);
-  console.log(`\n📡 API Keys configuradas:`);
-  console.log(`   - Azure OpenAI (Principal): ${(AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) ? '✅ Sí' : '❌ No'}`);
-  console.log(`   - Gemini (Secundario/Fallback): ${GEMINI_API_KEY ? '✅ Sí' : '❌ No'}`);
-  console.log(`\n💡 Para conectar desde:`);
-  console.log(`   - Web/Navegador: http://localhost:${PORT} o http://127.0.0.1:${PORT}`);
+  console.log(`🚀 Backend server running at http://localhost:${PORT}`);
+  console.log(`🌐 Also available at http://127.0.0.1:${PORT}`);
+  console.log(`\n📡 API Keys configured:`);
+  console.log(`   - Azure OpenAI (Primary): ${(AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) ? '✅ Yes' : '❌ No'}`);
+  console.log(`   - Gemini (Secondary/Fallback): ${GEMINI_API_KEY ? '✅ Yes' : '❌ No'}`);
+  console.log(`\n💡 To connect from:`);
+  console.log(`   - Web/Browser: http://localhost:${PORT} or http://127.0.0.1:${PORT}`);
   console.log(`   - Android Emulator: http://10.0.2.2:${PORT}`);
   console.log(`   - iOS Simulator: http://localhost:${PORT}`);
-  console.log(`\n📋 Endpoints disponibles:`);
-  console.log(`   - GET  /api/health - Verificar estado del servidor`);
-  console.log(`   - GET  / - Información del servidor`);
-  console.log(`   - POST /api/generate-phrases - Generar frases`);
-  console.log(`   - GET  /api/arasaac/image/:id - Obtener imagen de pictograma`);
-  console.log(`   - GET  /api/categories - Obtener todas las categorías`);
-  console.log(`   - GET  /api/categories/:name - Obtener pictogramas de una categoría`);
-  console.log(`   - POST /api/categories - Crear nueva categoría personalizada`);
-  console.log(`   - DELETE /api/categories/:name - Eliminar categoría personalizada`);
-  console.log(`   - POST /api/categories/initialize - Inicializar categorías predefinidas`);
-  console.log(`\n🔍 Logging activado: Todas las peticiones se registrarán aquí`);
+  console.log(`\n📋 Available endpoints:`);
+  console.log(`   - GET  /api/health - Check server status`);
+  console.log(`   - GET  / - Server information`);
+  console.log(`   - POST /api/generate-phrases - Generate phrases`);
+  console.log(`   - GET  /api/arasaac/image/:id - Get pictogram image`);
+  console.log(`   - GET  /api/categories - Get all categories`);
+  console.log(`   - GET  /api/categories/:name - Get category pictograms`);
+  console.log(`   - POST /api/categories - Create new custom category`);
+  console.log(`   - DELETE /api/categories/:name - Delete custom category`);
+  console.log(`   - POST /api/categories/initialize - Initialize predefined categories`);
+  console.log(`\n🔍 Logging enabled: All requests will be logged here`);
   console.log(`${'='.repeat(60)}\n`);
 });
 

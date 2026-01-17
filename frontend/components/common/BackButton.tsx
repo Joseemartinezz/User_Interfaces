@@ -5,16 +5,16 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { styles } from './BackButton.styles';
 
 /**
- * Botón de atrás reutilizable con flecha estilizada
- * Navega a la pantalla anterior usando navigation.goBack()
- * Optimizado con useCallback para mejor rendimiento
+ * Reusable back button with styled arrow
+ * Navigates to previous screen using navigation.goBack()
+ * Optimized with useCallback for better performance
  */
 const BackButton: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
 
   const handlePress = useCallback(() => {
     if (navigation.canGoBack()) {
-      // Usar goBack() - simple y eficiente para navegación hacia atrás
+      // Use goBack() - simple and efficient for backward navigation
       navigation.goBack();
     }
   }, [navigation]);
@@ -34,5 +34,5 @@ const BackButton: React.FC = () => {
   );
 };
 
-// Memoizar el componente para evitar re-renders innecesarios
+// Memoize component to avoid unnecessary re-renders
 export default React.memo(BackButton);

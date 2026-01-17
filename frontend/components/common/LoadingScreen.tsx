@@ -1,46 +1,28 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet } from 'react-native';
+import { View, Text, Animated, StyleSheet, Image } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { styles } from './ImageLoadingScreen.styles';
+import { styles } from './LoadingScreen.styles';
 
-interface ImageLoadingScreenProps {
+interface LoadingScreenProps {
   message?: string;
-  iconEmoji?: string;
 }
 
 /**
- * Pantalla de carga minimalista y amigable para niños
- * Muestra una animación suave mientras se generan las imágenes
+ * Minimalist and child-friendly loading screen
+ * Shows a smooth animation while images are being generated
  */
-const ImageLoadingScreen: React.FC<ImageLoadingScreenProps> = ({ 
-  message = 'Creating your flashcards...',
-  iconEmoji = '🎨'
+const LoadingScreen: React.FC<LoadingScreenProps> = ({ 
+  message = 'Loading...'
 }) => {
   const { theme } = useTheme();
   
-  // Animaciones para los elementos
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  // Pulse animation for the logo
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
-    // Animación de entrada
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Animación de pulso continua
-    const pulseAnimation = Animated.loop(
+    // Start continuous pulse animation immediately
+    pulseAnimationRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.15,
@@ -54,35 +36,33 @@ const ImageLoadingScreen: React.FC<ImageLoadingScreenProps> = ({
         }),
       ])
     );
-    pulseAnimation.start();
+    pulseAnimationRef.current.start();
 
     return () => {
-      pulseAnimation.stop();
+      if (pulseAnimationRef.current) {
+        pulseAnimationRef.current.stop();
+      }
     };
   }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <Animated.View
-        style={[
-          styles.content,
-          {
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          },
-        ]}
-      >
+      <View style={styles.content}>
         {/* Icono animado */}
         <Animated.View
           style={[
             styles.iconContainer,
             {
-              backgroundColor: theme.accent,
+              backgroundColor: 'transparent',
               transform: [{ scale: pulseAnim }],
             },
           ]}
         >
-          <Text style={styles.iconEmoji}>{iconEmoji}</Text>
+          <Image 
+            source={require('../../assets/logo.jpeg')} 
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </Animated.View>
 
         {/* Texto principal */}
@@ -108,10 +88,9 @@ const ImageLoadingScreen: React.FC<ImageLoadingScreenProps> = ({
             />
           ))}
         </View>
-      </Animated.View>
+      </View>
     </View>
   );
 };
 
-export default React.memo(ImageLoadingScreen);
-
+export default React.memo(LoadingScreen);

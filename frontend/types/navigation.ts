@@ -1,6 +1,6 @@
 /**
- * Definición de tipos para los parámetros de navegación
- * Esto mejora el autocompletado y la seguridad de tipos en TypeScript
+ * Type definitions for navigation parameters
+ * This improves autocomplete and type safety in TypeScript
  */
 export type RootStackParamList = {
   Categories: {
@@ -26,7 +26,7 @@ export type RootStackParamList = {
   Profile: undefined;
 };
 
-// Exportar tipos para uso en toda la aplicación
+// Export types for use throughout the application
 declare global {
   namespace ReactNavigation {
     interface RootParamList extends RootStackParamList {}

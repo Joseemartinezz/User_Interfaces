@@ -1,13 +1,20 @@
-// URL del backend - Cambia esto según tu configuración
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+// ARASAAC Service - Backend
+// Service for interacting with ARASAAC API directly
+// This service makes direct calls to https://api.arasaac.org/api
 
-// Configuración: usar proxy del backend para imágenes (evita problemas de DNS)
-const USE_BACKEND_PROXY_FOR_IMAGES = true;
+// Note: fetch is available globally in Node.js 18+, no need to import it
+// If using older Node.js, fetch is already imported in index.js
+// Using global fetch (available via node-fetch in index.js)
 
 /**
- * Tipo de pictograma de ARASAAC
+ * Base URL of ARASAAC API
  */
-export interface ArasaacPictogram {
+const ARASAAC_BASE_URL = 'https://api.arasaac.org/api';
+
+/**
+ * ARASAAC pictogram type
+ */
+interface ArasaacPictogram {
   _id: number;
   keywords: Array<{
     keyword: string;
@@ -27,24 +34,11 @@ export interface ArasaacPictogram {
 }
 
 /**
- * Opciones para obtener la URL de una imagen de pictograma
+ * Searches ARASAAC pictograms by search term
+ * @param searchTerm Search term in the specified language
+ * @param language Language code (e.g. 'es', 'en', 'it', 'fr') - defaults to 'es'
  */
-export interface PictogramImageOptions {
-  size?: 'small' | 'medium' | 'large';
-  plural?: boolean;
-  color?: boolean;
-  backgroundColor?: 'white' | 'black' | 'transparent';
-  skinColor?: string; // Por ejemplo: '#F5E6DE', '#E2C4A8', '#A65E26', '#5A463A'
-  hairColor?: string; // Por ejemplo: '#000000', '#8B4513', '#FFD700'
-  action?: 'present' | 'past' | 'future';
-}
-
-/**
- * Busca pictogramas de ARASAAC por término de búsqueda
- * @param searchTerm Término de búsqueda en el idioma especificado
- * @param language Código de idioma (ej: 'es', 'en', 'it', 'fr')
- */
-export async function searchPictograms(
+async function searchPictograms(
   searchTerm: string,
   language: string = 'es'
 ): Promise<ArasaacPictogram[]> {
@@ -53,240 +47,210 @@ export async function searchPictograms(
   }
 
   try {
-    console.log(`🔍 Buscando pictogramas para: "${searchTerm}" en idioma: ${language}`);
-    const response = await fetch(
-      `${API_BASE_URL}/api/arasaac/search/${language}/${encodeURIComponent(searchTerm)}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    console.log(`🔍 Searching ARASAAC pictograms: "${searchTerm}" in language: ${language}`);
+    const url = `${ARASAAC_BASE_URL}/pictograms/${language}/search/${encodeURIComponent(searchTerm)}`;
+    console.log(`📡 URL de ARASAAC: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as { error?: string };
-      console.error('❌ Error del servidor:', errorData);
-      throw new Error(errorData.error || `Error ${response.status}`);
+      console.error(`❌ ARASAAC error: ${response.status} ${response.statusText}`);
+      throw new Error(`ARASAAC API error: ${response.status} ${response.statusText}`);
     }
 
     const pictograms = await response.json() as ArasaacPictogram[];
-    console.log(`✅ Se encontraron ${pictograms.length} pictogramas`);
+    console.log(`✅ Found ${pictograms.length} pictograms in ARASAAC`);
     return pictograms;
   } catch (error: any) {
-    console.error('Error buscando pictogramas:', error);
-    
-    if (error.message?.includes('Failed to fetch') || error.message?.includes('Network request failed')) {
-      const errorMsg = `No se pudo conectar al servidor backend en ${API_BASE_URL}.\n\n` +
-        `Solución:\n` +
-        `1. Verifica que el servidor esté corriendo: npm run server\n` +
-        `2. Prueba en el navegador: ${API_BASE_URL}`;
-      throw new Error(errorMsg);
-    }
-    
-    throw new Error(error.message || 'Error al buscar pictogramas. Verifica que el servidor backend esté ejecutándose.');
+    console.error('❌ Error searching pictograms in ARASAAC:', error);
+    throw new Error(error.message || 'Error searching pictograms in ARASAAC');
   }
 }
 
 /**
- * Obtiene la información de un pictograma específico por su ID
- * @param pictogramId ID del pictograma
- * @param language Código de idioma (ej: 'es', 'en', 'it', 'fr')
+ * Gets information for a specific pictogram by its ID
+ * @param pictogramId Pictogram ID
+ * @param language Language code (e.g. 'es', 'en', 'it', 'fr') - defaults to 'es'
  */
-export async function getPictogramById(
+async function getPictogramById(
   pictogramId: number,
   language: string = 'es'
 ): Promise<ArasaacPictogram> {
   try {
-    console.log(`🔍 Obteniendo pictograma ID: ${pictogramId} en idioma: ${language}`);
-    const response = await fetch(
-      `${API_BASE_URL}/api/arasaac/pictogram/${language}/${pictogramId}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    console.log(`🔍 Obteniendo pictograma ARASAAC ID: ${pictogramId} en idioma: ${language}`);
+    const url = `${ARASAAC_BASE_URL}/pictograms/${language}/${pictogramId}`;
+    console.log(`📡 URL de ARASAAC: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as { error?: string };
-      console.error('❌ Error del servidor:', errorData);
-      throw new Error(errorData.error || `Error ${response.status}`);
+      console.error(`❌ Error de ARASAAC: ${response.status} ${response.statusText}`);
+      
+      if (response.status === 404) {
+        throw new Error(`Pictogram with ID ${pictogramId} was not found`);
+      }
+      
+      throw new Error(`ARASAAC API error: ${response.status} ${response.statusText}`);
     }
 
     const pictogram = await response.json() as ArasaacPictogram;
-    console.log(`✅ Pictograma obtenido: ${pictogram._id}`);
+    console.log(`✅ Pictogram obtained: ${pictogram._id}`);
     return pictogram;
   } catch (error: any) {
-    console.error('Error obteniendo pictograma:', error);
-    throw new Error(error.message || 'Error al obtener el pictograma.');
+    console.error('❌ Error getting pictogram from ARASAAC:', error);
+    throw new Error(error.message || 'Error getting pictogram from ARASAAC');
   }
 }
 
 /**
- * Genera la URL de la imagen de un pictograma con las opciones especificadas
- * Por defecto usa el proxy del backend para evitar problemas de DNS y CORS
- * @param pictogramId ID del pictograma
- * @param options Opciones de personalización de la imagen
+ * Gets pictogram image as buffer
+ * @param pictogramId Pictogram ID
+ * @param options Options for image customization
  */
-export function getPictogramImageUrl(
+async function getPictogramImage(
   pictogramId: number,
-  options: PictogramImageOptions = {}
-): string {
-  const {
-    size = 'medium',
-    plural = false,
-    color = true,
-    backgroundColor = 'white',
-    skinColor,
-    hairColor,
-    action = 'present',
-  } = options;
-
-  // Si usamos el proxy del backend (recomendado para evitar problemas de DNS)
-  if (USE_BACKEND_PROXY_FOR_IMAGES) {
-    // Construir URL del backend proxy
-    let url = `${API_BASE_URL}/api/arasaac/image/${pictogramId}`;
+  options: {
+    color?: boolean;
+    backgroundColor?: string;
+    plural?: boolean;
+    skin?: string;
+    hair?: string;
+    action?: string;
+  } = {}
+): Promise<{ buffer: Buffer; contentType: string }> {
+  try {
+    const { color, backgroundColor, plural, skin, hair, action } = options;
     
-    // Construir parámetros para el proxy
+    // Build ARASAAC URL with optional parameters
+    let url = `${ARASAAC_BASE_URL}/pictograms/${pictogramId}`;
     const params: string[] = [];
     
-    // Color (solo agregar si es false, por defecto es true)
-    if (!color) {
-      params.push('color=false');
+    if (color !== undefined) {
+      params.push(`color=${color}`);
     }
-    
-    // Plural (solo agregar si es true)
-    if (plural) {
-      params.push('plural=true');
-    }
-    
-    // Color de fondo (solo agregar si no es white)
-    if (backgroundColor !== 'white') {
+    if (backgroundColor) {
       params.push(`backgroundColor=${encodeURIComponent(backgroundColor)}`);
     }
-    
-    // Color de piel
-    if (skinColor) {
-      params.push(`skin=${encodeURIComponent(skinColor)}`);
+    if (plural === true) {
+      params.push('plural=true');
     }
-    
-    // Color de cabello
-    if (hairColor) {
-      params.push(`hair=${encodeURIComponent(hairColor)}`);
+    if (skin) {
+      params.push(`skin=${encodeURIComponent(skin)}`);
     }
-    
-    // Acción/tiempo verbal
-    if (action !== 'present') {
+    if (hair) {
+      params.push(`hair=${encodeURIComponent(hair)}`);
+    }
+    if (action) {
       params.push(`action=${encodeURIComponent(action)}`);
     }
+    
+    if (params.length > 0) {
+      url += '?' + params.join('&');
+    }
 
-    // Construir la URL final
-    const queryString = params.length > 0 ? params.join('&') : '';
-    return queryString ? `${url}?${queryString}` : url;
-  }
+    console.log(`📡 URL de ARASAAC: ${url}`);
 
-  // URL directa de ARASAAC (puede tener problemas de DNS en emuladores)
-  const baseUrl = 'https://api.arasaac.org/api/pictograms';
-  let url = `${baseUrl}/${pictogramId}`;
-  
-  const params: string[] = [];
-  
-  if (!color) {
-    params.push('color=false');
-  }
-  if (plural) {
-    params.push('plural=true');
-  }
-  if (backgroundColor !== 'white') {
-    params.push(`backgroundColor=${encodeURIComponent(backgroundColor)}`);
-  }
-  if (skinColor) {
-    params.push(`skin=${encodeURIComponent(skinColor)}`);
-  }
-  if (hairColor) {
-    params.push(`hair=${encodeURIComponent(hairColor)}`);
-  }
-  if (action !== 'present') {
-    params.push(`action=${encodeURIComponent(action)}`);
-  }
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'image/png,image/*,*/*',
+      },
+    });
 
-  const queryString = params.length > 0 ? params.join('&') : '';
-  return queryString ? `${url}?${queryString}` : url;
+    if (!response.ok) {
+      console.error(`❌ Error de ARASAAC: ${response.status} ${response.statusText}`);
+      
+      if (response.status === 404) {
+        throw new Error(`Pictogram with ID ${pictogramId} was not found`);
+      }
+      
+      throw new Error(`ARASAAC API error: ${response.status} ${response.statusText}`);
+    }
+
+    // Get image buffer
+    // node-fetch v2 uses .buffer(), v3 uses .arrayBuffer()
+    let imageBuffer: Buffer;
+    try {
+      // node-fetch v2 has buffer() method, v3 uses arrayBuffer()
+      const responseAny = response as any;
+      if (typeof responseAny.buffer === 'function') {
+        imageBuffer = await responseAny.buffer();
+      } else {
+        const arrayBuffer = await response.arrayBuffer();
+        imageBuffer = Buffer.from(arrayBuffer);
+      }
+    } catch (error) {
+      // Fallback to arrayBuffer if buffer() fails
+      const arrayBuffer = await response.arrayBuffer();
+      imageBuffer = Buffer.from(arrayBuffer);
+    }
+    
+    const contentType = response.headers.get('content-type') || 'image/png';
+    console.log(`✅ Image obtained: ${imageBuffer.length} bytes, type: ${contentType}`);
+
+    return { buffer: imageBuffer, contentType };
+  } catch (error: any) {
+    console.error('❌ Error getting image from ARASAAC:', error);
+    throw new Error(error.message || 'Error getting image from ARASAAC');
+  }
 }
 
 /**
- * Busca pictogramas para múltiples palabras a la vez
- * Útil para obtener pictogramas para una frase completa
- * @param words Array de palabras a buscar
- * @param language Código de idioma
+ * Searches pictograms for multiple words
+ * @param words Array of words to search
+ * @param language Language code - defaults to 'es'
  */
-export async function searchMultiplePictograms(
+async function searchMultiplePictograms(
   words: string[],
   language: string = 'es'
-): Promise<Map<string, ArasaacPictogram[]>> {
-  const results = new Map<string, ArasaacPictogram[]>();
-  
-  // Buscar pictogramas para cada palabra
-  const promises = words.map(async (word) => {
-    const pictograms = await searchPictograms(word, language);
-    return { word, pictograms };
-  });
-  
-  const allResults = await Promise.all(promises);
-  
-  // Crear el mapa con los resultados
-  allResults.forEach(({ word, pictograms }) => {
-    results.set(word, pictograms);
-  });
-  
-  return results;
-}
-
-/**
- * Obtiene el mejor pictograma para una palabra
- * Retorna el pictograma con más descargas o el primero si no hay información de descargas
- * @param word Palabra a buscar
- * @param language Código de idioma
- */
-export async function getBestPictogramForWord(
-  word: string,
-  language: string = 'es'
-): Promise<ArasaacPictogram | null> {
-  const pictograms = await searchPictograms(word, language);
-  
-  if (pictograms.length === 0) {
-    return null;
+): Promise<Record<string, { pictograms: ArasaacPictogram[]; error: boolean }>> {
+  if (!words || words.length === 0) {
+    return {};
   }
-  
-  // Ordenar por número de descargas (más populares primero)
-  const sorted = pictograms.sort((a, b) => {
-    const downloadsA = a.downloads || 0;
-    const downloadsB = b.downloads || 0;
-    return downloadsB - downloadsA;
-  });
-  
-  return sorted[0];
+
+  try {
+    console.log(`🔍 Searching pictograms for ${words.length} words in language: ${language}`);
+
+    // Search pictograms for each word in parallel
+    const searchPromises = words.map(async (word) => {
+      try {
+        const pictograms = await searchPictograms(word, language);
+        return { word, pictograms, error: false };
+      } catch (error) {
+        console.error(`❌ Error buscando "${word}":`, error);
+        return { word, pictograms: [], error: true };
+      }
+    });
+
+    const results = await Promise.all(searchPromises);
+    
+    // Convert to object for easier access
+    const resultsMap: Record<string, { pictograms: ArasaacPictogram[]; error: boolean }> = {};
+    results.forEach(({ word, pictograms, error }) => {
+      resultsMap[word] = { pictograms, error };
+    });
+
+    console.log(`✅ Search completed for ${words.length} words`);
+    return resultsMap;
+  } catch (error: any) {
+    console.error('❌ Error in multiple search:', error);
+    throw new Error(error.message || 'Error searching multiple pictograms');
+  }
 }
 
-/**
- * Convierte un array de palabras en pictogramas (busca el mejor para cada palabra)
- * @param words Array de palabras
- * @param language Código de idioma
- */
-export async function convertWordsToPictograms(
-  words: string[],
-  language: string = 'es'
-): Promise<Array<{ word: string; pictogram: ArasaacPictogram | null; imageUrl: string | null }>> {
-  const results = await Promise.all(
-    words.map(async (word) => {
-      const pictogram = await getBestPictogramForWord(word, language);
-      const imageUrl = pictogram ? getPictogramImageUrl(pictogram._id) : null;
-      return { word, pictogram, imageUrl };
-    })
-  );
-  
-  return results;
-}
-
+module.exports = {
+  searchPictograms,
+  getPictogramById,
+  getPictogramImage,
+  searchMultiplePictograms
+};

@@ -28,24 +28,24 @@ interface UserContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
-  // Autenticación
+  // Authentication
   loginWithEmailAndPassword: (email: string, password: string) => Promise<void>;
   registerWithEmailAndPassword: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => Promise<void>;
-  // Actualización de datos
+  // Data updates
   updateUser: (updates: Partial<Omit<User, 'id' | 'preferences'>>) => Promise<void>;
   updatePreferences: (preferences: Partial<UserPreferences>) => Promise<void>;
-  // Símbolos PCS personalizados
+  // Custom PCS symbols
   addCustomSymbol: (symbol: Omit<CustomPCSSymbol, 'id' | 'addedAt'>) => Promise<void>;
   removeCustomSymbol: (symbolId: string) => Promise<void>;
-  // Utilidades
+  // Utilities
   refreshUser: () => Promise<void>;
 }
 
-// Crear el contexto
+// Create context
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// Props del provider
+// Provider props
 interface UserProviderProps {
   children: ReactNode;
 }
@@ -59,7 +59,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Convierte un usuario de Firebase + Firestore a nuestro tipo User
+   * Converts a Firebase + Firestore user to our User type
    */
   const convertToUser = (firebaseUser: FirebaseUser, userData: any): User => {
     return {
@@ -73,8 +73,8 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         categories: [],
         hiddenCategories: [],
         hasCompletedOnboarding: false,
-        // childAge y parentMenuPassword se configurarán más tarde en el onboarding
-        // No los incluimos aquí para mantener consistencia
+        // childAge and parentMenuPassword will be configured later in onboarding
+        // We don't include them here to maintain consistency
       }
     };
   };
@@ -96,9 +96,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         const user = convertToUser(firebaseUser, userData);
         setUser(user);
         
-        // Guardar en caché
+        // Save to cache
         await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-        console.log('✅ Datos del usuario cargados y guardados en caché');
+        console.log('✅ User data loaded and saved to cache');
       } else {
         console.log('⚠️ Usuario sin datos en Firestore, creando documento...');
         // Si no existe el documento, crearlo
@@ -111,18 +111,18 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         await loadUserData(firebaseUser);
       }
     } catch (err: any) {
-      console.error('❌ Error cargando datos del usuario:', err);
-      setError(err.message || 'Error al cargar datos del usuario');
+      console.error('❌ Error loading user data:', err);
+      setError(err.message || 'Error loading user data');
       
-      // Intentar cargar desde caché como fallback
+      // Try loading from cache as fallback
       try {
         const cachedUser = await AsyncStorage.getItem(USER_STORAGE_KEY);
         if (cachedUser) {
           setUser(JSON.parse(cachedUser));
-          console.log('⚠️ Usando datos del caché');
+          console.log('⚠️ Using cached data');
         }
       } catch (cacheErr) {
-        console.error('❌ Error cargando caché:', cacheErr);
+        console.error('❌ Error loading cache:', cacheErr);
       }
     } finally {
       setIsLoading(false);
@@ -130,18 +130,18 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   };
 
   /**
-   * Maneja cambios en el estado de autenticación
+   * Handles authentication state changes
    */
   useEffect(() => {
     const unsubscribe = subscribeToAuthChanges(async (firebaseUser) => {
       if (firebaseUser) {
-        console.log('🔐 Usuario autenticado:', firebaseUser.uid);
+        console.log('🔐 User authenticated:', firebaseUser.uid);
         await loadUserData(firebaseUser);
       } else {
-        console.log('👋 Usuario no autenticado');
+        console.log('👋 User not authenticated');
         setUser(null);
         setIsLoading(false);
-        // Limpiar caché
+        // Clear cache
         await AsyncStorage.removeItem(USER_STORAGE_KEY);
       }
     });
@@ -151,7 +151,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   }, []);
 
   /**
-   * Registra un nuevo usuario
+   * Registers a new user
    */
   const registerWithEmailAndPassword = async (
     email: string,
@@ -160,14 +160,14 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   ) => {
     try {
       setError(null);
-      console.log('📝 Registrando usuario:', email);
+      console.log('📝 Registering user:', email);
 
       const firebaseUser = await registerUser(email, password, fullName);
       
       // Crear documento en Firestore
       await createUserDocument(firebaseUser.uid, email, fullName);
       
-      // Los datos se cargarán automáticamente por el listener
+      // Data will be loaded automatically by the listener
       console.log('✅ Usuario registrado exitosamente');
     } catch (err: any) {
       console.error('❌ Error registrando usuario:', err);
@@ -177,40 +177,40 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   };
 
   /**
-   * Inicia sesión
+   * Logs in
    */
   const loginWithEmailAndPassword = async (email: string, password: string) => {
     try {
       setError(null);
-      console.log('🔐 Iniciando sesión:', email);
+      console.log('🔐 Logging in:', email);
 
       await loginUser(email, password);
       
-      // Los datos se cargarán automáticamente por el listener
-      console.log('✅ Sesión iniciada exitosamente');
+      // Data will be loaded automatically by the listener
+      console.log('✅ Session started successfully');
     } catch (err: any) {
-      console.error('❌ Error iniciando sesión:', err);
-      setError(err.message || 'Error al iniciar sesión');
+      console.error('❌ Error logging in:', err);
+      setError(err.message || 'Error logging in');
       throw err;
     }
   };
 
   /**
-   * Cierra sesión
+   * Logs out
    */
   const logout = async () => {
     try {
       setError(null);
-      console.log('👋 Cerrando sesión');
+      console.log('👋 Logging out');
 
       await firebaseSignOut();
       setUser(null);
       await AsyncStorage.removeItem(USER_STORAGE_KEY);
       
-      console.log('✅ Sesión cerrada');
+      console.log('✅ Session closed');
     } catch (err: any) {
-      console.error('❌ Error cerrando sesión:', err);
-      setError(err.message || 'Error al cerrar sesión');
+      console.error('❌ Error logging out:', err);
+      setError(err.message || 'Error logging out');
       throw err;
     }
   };
@@ -225,7 +225,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
     try {
       setError(null);
-      console.log('✏️ Actualizando usuario');
+      console.log('✏️ Updating user');
 
       await updateUserData(user.id, updates);
       
@@ -243,7 +243,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   };
 
   /**
-   * Actualiza preferencias del usuario
+   * Updates user preferences
    */
   const updatePreferences = async (preferences: Partial<UserPreferences>) => {
     if (!user) {
@@ -252,7 +252,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
     try {
       setError(null);
-      console.log('⚙️ Actualizando preferencias');
+      console.log('⚙️ Updating preferences');
 
       await updateUserPreferences(user.id, preferences);
       
@@ -273,16 +273,16 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   };
 
   /**
-   * Añade un símbolo PCS personalizado
+   * Adds a custom PCS symbol
    */
   const addCustomSymbol = async (symbol: Omit<CustomPCSSymbol, 'id' | 'addedAt'>) => {
     if (!user) {
-      throw new Error('No hay usuario autenticado');
+      throw new Error('No authenticated user');
     }
 
     try {
       setError(null);
-      console.log('➕ Añadiendo símbolo personalizado:', symbol.word);
+      console.log('➕ Adding custom symbol:', symbol.word);
 
       const newSymbol: CustomPCSSymbol = {
         ...symbol,
@@ -293,35 +293,35 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       const updatedSymbols = [...user.preferences.customPCSSymbols, newSymbol];
       await updatePreferences({ customPCSSymbols: updatedSymbols });
       
-      console.log('✅ Símbolo añadido');
+      console.log('✅ Symbol added');
     } catch (err: any) {
-      console.error('❌ Error añadiendo símbolo:', err);
-      setError(err.message || 'Error al añadir símbolo');
+      console.error('❌ Error adding symbol:', err);
+      setError(err.message || 'Error adding symbol');
       throw err;
     }
   };
 
   /**
-   * Elimina un símbolo PCS personalizado
+   * Removes a custom PCS symbol
    */
   const removeCustomSymbol = async (symbolId: string) => {
     if (!user) {
-      throw new Error('No hay usuario autenticado');
+      throw new Error('No authenticated user');
     }
 
     try {
       setError(null);
-      console.log('➖ Eliminando símbolo:', symbolId);
+      console.log('➖ Removing symbol:', symbolId);
 
       const updatedSymbols = user.preferences.customPCSSymbols.filter(
         (s) => s.id !== symbolId
       );
       await updatePreferences({ customPCSSymbols: updatedSymbols });
       
-      console.log('✅ Símbolo eliminado');
+      console.log('✅ Symbol removed');
     } catch (err: any) {
-      console.error('❌ Error eliminando símbolo:', err);
-      setError(err.message || 'Error al eliminar símbolo');
+      console.error('❌ Error removing symbol:', err);
+      setError(err.message || 'Error removing symbol');
       throw err;
     }
   };
@@ -359,13 +359,13 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 };
 
 /**
- * Hook para usar el contexto de usuario
+ * Hook to use user context
  */
 export const useUser = (): UserContextType => {
   const context = useContext(UserContext);
   
   if (context === undefined) {
-    throw new Error('useUser debe usarse dentro de un UserProvider');
+      throw new Error('useUser must be used within a UserProvider');
   }
   
   return context;

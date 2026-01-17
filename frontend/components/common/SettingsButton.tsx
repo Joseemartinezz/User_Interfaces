@@ -4,9 +4,9 @@ import { useNavigation } from '@react-navigation/native';
 import { styles } from './SettingsButton.styles';
 
 /**
- * Botón de ajustes reutilizable que aparece en todas las pantallas
- * Navega a la pantalla de configuración
- * Optimizado con useCallback para mejor rendimiento
+ * Reusable settings button that appears on all screens
+ * Navigates to settings screen
+ * Optimized with useCallback for better performance
  */
 const SettingsButton: React.FC = () => {
   const navigation = useNavigation();
@@ -30,5 +30,5 @@ const SettingsButton: React.FC = () => {
   );
 };
 
-// Memoizar el componente para evitar re-renders innecesarios
+// Memoize component to avoid unnecessary re-renders
 export default React.memo(SettingsButton);

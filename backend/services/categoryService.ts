@@ -512,7 +512,7 @@ async function findPictogramsWithAI(
   };
 
   if (!config.url || !config.key) {
-    throw new Error('Azure OpenAI no está configurado. Verifica las variables de entorno AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY.');
+    throw new Error('Azure OpenAI is not configured. Verify environment variables AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY.');
   }
 
   // Load all pictograms and unique tags

@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase/firestore';
 
 /**
- * Categoría de usuario
+ * User category
  */
 export interface UserCategory {
   id: string;
@@ -11,7 +11,7 @@ export interface UserCategory {
 }
 
 /**
- * Símbolo PCS personalizado
+ * Custom PCS symbol
  */
 export interface CustomPCSSymbol {
   id: string;
@@ -62,7 +62,7 @@ export interface UserData {
 }
 
 /**
- * Usuario para el contexto (versión simplificada para el frontend)
+ * User for context (simplified version for frontend)
  */
 export interface User {
   id: string;

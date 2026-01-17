@@ -12,7 +12,7 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
-    overflow: 'hidden', // Asegura que la imagen no se salga del círculo
+    overflow: 'hidden', // Ensures the image doesn't overflow the circle
   },
   avatarContainer: {
     width: '100%',

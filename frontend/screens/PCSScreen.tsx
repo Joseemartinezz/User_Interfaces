@@ -14,9 +14,10 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { generatePhrases, getPictogramImageUrl, getAllCategories, getCategoryPictogramIds, getPictogramsByIds } from '../api';
+import { generatePhrases, getAllCategories, getCategoryPictogramIds } from '../api';
+import { getPictogramImageUrl, getPictogramsByIds } from '../services/arasaacService';
 import Header from '../components/common/Header';
-import ImageLoadingScreen from '../components/common/ImageLoadingScreen';
+import LoadingScreen from '../components/common/LoadingScreen';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
@@ -683,7 +684,7 @@ const PCSScreen: React.FC = () => {
 
   // Show loading screen while initial symbols are loading
   if (isInitialLoading) {
-    return <ImageLoadingScreen message="Loading symbols..." iconEmoji="🗣️" />;
+    return <LoadingScreen message="Loading symbols..." />;
   }
 
   return (

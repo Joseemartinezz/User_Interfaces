@@ -8,10 +8,10 @@ import { getUserAvatarUrl } from '../../api';
 import { styles } from './ProfileButton.styles';
 
 /**
- * Botón de perfil circular que aparece en el header
- * Navega al menú de padres con opciones de configuración
- * Muestra avatar generado con DiceBear o iniciales como fallback
- * Optimizado con useCallback para mejor rendimiento
+ * Circular profile button that appears in the header
+ * Navigates to parent menu with configuration options
+ * Shows avatar generated with DiceBear or initials as fallback
+ * Optimized with useCallback for better performance
  */
 const ProfileButton: React.FC = () => {
   const navigation = useNavigation();
@@ -70,7 +70,7 @@ const ProfileButton: React.FC = () => {
     navigation.navigate('ParentMenu' as never);
   }, [navigation]);
 
-  // Obtener iniciales para el fallback
+  // Get initials for fallback
   const initials = getInitials(user?.fullName || '', user?.email || '');
 
   return (
@@ -99,6 +99,6 @@ const ProfileButton: React.FC = () => {
   );
 };
 
-// Memoizar el componente para evitar re-renders innecesarios
+// Memoize component to avoid unnecessary re-renders
 export default React.memo(ProfileButton);
 

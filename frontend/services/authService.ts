@@ -9,114 +9,114 @@ import {
 import { auth } from '../config/firebase';
 
 /**
- * Registra un nuevo usuario con email y contraseña
+ * Registers a new user with email and password
  */
 export async function registerUser(email: string, password: string, fullName: string): Promise<FirebaseUser> {
   try {
-    console.log('📝 Registrando nuevo usuario:', email);
+    console.log('📝 Registering new user:', email);
     
-    // Crear usuario en Firebase Auth
+    // Create user in Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
-    // Actualizar el perfil con el nombre
+    // Update profile with name
     await updateProfile(user, {
       displayName: fullName
     });
     
-    console.log('✅ Usuario registrado exitosamente:', user.uid);
+    console.log('✅ User registered successfully:', user.uid);
     return user;
   } catch (error: any) {
-    console.error('❌ Error registrando usuario:', error);
+    console.error('❌ Error registering user:', error);
     throw handleAuthError(error);
   }
 }
 
 /**
- * Inicia sesión con email y contraseña
+ * Logs in with email and password
  */
 export async function loginUser(email: string, password: string): Promise<FirebaseUser> {
   try {
-    console.log('🔐 Iniciando sesión:', email);
+    console.log('🔐 Logging in:', email);
     
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
-    console.log('✅ Sesión iniciada exitosamente:', user.uid);
+    console.log('✅ Session started successfully:', user.uid);
     return user;
   } catch (error: any) {
-    console.error('❌ Error iniciando sesión:', error);
+    console.error('❌ Error logging in:', error);
     throw handleAuthError(error);
   }
 }
 
 /**
- * Cierra la sesión del usuario actual
+ * Signs out the current user
  */
 export async function signOut(): Promise<void> {
   try {
-    console.log('👋 Cerrando sesión');
+    console.log('👋 Signing out');
     await firebaseSignOut(auth);
-    console.log('✅ Sesión cerrada exitosamente');
+    console.log('✅ Session closed successfully');
   } catch (error: any) {
-    console.error('❌ Error cerrando sesión:', error);
+    console.error('❌ Error signing out:', error);
     throw error;
   }
 }
 
 /**
- * Obtiene el usuario actualmente autenticado
+ * Gets the currently authenticated user
  */
 export function getCurrentUser(): FirebaseUser | null {
   return auth.currentUser;
 }
 
 /**
- * Suscribe a cambios en el estado de autenticación
+ * Subscribes to authentication state changes
  */
 export function subscribeToAuthChanges(callback: (user: FirebaseUser | null) => void): () => void {
   return onAuthStateChanged(auth, callback);
 }
 
 /**
- * Maneja errores de autenticación de Firebase y los convierte a mensajes legibles
+ * Handles Firebase authentication errors and converts them to readable messages
  */
 function handleAuthError(error: any): Error {
-  let message = 'Error de autenticación desconocido';
+  let message = 'Unknown authentication error';
   
   switch (error.code) {
     case 'auth/email-already-in-use':
-      message = 'Este email ya está registrado';
+      message = 'This email is already registered';
       break;
     case 'auth/invalid-email':
-      message = 'Email inválido';
+      message = 'Invalid email';
       break;
     case 'auth/operation-not-allowed':
-      message = 'Operación no permitida';
+      message = 'Operation not allowed';
       break;
     case 'auth/weak-password':
-      message = 'La contraseña debe tener al menos 6 caracteres';
+      message = 'Password must be at least 6 characters';
       break;
     case 'auth/user-disabled':
-      message = 'Esta cuenta ha sido deshabilitada';
+      message = 'This account has been disabled';
       break;
     case 'auth/user-not-found':
-      message = 'Usuario no encontrado';
+      message = 'User not found';
       break;
     case 'auth/wrong-password':
-      message = 'Contraseña incorrecta';
+      message = 'Incorrect password';
       break;
     case 'auth/invalid-credential':
-      message = 'Credenciales inválidas';
+      message = 'Invalid credentials';
       break;
     case 'auth/too-many-requests':
-      message = 'Demasiados intentos fallidos. Intenta más tarde';
+      message = 'Too many failed attempts. Try again later';
       break;
     case 'auth/network-request-failed':
-      message = 'Error de conexión. Verifica tu internet';
+      message = 'Connection error. Check your internet';
       break;
     default:
-      message = error.message || 'Error de autenticación';
+      message = error.message || 'Authentication error';
   }
   
   return new Error(message);

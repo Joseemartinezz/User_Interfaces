@@ -40,7 +40,7 @@ function testAzureConnection() {
   })
     .then(response => response.ok)
     .catch(error => {
-      console.error('❌ No se pudo conectar a Azure OpenAI:', error);
+      console.error('❌ Could not connect to Azure OpenAI:', error);
       return false;
     });
 }
@@ -53,7 +53,7 @@ async function generateAzurePhrases(words, childAge) {
 
   const config = getAzureConfig();
   if (!config.url || !config.key) {
-    throw new Error('Azure OpenAI no está configurado. Verifica las variables de entorno AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY.');
+    throw new Error('Azure OpenAI is not configured. Verify environment variables AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY.');
   }
 
   try {
@@ -98,7 +98,7 @@ Guidelines:
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as { error?: { message?: string } | string; message?: string };
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: { message?: string } | string; message?: string };
       const errorMessage = typeof errorData.error === 'object' ? errorData.error?.message : errorData.error;
       throw new Error(errorMessage || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
@@ -136,11 +136,11 @@ Guidelines:
     }
 
     const extractedPhrases = phrases.length > 0 ? phrases : [output.trim()];
-    // Limitar a exactamente 3 frases para la generación inicial
+    // Limit to exactly 3 phrases for initial generation
     return extractedPhrases.slice(0, 3);
   } catch (error) {
     console.error('❌ Error generating phrases with Azure OpenAI:', error);
-    throw new Error(error.message || 'Error al generar frases con Azure OpenAI.');
+    throw new Error(error.message || 'Error generating phrases with Azure OpenAI.');
   }
 }
 
@@ -152,7 +152,7 @@ async function generateMoreAzurePhrases(words, existingPhrases, childAge) {
 
   const config = getAzureConfig();
   if (!config.url || !config.key) {
-    throw new Error('Azure OpenAI no está configurado. Verifica las variables de entorno AZURE_OPENAI_PHRASE_URL y AZURE_OPENAI_PHRASE_KEY.');
+    throw new Error('Azure OpenAI is not configured. Verify environment variables AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY.');
   }
 
   try {
@@ -200,7 +200,7 @@ Remember: Generate EXACTLY 1 new phrase only.`;
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as { error?: { message?: string } | string; message?: string };
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: { message?: string } | string; message?: string };
       const errorMessage = typeof errorData.error === 'object' ? errorData.error?.message : errorData.error;
       throw new Error(errorMessage || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
@@ -238,11 +238,11 @@ Remember: Generate EXACTLY 1 new phrase only.`;
     }
 
     const extractedPhrases = phrases.length > 0 ? phrases : [output.trim()];
-    // Limitar a exactamente 1 frase para "Generate More"
+    // Limit to exactly 1 phrase for "Generate More"
     return extractedPhrases.slice(0, 1);
   } catch (error) {
     console.error('❌ Error generating more phrases with Azure OpenAI:', error);
-    throw new Error(error.message || 'Error al generar más frases con Azure OpenAI.');
+    throw new Error(error.message || 'Error generating more phrases with Azure OpenAI.');
   }
 }
 

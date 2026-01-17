@@ -13,7 +13,7 @@ import { db } from '../config/firebase';
 import { UserData, UserPreferences, CustomPCSSymbol } from '../types/user';
 
 /**
- * Crea o actualiza el documento de usuario en Firestore
+ * Creates or updates user document in Firestore
  */
 export async function createUserDocument(
   userId: string, 
@@ -21,7 +21,7 @@ export async function createUserDocument(
   fullName: string
 ): Promise<void> {
   try {
-    console.log('📄 Creando documento de usuario:', userId);
+    console.log('📄 Creating user document:', userId);
     
     const userRef = doc(db, 'users', userId);
     const userData: UserData = {
@@ -35,54 +35,54 @@ export async function createUserDocument(
         categories: [],
         hiddenCategories: [],
         hasCompletedOnboarding: false, // New user needs to complete onboarding
-        // childAge y parentMenuPassword se configurarán más tarde en el onboarding
-        // No los incluimos aquí para evitar valores undefined que Firestore no permite
+        // childAge and parentMenuPassword will be configured later in onboarding
+        // We don't include them here to avoid undefined values that Firestore doesn't allow
       },
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
     
     await setDoc(userRef, userData);
-    console.log('✅ Documento de usuario creado');
+    console.log('✅ User document created');
   } catch (error: any) {
-    console.error('❌ Error creando documento de usuario:', error);
+    console.error('❌ Error creating user document:', error);
     throw error;
   }
 }
 
 /**
- * Obtiene los datos del usuario desde Firestore
+ * Gets user data from Firestore
  */
 export async function getUserData(userId: string): Promise<UserData | null> {
   try {
-    console.log('🔍 Obteniendo datos del usuario:', userId);
+    console.log('🔍 Getting user data:', userId);
     
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
     
     if (userSnap.exists()) {
       const data = userSnap.data() as UserData;
-      console.log('✅ Datos del usuario obtenidos');
+      console.log('✅ User data obtained');
       return data;
     } else {
-      console.log('⚠️ Documento de usuario no encontrado');
+      console.log('⚠️ User document not found');
       return null;
     }
   } catch (error: any) {
-    console.error('❌ Error obteniendo datos del usuario:', error);
+    console.error('❌ Error getting user data:', error);
     throw error;
   }
 }
 
 /**
- * Actualiza los datos del usuario en Firestore
+ * Updates user data in Firestore
  */
 export async function updateUserData(
   userId: string, 
   updates: Partial<Omit<UserData, 'id' | 'createdAt'>>
 ): Promise<void> {
   try {
-    console.log('✏️ Actualizando usuario:', userId);
+    console.log('✏️ Updating user:', userId);
     
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, {
@@ -90,22 +90,22 @@ export async function updateUserData(
       updatedAt: Timestamp.now()
     });
     
-    console.log('✅ Usuario actualizado');
+    console.log('✅ User updated');
   } catch (error: any) {
-    console.error('❌ Error actualizando usuario:', error);
+    console.error('❌ Error updating user:', error);
     throw error;
   }
 }
 
 /**
- * Actualiza las preferencias del usuario
+ * Updates user preferences
  */
 export async function updateUserPreferences(
   userId: string, 
   preferences: Partial<UserPreferences>
 ): Promise<void> {
   try {
-    console.log('⚙️ Actualizando preferencias:', userId);
+    console.log('⚙️ Updating preferences:', userId);
     
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
@@ -117,23 +117,23 @@ export async function updateUserPreferences(
         updatedAt: Timestamp.now()
       });
       
-      console.log('✅ Preferencias actualizadas');
+      console.log('✅ Preferences updated');
     }
   } catch (error: any) {
-    console.error('❌ Error actualizando preferencias:', error);
+    console.error('❌ Error updating preferences:', error);
     throw error;
   }
 }
 
 /**
- * Añade un símbolo PCS personalizado
+ * Adds a custom PCS symbol
  */
 export async function addCustomPCSSymbol(
   userId: string,
   symbol: CustomPCSSymbol
 ): Promise<void> {
   try {
-    console.log('➕ Añadiendo símbolo PCS personalizado:', symbol.word);
+    console.log('➕ Adding custom PCS symbol:', symbol.word);
     
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
@@ -141,7 +141,7 @@ export async function addCustomPCSSymbol(
     if (userSnap.exists()) {
       const currentSymbols = userSnap.data().preferences?.customPCSSymbols || [];
       
-      // Evitar duplicados
+      // Avoid duplicates
       const exists = currentSymbols.some((s: CustomPCSSymbol) => 
         s.word === symbol.word && s.imageUrl === symbol.imageUrl
       );
@@ -150,26 +150,26 @@ export async function addCustomPCSSymbol(
         await updateUserPreferences(userId, {
           customPCSSymbols: [...currentSymbols, symbol]
         });
-        console.log('✅ Símbolo PCS añadido');
+        console.log('✅ PCS symbol added');
       } else {
-        console.log('⚠️ Símbolo PCS ya existe');
+        console.log('⚠️ PCS symbol already exists');
       }
     }
   } catch (error: any) {
-    console.error('❌ Error añadiendo símbolo PCS:', error);
+    console.error('❌ Error adding PCS symbol:', error);
     throw error;
   }
 }
 
 /**
- * Elimina un símbolo PCS personalizado
+ * Removes a custom PCS symbol
  */
 export async function removeCustomPCSSymbol(
   userId: string,
   symbolId: string
 ): Promise<void> {
   try {
-    console.log('➖ Eliminando símbolo PCS:', symbolId);
+    console.log('➖ Removing PCS symbol:', symbolId);
     
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
@@ -182,23 +182,23 @@ export async function removeCustomPCSSymbol(
         customPCSSymbols: updatedSymbols
       });
       
-      console.log('✅ Símbolo PCS eliminado');
+      console.log('✅ PCS symbol removed');
     }
   } catch (error: any) {
-    console.error('❌ Error eliminando símbolo PCS:', error);
+    console.error('❌ Error removing PCS symbol:', error);
     throw error;
   }
 }
 
 /**
- * Obtiene todos los símbolos PCS personalizados del usuario
+ * Gets all custom PCS symbols for the user
  */
 export async function getCustomPCSSymbols(userId: string): Promise<CustomPCSSymbol[]> {
   try {
     const userData = await getUserData(userId);
     return userData?.preferences?.customPCSSymbols || [];
   } catch (error: any) {
-    console.error('❌ Error obteniendo símbolos PCS:', error);
+    console.error('❌ Error getting PCS symbols:', error);
     return [];
   }
 }

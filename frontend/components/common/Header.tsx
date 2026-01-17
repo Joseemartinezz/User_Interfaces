@@ -16,9 +16,9 @@ interface HeaderProps {
 }
 
 /**
- * Header unificado para todas las pantallas
- * Permite personalizar título, subtítulo, color de fondo y mostrar/ocultar botones
- * Optimizado con React.memo y useMemo
+ * Unified header for all screens
+ * Allows customizing title, subtitle, background color and showing/hiding buttons
+ * Optimized with React.memo and useMemo
  */
 const Header: React.FC<HeaderProps> = ({
   title,
@@ -31,10 +31,10 @@ const Header: React.FC<HeaderProps> = ({
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   
-  // Usar el color primario del tema si no se especifica backgroundColor
+  // Use theme primary color if backgroundColor is not specified
   const headerBackgroundColor = backgroundColor || theme.primary;
 
-  // Memoizar los estilos dinámicos
+  // Memoize dynamic styles
   const headerStyle = useMemo(
     () => [
       styles.header,

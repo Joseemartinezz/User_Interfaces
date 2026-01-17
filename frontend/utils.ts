@@ -1,5 +1,5 @@
 /**
- * Utilidades simples del frontend (solo UI, sin lógica de negocio)
+ * Simple frontend utilities (UI only, no business logic)
  */
 
 /**

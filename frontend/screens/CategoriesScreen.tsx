@@ -96,7 +96,7 @@ const CategoriesScreen: React.FC = () => {
   }, [user?.preferences.categories, hiddenCategories]);
 
   const handleCategoryPress = useCallback((category: { id: string; name: string; emoji: string; isCustom: boolean; isHidden?: boolean }) => {
-    // Navegar a la pantalla de detalle de categoría
+    // Navigate to category detail screen
     navigation.navigate('CategoryDetail', {
       categoryId: category.id,
       categoryName: category.name,
@@ -221,7 +221,7 @@ const CategoriesScreen: React.FC = () => {
 
         {/* Contenido principal */}
         <View style={[styles.content, { backgroundColor: theme.background }]}>
-          {/* Grid de categorías */}
+          {/* Categories grid */}
           <ScrollView
             style={styles.categoriesContainer}
             contentContainerStyle={styles.categoriesGrid}
@@ -256,7 +256,7 @@ const CategoriesScreen: React.FC = () => {
               );
             })}
 
-            {/* Botón para añadir nueva categoría */}
+            {/* Button to add new category */}
             <TouchableOpacity
               style={[
                 styles.addCategoryButton,
@@ -277,7 +277,7 @@ const CategoriesScreen: React.FC = () => {
         </View>
       </SafeAreaView>
 
-      {/* Modal para añadir categoría */}
+      {/* Modal to add category */}
       <Modal
         visible={showAddCategoryModal}
         transparent={true}
@@ -311,7 +311,7 @@ const CategoriesScreen: React.FC = () => {
               maxLength={2}
             />
 
-            {/* Toggle para incluir símbolos PCS estándar */}
+            {/* Toggle to include standard PCS symbols */}
             <View style={styles.switchContainer}>
               <Text style={[styles.switchLabel, { color: theme.primary }]}>
                 Include standard PCS symbols
@@ -325,7 +325,7 @@ const CategoriesScreen: React.FC = () => {
               />
             </View>
 
-            {/* Campos condicionales para símbolos estándar */}
+            {/* Conditional fields for standard symbols */}
             {includeStandardSymbols && (
               <TextInput
                 style={[
@@ -344,7 +344,7 @@ const CategoriesScreen: React.FC = () => {
               />
             )}
 
-            {/* Botones de acción */}
+            {/* Action buttons */}
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalCancelButton, { borderColor: theme.accent }]}

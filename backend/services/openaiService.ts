@@ -1,9 +1,9 @@
-// URL del backend - Cambia esto según tu configuración
-// Para desarrollo local: http://localhost:3000
-// Para emulador Android: http://10.0.2.2:3000 (Android emulator usa 10.0.2.2 para localhost)
-// Para emulador iOS: http://localhost:3000
-// Para dispositivo físico: http://TU_IP_LOCAL:3000 (ej: http://192.168.1.100:3000)
-// Para web en Expo: a veces necesita http://127.0.0.1:3000 en lugar de localhost
+// Backend URL - Change this according to your configuration
+// For local development: http://localhost:3000
+// For Android emulator: http://10.0.2.2:3000 (Android emulator uses 10.0.2.2 for localhost)
+// For iOS emulator: http://localhost:3000
+// For physical device: http://YOUR_LOCAL_IP:3000 (e.g. http://192.168.1.100:3000)
+// For web in Expo: sometimes needs http://127.0.0.1:3000 instead of localhost
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 interface ErrorResponse {
@@ -24,7 +24,7 @@ interface TextResponse {
 }
 
 /**
- * Prueba la conexión con el servidor backend
+ * Tests connection with the backend server
  */
 export async function testConnection(): Promise<boolean> {
   try {
@@ -77,25 +77,25 @@ export async function generatePhrases(
     console.error('Error generating phrases:', error);
     
     if (error.message?.includes('Failed to fetch') || error.message?.includes('Network request failed')) {
-      const errorMsg = `No se pudo conectar al servidor backend en ${API_BASE_URL}.\n\n` +
-        `Solución:\n` +
-        `1. Verifica que el servidor esté corriendo: npm run server\n` +
-        `2. Prueba en el navegador: ${API_BASE_URL}\n` +
-        `3. Si estás en Android Emulator, cambia la URL a: http://10.0.2.2:3000\n` +
-        `4. Si estás en web, prueba cambiar a: http://127.0.0.1:3000 o http://localhost:3000`;
+      const errorMsg = `Could not connect to backend server at ${API_BASE_URL}.\n\n` +
+        `Solution:\n` +
+        `1. Verify that the server is running: npm run server\n` +
+        `2. Test in browser: ${API_BASE_URL}\n` +
+        `3. If you're on Android Emulator, change URL to: http://10.0.2.2:3000\n` +
+        `4. If you're on web, try changing to: http://127.0.0.1:3000 or http://localhost:3000`;
       throw new Error(errorMsg);
     }
     
-    throw new Error(error.message || 'Error al generar frases. Verifica que el servidor backend esté ejecutándose.');
+    throw new Error(error.message || 'Error generating phrases. Verify that the backend server is running.');
   }
 }
 
 /**
- * Genera más frases sin repetir las existentes usando OpenAI
- * Usa el backend proxy para evitar problemas de CORS
- * @param words Array de palabras seleccionadas
- * @param existingPhrases Frases ya generadas que no se deben repetir
- * @param model Modelo de OpenAI a usar (por defecto: 'gpt-5-mini')
+ * Generates more phrases without repeating existing ones using OpenAI
+ * Uses backend proxy to avoid CORS issues
+ * @param words Array of selected words
+ * @param existingPhrases Already generated phrases that should not be repeated
+ * @param model OpenAI model to use (default: 'gpt-5-mini')
  */
 export async function generateMorePhrases(
   words: string[],
@@ -128,24 +128,24 @@ export async function generateMorePhrases(
     console.error('Error generating more phrases:', error);
     
     if (error.message?.includes('Failed to fetch') || error.message?.includes('Network request failed')) {
-      const errorMsg = `No se pudo conectar al servidor backend en ${API_BASE_URL}.\n\n` +
-        `Solución:\n` +
-        `1. Verifica que el servidor esté corriendo: npm run server\n` +
-        `2. Prueba en el navegador: ${API_BASE_URL}\n` +
-        `3. Si estás en Android Emulator, cambia la URL a: http://10.0.2.2:3000\n` +
-        `4. Si estás en web, prueba cambiar a: http://127.0.0.1:3000 o http://localhost:3000`;
+      const errorMsg = `Could not connect to backend server at ${API_BASE_URL}.\n\n` +
+        `Solution:\n` +
+        `1. Verify that the server is running: npm run server\n` +
+        `2. Test in browser: ${API_BASE_URL}\n` +
+        `3. If you're on Android Emulator, change URL to: http://10.0.2.2:3000\n` +
+        `4. If you're on web, try changing to: http://127.0.0.1:3000 or http://localhost:3000`;
       throw new Error(errorMsg);
     }
     
-    throw new Error(error.message || 'Error al generar más frases. Verifica que el servidor backend esté ejecutándose.');
+    throw new Error(error.message || 'Error generating more phrases. Verify that the backend server is running.');
   }
 }
 
 /**
- * Convierte texto a secuencia de PCS symbols usando OpenAI
- * Útil para cuando un cuidador escribe texto y necesita ver los símbolos correspondientes
- * @param text Texto a convertir
- * @param model Modelo de OpenAI a usar (por defecto: 'gpt-5-mini')
+ * Converts text to PCS symbol sequence using OpenAI
+ * Useful when a caregiver writes text and needs to see the corresponding symbols
+ * @param text Text to convert
+ * @param model OpenAI model to use (default: 'gpt-5-mini')
  */
 export async function textToPCSSequence(
   text: string,
@@ -175,15 +175,15 @@ export async function textToPCSSequence(
     return data.symbols || [];
   } catch (error: any) {
     console.error('Error converting text to PCS:', error);
-    throw new Error(error.message || 'Error al convertir texto a símbolos PCS.');
+    throw new Error(error.message || 'Error converting text to PCS symbols.');
   }
 }
 
 /**
- * Convierte una secuencia de PCS symbols a texto natural usando OpenAI
- * Útil para cuando un niño selecciona símbolos y necesita ver el texto correspondiente
- * @param symbols Array de palabras/símbolos seleccionados
- * @param model Modelo de OpenAI a usar (por defecto: 'gpt-5-mini')
+ * Converts a PCS symbol sequence to natural text using OpenAI
+ * Useful when a child selects symbols and needs to see the corresponding text
+ * @param symbols Array of selected words/symbols
+ * @param model OpenAI model to use (default: 'gpt-5-mini')
  */
 export async function pcsSequenceToText(
   symbols: string[],
@@ -213,7 +213,7 @@ export async function pcsSequenceToText(
     return data.text || '';
   } catch (error: any) {
     console.error('Error converting PCS to text:', error);
-    throw new Error(error.message || 'Error al convertir símbolos PCS a texto.');
+    throw new Error(error.message || 'Error converting PCS symbols to text.');
   }
 }
 

@@ -18,7 +18,7 @@ export const styles = StyleSheet.create({
     elevation: 3,
   },
   selectedWordsWrapper: {
-    minHeight: 90, // CRÍTICO: Altura mínima fija para evitar layout shift
+    minHeight: 90, // CRITICAL: Fixed minimum height to avoid layout shift
     justifyContent: 'center',
   },
   selectedWordsScrollView: {
@@ -74,7 +74,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   categoryGridContainer: {
-    width: Dimensions.get('window').width - 24, // Ancho de pantalla menos márgenes del section (12*2)
+    width: Dimensions.get('window').width - 24, // Screen width minus section margins (12*2)
     paddingHorizontal: 8,
     flex: 1,
   },
@@ -284,7 +284,7 @@ export const styles = StyleSheet.create({
     maxWidth: Dimensions.get('window').width - 104, // Ancho de pantalla menos espacio para flechas (40*2 + padding)
   },
   categoryIndicatorsScrollContent: {
-    paddingHorizontal: 8, // Padding para evitar que el primer botón se corte al hacer scale
+    paddingHorizontal: 8, // Padding to prevent first button from being cut when scaling
     gap: 4,
     alignItems: 'center',
     paddingVertical: 2,

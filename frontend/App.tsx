@@ -3,8 +3,6 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { enableScreens } from 'react-native-screens';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
-
 // Import screens
 import CategoriesScreen from './screens/CategoriesScreen';
 import CategoryDetailScreen from './screens/CategoryDetailScreen';
@@ -17,6 +15,7 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import WelcomeOnboardingScreen from './screens/WelcomeOnboardingScreen';
+import LoadingScreen from './components/common/LoadingScreen';
 
 // Importar Providers
 import { ThemeProvider } from './context/ThemeContext';
@@ -211,11 +210,7 @@ function RootNavigator() {
 
   // Show loading while verifying authentication
   if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
+    return <LoadingScreen message="Loading WizzWords..." />;
   }
 
   // Not authenticated: show login/register screens
@@ -250,11 +245,3 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-});

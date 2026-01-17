@@ -1,7 +1,7 @@
 {
   "name": "aac-app",
   "version": "1.0.0",
-  "description": "Aplicación de comunicación aumentativa - Frontend y Backend",
+  "description": "Augmentative and Alternative Communication Application - Frontend and Backend",
   "private": true,
   "scripts": {
     "frontend:start": "cd frontend && npm start",

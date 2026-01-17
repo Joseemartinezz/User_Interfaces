@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -85,7 +86,13 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             paddingTop: Math.max(insets.top + 20, Platform.OS === 'ios' ? 60 : 40)
           }]}>
             <View style={styles.header}>
-              <Text style={[styles.appTitle, { color: theme.primary }]}>WizzWords</Text>
+              <View style={styles.logoContainer}>
+                <Image 
+                  source={require('../assets/logo.jpeg')} 
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
               <Text style={[styles.screenTitle, { color: theme.primary }]}>Create Account</Text>
             </View>
           </View>
@@ -243,16 +250,29 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
   },
+  logoContainer: {
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  logo: {
+    width: 140,
+    height: 140,
+    borderRadius: 20,
+  },
   appTitle: {
     fontSize: 42,
     fontWeight: 'bold',
     marginBottom: 12,
   },
   screenTitle: {
-    fontSize: 18,
-    fontWeight: '400',
-    opacity: 0.6,
-    letterSpacing: 1,
+    fontSize: 28,
+    fontWeight: '700',
+    opacity: 1,
+    letterSpacing: 0.5,
   },
   formContainer: {
     flex: 1,

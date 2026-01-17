@@ -4,9 +4,9 @@ import { getFirestore } from 'firebase/firestore';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import { Platform } from 'react-native';
 
-// Configuración de Firebase
-// IMPORTANTE: Reemplaza estos valores con los de tu proyecto Firebase
-// Los puedes obtener en: Firebase Console > Project Settings > General
+// Firebase configuration
+// IMPORTANT: Replace these values with your Firebase project values
+// You can get them at: Firebase Console > Project Settings > General
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyDEMO_KEY",
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "your-app.firebaseapp.com",
@@ -17,38 +17,38 @@ const firebaseConfig = {
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX"
 };
 
-// Inicializar Firebase
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Inicializar Auth
-// NOTA: La advertencia sobre AsyncStorage es esperada en algunos entornos.
-// Firebase Auth funcionará correctamente, pero la persistencia entre sesiones
-// se manejará a través del UserContext que usa AsyncStorage directamente.
-// Para una solución completa, considera usar @react-native-firebase/auth
+// Initialize Auth
+// NOTE: The AsyncStorage warning is expected in some environments.
+// Firebase Auth will work correctly, but persistence between sessions
+// will be handled through UserContext which uses AsyncStorage directly.
+// For a complete solution, consider using @react-native-firebase/auth
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Inicializar Analytics de forma segura
-// Solo se inicializa si está soportado en la plataforma
+// Initialize Analytics safely
+// Only initializes if supported on the platform
 let analytics = null;
 (async () => {
   try {
     const analyticsSupported = await isSupported();
     if (analyticsSupported) {
       analytics = getAnalytics(app);
-      console.log('📊 Firebase Analytics inicializado');
+      console.log('📊 Firebase Analytics initialized');
     } else {
-      console.log('⚠️ Analytics no soportado en esta plataforma');
+      console.log('⚠️ Analytics not supported on this platform');
     }
   } catch (error) {
-    console.log('⚠️ Analytics no disponible:', error);
+    console.log('⚠️ Analytics not available:', error);
   }
 })();
 
 export { analytics };
 
-// Log para debugging
-console.log('🔥 Firebase inicializado');
+// Log for debugging
+console.log('🔥 Firebase initialized');
 console.log('   Project ID:', firebaseConfig.projectId);
 console.log('   Platform:', Platform.OS);
 

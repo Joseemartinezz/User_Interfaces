@@ -171,7 +171,7 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'white',
   },
-  // Estilos específicos para modal de contraseña
+  // Specific styles for password modal
   modalContainer: {
     width: '100%',
     maxWidth: 400,

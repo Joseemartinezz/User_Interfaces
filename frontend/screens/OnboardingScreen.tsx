@@ -17,7 +17,7 @@ import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
 import { styles } from './OnboardingScreen.styles';
 
-// Categorías predefinidas con emojis
+// Predefined categories with emojis
 const DEFAULT_CATEGORIES = [
   { name: 'Food', emoji: '🍕' },
   { name: 'Games', emoji: '🎮' },
@@ -29,11 +29,11 @@ const DEFAULT_CATEGORIES = [
   { name: 'Transport', emoji: '🚗' },
 ];
 
-// Opciones de idioma
+// Language options
 const LANGUAGE_OPTIONS = [
-  { code: 'es', label: 'Español', emoji: '🇪🇸' },
+  { code: 'es', label: 'Spanish', emoji: '🇪🇸' },
   { code: 'en', label: 'English', emoji: '🇬🇧' },
-  { code: 'it', label: 'Italiano', emoji: '🇮🇹' },
+  { code: 'it', label: 'Italian', emoji: '🇮🇹' },
 ];
 
 

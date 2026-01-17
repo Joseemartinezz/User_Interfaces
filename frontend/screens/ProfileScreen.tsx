@@ -275,7 +275,7 @@ export default function ProfileScreen() {
                 </Text>
               </View>
               <Text style={[styles.preferenceValue, { color: theme.primary }]}>
-                {user?.preferences.language === 'es' ? 'Español' : 'English'}
+                {user?.preferences.language === 'es' ? 'Spanish' : 'English'}
               </Text>
             </View>
 

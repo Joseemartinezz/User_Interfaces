@@ -8,34 +8,34 @@ interface AzureOpenAIImageResponse {
 }
 
 /**
- * Limpia y sanitiza la frase para evitar problemas con las políticas de la API
+ * Cleans and sanitizes the phrase to avoid issues with API policies
  */
 function sanitizePhrase(phrase) {
   if (!phrase) return '';
   
-  // Limpiar la frase: remover números al inicio, puntos, y caracteres especiales problemáticos
+  // Clean the phrase: remove numbers at the start, dots, and problematic special characters
   let cleaned = phrase.trim()
-    .replace(/^\d+\.\s*/, '') // Remover números al inicio
-    .replace(/[^\w\s.,!?-]/g, '') // Remover caracteres especiales excepto puntuación básica
+    .replace(/^\d+\.\s*/, '') // Remove numbers at the start
+    .replace(/[^\w\s.,!?-]/g, '') // Remove special characters except basic punctuation
     .trim();
   
-  // Convertir a minúsculas para evitar problemas
+  // Convert to lowercase to avoid issues
   cleaned = cleaned.toLowerCase();
   
   return cleaned;
 }
 
 /**
- * Construye el prompt optimizado para generar imágenes AAC child-friendly
- * Usa un enfoque seguro que cumple con las políticas de la API
+ * Builds the optimized prompt for generating AAC child-friendly images
+ * Uses a safe approach that complies with API policies
  */
 function buildAacImagePrompt(phrase) {
-  // Sanitizar la frase
+  // Sanitize the phrase
   const sanitizedPhrase = sanitizePhrase(phrase);
   
-  // Crear un prompt más seguro, descriptivo y genérico
-  // Evitamos incluir la frase directamente si puede ser problemática
-  // En su lugar, usamos un formato más descriptivo y seguro
+  // Create a safer, descriptive and generic prompt
+  // We avoid including the phrase directly if it might be problematic
+  // Instead, we use a more descriptive and safe format
   return `A cheerful, simple illustration for children showing a positive and happy scene. 
 The illustration should be colorful, friendly, and easy to understand. 
 Use soft, rounded shapes, bright colors, and a warm, welcoming style. 
@@ -47,68 +47,68 @@ Illustrate the concept: ${sanitizedPhrase}`.trim();
 }
 
 /**
- * Obtiene la configuración de Azure OpenAI para imágenes desde variables de entorno
- * El endpoint ya viene completo con deploymentName y api-version
+ * Gets Azure OpenAI configuration for images from environment variables
+ * The endpoint already comes complete with deploymentName and api-version
  */
 function getAzureOpenAIConfig() {
   const endpoint = process.env.AZURE_OPENAI_IMAGE_ENDPOINT;
   const apiKey = process.env.AZURE_OPENAI_IMAGE_API_KEY;
 
   if (!endpoint) {
-    throw new Error('AZURE_OPENAI_IMAGE_ENDPOINT no está configurada en las variables de entorno');
+    throw new Error('AZURE_OPENAI_IMAGE_ENDPOINT is not configured in environment variables');
   }
   if (!apiKey) {
-    throw new Error('AZURE_OPENAI_IMAGE_API_KEY no está configurada en las variables de entorno');
+    throw new Error('AZURE_OPENAI_IMAGE_API_KEY is not configured in environment variables');
   }
 
   return { endpoint, apiKey };
 }
 
 /**
- * Convierte una imagen desde una URL a base64
- * @param {string} imageUrl URL de la imagen
- * @returns {Promise<string>} Imagen en formato base64
+ * Converts an image from a URL to base64
+ * @param {string} imageUrl Image URL
+ * @returns {Promise<string>} Image in base64 format
  */
 async function urlToBase64(imageUrl) {
   try {
     const response = await fetch(imageUrl);
     if (!response.ok) {
-      throw new Error(`Error al descargar imagen: ${response.status} ${response.statusText}`);
+      throw new Error(`Error downloading image: ${response.status} ${response.statusText}`);
     }
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     return buffer.toString('base64');
   } catch (error) {
-    throw new Error(`Error convirtiendo URL a base64: ${error.message}`);
+    throw new Error(`Error converting URL to base64: ${error.message}`);
   }
 }
 
 /**
- * Genera una imagen para una frase AAC usando DALL-E 3 a través de Azure OpenAI
- * Incluye lógica de retry con backoff exponencial para manejar errores de conexión
- * @param {string} phrase La frase para la cual generar la imagen
- * @param {number} retryAttempt Número de intento actual (para retry)
- * @returns {Promise<string>} La imagen en formato base64
+ * Generates an image for an AAC phrase using DALL-E 3 via Azure OpenAI
+ * Includes retry logic with exponential backoff to handle connection errors
+ * @param {string} phrase The phrase for which to generate the image
+ * @param {number} retryAttempt Current attempt number (for retry)
+ * @returns {Promise<string>} The image in base64 format
  */
 async function generateAacImage(phrase, retryAttempt = 0) {
   if (!phrase || phrase.trim().length === 0) {
-    throw new Error('La frase no puede estar vacía');
+    throw new Error('The phrase cannot be empty');
   }
 
   const MAX_RETRIES = 3;
-  const INITIAL_RETRY_DELAY = 1000; // 1 segundo inicial
+  const INITIAL_RETRY_DELAY = 1000; // 1 initial second
 
   try {
     const { endpoint, apiKey } = getAzureOpenAIConfig();
     const prompt = buildAacImagePrompt(phrase);
 
     if (retryAttempt === 0) {
-      console.log(`🎨 Generando imagen con Azure OpenAI DALL-E 3 para frase: "${phrase}"`);
+      console.log(`🎨 Generating image with Azure OpenAI DALL-E 3 for phrase: "${phrase}"`);
     } else {
-      console.log(`🔄 Reintentando generación de imagen (intento ${retryAttempt + 1}/${MAX_RETRIES + 1}) para: "${phrase}"`);
+      console.log(`🔄 Retrying image generation (attempt ${retryAttempt + 1}/${MAX_RETRIES + 1}) for phrase: "${phrase}"`);
     }
 
-    // El endpoint ya viene completo con deploymentName y api-version
+    // The endpoint already comes complete with deploymentName and api-version
     const url = endpoint;
 
     const headers = {
@@ -122,7 +122,7 @@ async function generateAacImage(phrase, retryAttempt = 0) {
       n: 1
     };
 
-    // Timeout más largo para evitar ECONNRESET (60 segundos)
+    // Longer timeout to avoid ECONNRESET (60 seconds)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
 
@@ -134,35 +134,39 @@ async function generateAacImage(phrase, retryAttempt = 0) {
         body: JSON.stringify(body),
         signal: controller.signal
       });
+    } catch (fetchError) {
+      // If the fetch fails, clear the timeout and rethrow the error to be handled by the outer catch
+      clearTimeout(timeoutId);
+      throw fetchError;
     } finally {
       clearTimeout(timeoutId);
     }
 
     if (!response.ok) {
       const errorText = await response.text();
-      let errorMessage = `Error de Azure OpenAI: ${response.status} ${response.statusText}`;
+      let errorMessage = `Azure OpenAI error: ${response.status} ${response.statusText}`;
       
       try {
         const errorJson = JSON.parse(errorText);
         errorMessage = errorJson.error?.message || errorMessage;
       } catch (e) {
-        // Si no se puede parsear como JSON, usar el texto tal cual
+        // If it cannot be parsed as JSON, use the text as is
         errorMessage = errorText || errorMessage;
       }
 
       if (response.status === 401 || response.status === 403) {
-        throw new Error('Azure OpenAI API Key inválida o no configurada. Verifica AZURE_OPENAI_IMAGE_API_KEY en backend/.env');
+        throw new Error('Azure OpenAI API Key invalid or not configured. Verify AZURE_OPENAI_IMAGE_API_KEY in backend/.env');
       }
       
       if (response.status === 429) {
-        // Para rate limiting, hacer retry con delay más largo
+        // For rate limiting, retry with longer delay
         if (retryAttempt < MAX_RETRIES) {
-          const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryAttempt); // Backoff exponencial
-          console.log(`⏳ Rate limit detectado. Esperando ${delay}ms antes de reintentar...`);
+          const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryAttempt); // Exponential backoff
+          console.log(`⏳ Rate limit detected. Waiting ${delay}ms before retrying...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           return generateAacImage(phrase, retryAttempt + 1);
         }
-        throw new Error('Se ha excedido la cuota de Azure OpenAI. Verifica tu plan y límites.');
+        throw new Error('Azure OpenAI quota exceeded. Verify your plan and limits.');
       }
 
       throw new Error(errorMessage);
@@ -171,84 +175,100 @@ async function generateAacImage(phrase, retryAttempt = 0) {
     const result = await response.json() as AzureOpenAIImageResponse;
 
     if (!result.data || result.data.length === 0) {
-      throw new Error('No se recibió imagen en la respuesta de Azure OpenAI');
+      throw new Error('No image received in Azure OpenAI response');
     }
 
     const imageUrl = result.data[0].url;
     if (!imageUrl) {
-      throw new Error('La imagen recibida no contiene URL');
+      throw new Error('The received image does not contain a URL');
     }
 
-    // Convertir la URL a base64 para mantener compatibilidad
+    // Convert URL to base64 to maintain compatibility
     const imageBase64 = await urlToBase64(imageUrl);
 
     if (retryAttempt > 0) {
-      console.log(`✅ Imagen generada exitosamente después de ${retryAttempt + 1} intentos para: "${phrase}"`);
+      console.log(`✅ Image generated successfully after ${retryAttempt + 1} attempts for: "${phrase}"`);
     } else {
-      console.log(`✅ Imagen generada exitosamente para: "${phrase}"`);
+      console.log(`✅ Image generated successfully for: "${phrase}"`);
     }
     return imageBase64;
   } catch (error) {
-    // Detectar errores de conexión que pueden ser recuperables
+    // Detect connection errors that may be recoverable
+    // Includes common Node.js error codes and numeric codes that may indicate network problems
+    const errorCode = error.code || error.errno || error.cause?.code;
+    const errorMessage = error.message || '';
+    const errorName = error.name || '';
+    
     const isConnectionError = 
-      error.code === 'ECONNRESET' ||
-      error.code === 'ETIMEDOUT' ||
-      error.code === 'ENOTFOUND' ||
-      error.message?.includes('fetch failed') ||
-      error.message?.includes('ECONNRESET') ||
-      error.name === 'AbortError';
+      errorCode === 'ECONNRESET' ||
+      errorCode === 'ETIMEDOUT' ||
+      errorCode === 'ENOTFOUND' ||
+      errorCode === 'ECONNREFUSED' ||
+      errorCode === 'EAI_AGAIN' ||
+      errorCode === 'EPIPE' ||
+      // Common numeric codes for network errors (20 may be a fetch/HTTP error code)
+      (typeof errorCode === 'number' && (errorCode === 20 || errorCode < 0)) ||
+      errorMessage.includes('fetch failed') ||
+      errorMessage.includes('ECONNRESET') ||
+      errorMessage.includes('ETIMEDOUT') ||
+      errorMessage.includes('network') ||
+      errorMessage.includes('connection') ||
+      errorMessage.includes('timeout') ||
+      errorName === 'AbortError' ||
+      errorName === 'TypeError' && errorMessage.includes('fetch');
 
-    // Si es un error de conexión y aún tenemos reintentos disponibles, reintentar
+    // If it's a connection error and we still have retries available, retry
     if (isConnectionError && retryAttempt < MAX_RETRIES) {
-      const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryAttempt); // Backoff exponencial: 1s, 2s, 4s
-      console.log(`⚠️ Error de conexión detectado (${error.code || error.message}). Reintentando en ${delay}ms...`);
+      const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryAttempt); // Exponential backoff: 1s, 2s, 4s
+      const errorInfo = errorCode || errorMessage || 'unknown';
+      console.log(`⚠️ Transient connection error detected (${errorInfo}). Retrying automatically in ${delay}ms... (attempt ${retryAttempt + 1}/${MAX_RETRIES + 1})`);
       await new Promise(resolve => setTimeout(resolve, delay));
       return generateAacImage(phrase, retryAttempt + 1);
     }
 
-    console.error(`❌ Error generando imagen para "${phrase}" (intento ${retryAttempt + 1}):`, error);
+    console.error(`❌ Error generating image for "${phrase}" (attempt ${retryAttempt + 1}):`, error);
     
-    if (error.message?.includes('API Key') || error.message?.includes('no está configurada')) {
-      throw new Error('Azure OpenAI API Key inválida o no configurada. Verifica AZURE_OPENAI_IMAGE_API_KEY en backend/.env');
+    if (error.message?.includes('API Key') || error.message?.includes('not configured')) {
+      throw new Error('Azure OpenAI API Key invalid or not configured. Verify AZURE_OPENAI_IMAGE_API_KEY in backend/.env');
     }
     
     if (error.message?.includes('quota') || error.message?.includes('limit') || error.message?.includes('429')) {
-      throw new Error('Se ha excedido la cuota de Azure OpenAI. Verifica tu plan y límites.');
+      throw new Error('Azure OpenAI quota exceeded. Verify your plan and limits.');
     }
 
-    throw new Error(error.message || 'Error desconocido al generar imagen');
+    throw new Error(error.message || 'Unknown error generating image');
   }
 }
 
-// Variable global para rastrear el último tiempo de solicitud (para evitar saturar Azure)
+// Global variable to track the last request time (to avoid saturating Azure)
 let lastRequestTime = 0;
-const MIN_DELAY_BETWEEN_REQUESTS = 300; // 300ms mínimo entre solicitudes
+const MIN_DELAY_BETWEEN_REQUESTS = 300; // 300ms minimum between requests
 
 /**
- * Genera imágenes para múltiples frases en paralelo con delay escalonado
- * (evita rate limiting de Azure OpenAI usando delays entre llamadas)
- * @param {string[]} phrases Array de frases para las cuales generar imágenes
- * @returns {Promise<Array<{phrase: string, imageBase64: string}>>} Array de objetos con frase e imagen base64
+ * Generates images for multiple phrases in parallel with staggered delays
+ * (avoids Azure OpenAI rate limiting by using delays between calls)
+ * @param {string[]} phrases Array of phrases for which to generate images
+ * @returns {Promise<Array<{phrase: string, imageBase64: string}>>} Array of objects with phrase and base64 image
  */
 async function generateAacImagesForPhrases(phrases) {
   if (!phrases || phrases.length === 0) {
     return [];
   }
 
-  console.log(`🎨 Generando ${phrases.length} imágenes en paralelo con delays escalonados...`);
+  console.log(`🎨 Generating ${phrases.length} images in parallel with staggered delays...`);
 
-  // Función helper para delay
+  // Helper function for delay
   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // Generar imágenes en paralelo con delay escalonado para evitar rate limiting
-  // Cada imagen se inicia con un delay de 500ms respecto a la anterior
-  // Además, respetamos un delay mínimo desde la última solicitud
+  // Generate images in parallel with staggered delay to avoid rate limiting
+  // Each image starts with a 500ms delay relative to the previous one
+  // Additionally, we respect a minimum delay since the last request
   const imagePromises = phrases.map(async (phrase, index) => {
     try {
-      // Calcular delay escalonado: 500ms, 1000ms, 1500ms, etc.
+      // Calculate staggered delay: 500ms, 1000ms, 1500ms, etc.
       const baseDelay = index * 500;
       
-      // Asegurar que haya un delay mínimo desde la última solicitud
+      // Ensure there's a minimum delay since the last request
       const now = Date.now();
       const timeSinceLastRequest = now - lastRequestTime;
       const additionalDelay = Math.max(0, MIN_DELAY_BETWEEN_REQUESTS - timeSinceLastRequest);
@@ -261,33 +281,33 @@ async function generateAacImagesForPhrases(phrases) {
       
       lastRequestTime = Date.now();
       
-      console.log(`🖼️ Iniciando generación de imagen ${index + 1}/${phrases.length} para: "${phrase}"`);
+      console.log(`🖼️ Starting image generation ${index + 1}/${phrases.length} for: "${phrase}"`);
       const imageBase64 = await generateAacImage(phrase);
-      console.log(`✅ Imagen ${index + 1}/${phrases.length} completada`);
+      console.log(`✅ Image ${index + 1}/${phrases.length} completed`);
       return { phrase, imageBase64 };
     } catch (error) {
-      console.error(`❌ Error generando imagen ${index + 1}/${phrases.length} para "${phrase}":`, error);
-      // Retornar sin imagen en caso de error (después de todos los reintentos)
+      console.error(`❌ Error generating image ${index + 1}/${phrases.length} for "${phrase}":`, error);
+      // Return without image in case of error (after all retries)
       return { phrase, imageBase64: '' };
     }
   });
 
   const results = await Promise.all(imagePromises);
   const successful = results.filter(r => r.imageBase64 !== '').length;
-  console.log(`✅ ${successful}/${phrases.length} imágenes generadas exitosamente`);
+  console.log(`✅ ${successful}/${phrases.length} images generated successfully`);
 
   return results;
 }
 
 /**
- * Prueba la conexión con Azure OpenAI
+ * Tests connection with Azure OpenAI
  * @returns {Promise<boolean>}
  */
 async function testOpenAIConnection() {
   try {
     const { endpoint, apiKey } = getAzureOpenAIConfig();
     
-    // El endpoint ya viene completo con deploymentName y api-version
+    // The endpoint already comes complete with deploymentName and api-version
     const url = endpoint;
 
     const response = await fetch(url, {
@@ -310,7 +330,7 @@ async function testOpenAIConnection() {
     const result = await response.json() as AzureOpenAIImageResponse;
     return result.data && result.data.length > 0;
   } catch (error) {
-    console.error('❌ Error probando conexión con Azure OpenAI:', error);
+    console.error('❌ Error testing connection with Azure OpenAI:', error);
     return false;
   }
 }

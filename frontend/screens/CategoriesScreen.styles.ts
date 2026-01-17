@@ -157,7 +157,7 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'white',
   },
-  // Estilos para modal de eliminación
+  // Styles for deletion modal
   deleteCategoryInfo: {
     alignItems: 'center',
     marginBottom: 24,

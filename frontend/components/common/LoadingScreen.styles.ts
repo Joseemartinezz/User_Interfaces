@@ -16,9 +16,9 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 200,
+    height: 200,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 32,
@@ -27,6 +27,11 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 8,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
   },
   iconEmoji: {
     fontSize: 64,
@@ -57,4 +62,3 @@ export const styles = StyleSheet.create({
     borderRadius: 6,
   },
 });
-

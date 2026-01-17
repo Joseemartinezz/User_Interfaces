@@ -1,13 +1,13 @@
-// URL del backend - Cambia esto según tu configuración
-// Para desarrollo local: http://localhost:3000
-// Para emulador Android: http://10.0.2.2:3000 (Android emulator usa 10.0.2.2 para localhost)
-// Para emulador iOS: http://localhost:3000
-// Para dispositivo físico: http://TU_IP_LOCAL:3000 (ej: http://192.168.1.100:3000)
-// Para web en Expo: a veces necesita http://127.0.0.1:3000 en lugar de localhost
+// Backend URL - Change this according to your configuration
+// For local development: http://localhost:3000
+// For Android emulator: http://10.0.2.2:3000 (Android emulator uses 10.0.2.2 for localhost)
+// For iOS emulator: http://localhost:3000
+// For physical device: http://YOUR_LOCAL_IP:3000 (e.g. http://192.168.1.100:3000)
+// For web in Expo: sometimes needs http://127.0.0.1:3000 instead of localhost
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 /**
- * Prueba la conexión con el servidor backend
+ * Tests connection with the backend server
  */
 export async function testConnection(): Promise<boolean> {
   try {
@@ -19,14 +19,14 @@ export async function testConnection(): Promise<boolean> {
     });
     return response.ok;
   } catch (error) {
-    console.error('❌ No se pudo conectar al servidor:', error);
+    console.error('❌ Could not connect to server:', error);
     return false;
   }
 }
 
 /**
- * Genera frases naturales a partir de palabras seleccionadas usando Gemini
- * Ahora usa el backend proxy para evitar problemas de CORS
+ * Generates natural phrases from selected words using Gemini
+ * Now uses backend proxy to avoid CORS issues
  */
 export async function generatePhrases(words: string[]): Promise<string[]> {
   if (!words || words.length === 0) {
@@ -34,7 +34,7 @@ export async function generatePhrases(words: string[]): Promise<string[]> {
   }
 
   try {
-    console.log(`🔄 Intentando conectar a: ${API_BASE_URL}/api/generate-phrases`);
+    console.log(`🔄 Attempting to connect to: ${API_BASE_URL}/api/generate-phrases`);
     const response = await fetch(`${API_BASE_URL}/api/generate-phrases`, {
       method: 'POST',
       headers: {
@@ -45,7 +45,7 @@ export async function generatePhrases(words: string[]): Promise<string[]> {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('❌ Error del servidor:', errorData);
+      console.error('❌ Server error:', errorData);
       throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
 
@@ -69,8 +69,8 @@ export async function generatePhrases(words: string[]): Promise<string[]> {
 }
 
 /**
- * Genera más frases sin repetir las existentes
- * Ahora usa el backend proxy para evitar problemas de CORS
+ * Generates more phrases without repeating existing ones
+ * Now uses backend proxy to avoid CORS issues
  */
 export async function generateMorePhrases(
   words: string[],
@@ -81,7 +81,7 @@ export async function generateMorePhrases(
   }
 
   try {
-    console.log(`🔄 Intentando conectar a: ${API_BASE_URL}/api/generate-more-phrases`);
+    console.log(`🔄 Attempting to connect to: ${API_BASE_URL}/api/generate-more-phrases`);
     const response = await fetch(`${API_BASE_URL}/api/generate-more-phrases`, {
       method: 'POST',
       headers: {
@@ -92,7 +92,7 @@ export async function generateMorePhrases(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('❌ Error del servidor:', errorData);
+      console.error('❌ Server error:', errorData);
       throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
 
@@ -115,6 +115,6 @@ export async function generateMorePhrases(
   }
 }
 
-// Esta función ya no es necesaria porque el backend la maneja
-// Se mantiene por compatibilidad pero no se usa
+// This function is no longer necessary because the backend handles it
+// Kept for compatibility but not used
 
