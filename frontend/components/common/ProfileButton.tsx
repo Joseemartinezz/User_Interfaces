@@ -21,7 +21,7 @@ const ProfileButton: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showFallback, setShowFallback] = useState(false);
 
-  // Generar avatar cuando cambia el usuario
+  // Generate avatar when user changes
   useEffect(() => {
     if (!user) {
       setIsLoading(false);

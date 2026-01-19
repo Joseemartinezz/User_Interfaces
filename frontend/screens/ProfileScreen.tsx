@@ -231,7 +231,7 @@ export default function ProfileScreen() {
                 ]}
                 value={email}
                 onChangeText={setEmail}
-                placeholder="ejemplo@email.com"
+                placeholder="example@email.com"
                 placeholderTextColor={theme.accent}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -266,20 +266,6 @@ export default function ProfileScreen() {
           {/* Preferences Card */}
           <View style={[styles.card, { backgroundColor: 'white' }]}>
             <Text style={[styles.sectionTitle, { color: theme.primary }]}>⚙️ Preferences</Text>
-
-            <View style={styles.preferenceItem}>
-              <View style={styles.preferenceLeft}>
-                <Text style={styles.preferenceIcon}>🌐</Text>
-                <Text style={[styles.preferenceLabel, { color: theme.accent }]}>
-                  Language
-                </Text>
-              </View>
-              <Text style={[styles.preferenceValue, { color: theme.primary }]}>
-                {user?.preferences.language === 'es' ? 'Spanish' : 'English'}
-              </Text>
-            </View>
-
-            <View style={styles.preferenceDivider} />
 
             <View style={styles.preferenceItem}>
               <View style={styles.preferenceLeft}>

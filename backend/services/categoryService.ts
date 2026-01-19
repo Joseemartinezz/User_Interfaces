@@ -10,7 +10,6 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Path to categories JSON files
 const PREDEFINED_CATEGORIES_FILE_PATH = path.join(__dirname, '../data/predefinedCategories.json');
-const CUSTOM_CATEGORIES_FILE_PATH = path.join(__dirname, '../data/categories.json');
 const USER_CATEGORIES_DIR = path.join(__dirname, '../data/user_categories');
 
 // ============================================================================
@@ -174,25 +173,6 @@ async function loadPredefinedCategories(): Promise<Record<string, number[]>> {
 }
 
 /**
- * Load custom categories JSON file (user-created categories only)
- * DEPRECATED: Use loadUserCategories instead
- * Returns empty object if file doesn't exist
- */
-async function loadCustomCategories(): Promise<Record<string, number[]>> {
-  try {
-    const data = await fs.readFile(CUSTOM_CATEGORIES_FILE_PATH, 'utf-8');
-    return JSON.parse(data);
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      // File doesn't exist, return empty object
-      return {};
-    }
-    console.error('❌ Error loading custom categories:', error);
-    throw error;
-  }
-}
-
-/**
  * Load user-specific categories JSON file
  * Returns empty object if file doesn't exist
  */
@@ -207,28 +187,6 @@ async function loadUserCategories(userId: string): Promise<Record<string, number
       return {};
     }
     console.error(`❌ Error loading user categories for ${userId}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Save custom categories JSON file (user-created categories only)
- * DEPRECATED: Use saveUserCategories instead
- */
-async function saveCustomCategories(categories: Record<string, number[]>): Promise<void> {
-  try {
-    // Ensure data directory exists
-    const dataDir = path.dirname(CUSTOM_CATEGORIES_FILE_PATH);
-    await fs.mkdir(dataDir, { recursive: true });
-
-    await fs.writeFile(
-      CUSTOM_CATEGORIES_FILE_PATH,
-      JSON.stringify(categories, null, 2),
-      'utf-8'
-    );
-    console.log('✅ Custom categories saved successfully');
-  } catch (error) {
-    console.error('❌ Error saving custom categories:', error);
     throw error;
   }
 }
@@ -789,39 +747,6 @@ Return ONLY valid JSON (no markdown, no explanation):
 }
 
 /**
- * Create a new custom category
- * Uses AI to find relevant pictograms
- * DEPRECATED: Use createUserCategory instead
- */
-async function createCategory(
-  categoryName: string,
-  maxResults: number = 50,
-  description?: string
-): Promise<number[]> {
-  // Check if it's a predefined category
-  if (PREDEFINED_CATEGORIES.includes(categoryName)) {
-    throw new Error(`Category "${categoryName}" is a predefined category and cannot be recreated`);
-  }
-
-  // Check if category already exists in custom categories
-  const customCategories = await loadCustomCategories();
-  if (customCategories[categoryName]) {
-    throw new Error(`Category "${categoryName}" already exists`);
-  }
-
-  // Use AI to find relevant pictograms
-  console.log(`🔄 Finding pictograms for new category "${categoryName}"${description ? ` with description: "${description}"` : ''}...`);
-  const pictogramIds = await findPictogramsWithAI(categoryName, maxResults, description);
-
-  // Add to custom categories
-  customCategories[categoryName] = pictogramIds;
-  await saveCustomCategories(customCategories);
-
-  console.log(`✅ Category "${categoryName}" created with ${pictogramIds.length} pictograms`);
-  return pictogramIds;
-}
-
-/**
  * Create a new user-specific category
  * Uses AI to find relevant pictograms
  * Includes input validation to prevent invalid categories
@@ -884,27 +809,6 @@ async function createUserCategory(
 }
 
 /**
- * Delete a custom category
- * Cannot delete predefined categories
- * DEPRECATED: Use deleteUserCategory instead
- */
-async function deleteCategory(categoryName: string): Promise<void> {
-  if (PREDEFINED_CATEGORIES.includes(categoryName)) {
-    throw new Error(`Cannot delete predefined category "${categoryName}"`);
-  }
-
-  const customCategories = await loadCustomCategories();
-  if (!customCategories[categoryName]) {
-    throw new Error(`Category "${categoryName}" does not exist`);
-  }
-
-  delete customCategories[categoryName];
-  await saveCustomCategories(customCategories);
-
-  console.log(`✅ Category "${categoryName}" deleted`);
-}
-
-/**
  * Delete a user-specific category
  * Cannot delete predefined categories
  */
@@ -922,21 +826,6 @@ async function deleteUserCategory(userId: string, categoryName: string): Promise
   await saveUserCategories(userId, userCategories);
 
   console.log(`✅ Category "${categoryName}" deleted for user ${userId}`);
-}
-
-/**
- * Get all categories (predefined + custom)
- * DEPRECATED: Use getUserCategories instead
- */
-async function getAllCategories(): Promise<Record<string, number[]>> {
-  // Load predefined categories
-  const predefined = await initializePredefinedCategories();
-
-  // Load custom categories
-  const custom = await loadCustomCategories();
-
-  // Merge both (custom categories override predefined if same name, but shouldn't happen)
-  return { ...predefined, ...custom };
 }
 
 /**
@@ -963,22 +852,6 @@ async function getUserCategories(userId: string): Promise<Record<string, number[
 }
 
 /**
- * Get pictogram IDs for a specific category
- * DEPRECATED: Use getUserCategoryPictograms instead
- */
-async function getCategoryPictograms(categoryName: string): Promise<number[]> {
-  // Check if it's a predefined category
-  if (PREDEFINED_CATEGORIES.includes(categoryName)) {
-    const predefined = await initializePredefinedCategories();
-    return predefined[categoryName] || [];
-  }
-
-  // Otherwise, check custom categories
-  const custom = await loadCustomCategories();
-  return custom[categoryName] || [];
-}
-
-/**
  * Get pictogram IDs for a specific user category
  */
 async function getUserCategoryPictograms(userId: string, categoryName: string): Promise<number[]> {
@@ -988,19 +861,9 @@ async function getUserCategoryPictograms(userId: string, categoryName: string): 
     return predefined[categoryName] || [];
   }
 
-  // First check user-specific categories
+  // Check user-specific categories
   const userCategories = await loadUserCategories(userId);
-  if (userCategories[categoryName]) {
-    return userCategories[categoryName];
-  }
-
-  // Fallback to legacy global categories (for backward compatibility)
-  const legacyCategories = await loadCustomCategories();
-  if (legacyCategories[categoryName]) {
-    return legacyCategories[categoryName];
-  }
-
-  return [];
+  return userCategories[categoryName] || [];
 }
 
 /**
@@ -1012,18 +875,12 @@ function isPredefinedCategory(categoryName: string): boolean {
 
 module.exports = {
   loadPredefinedCategories,
-  loadCustomCategories,
-  saveCustomCategories,
   loadUserCategories,
   saveUserCategories,
   initializePredefinedCategories,
-  createCategory,
   createUserCategory,
-  deleteCategory,
   deleteUserCategory,
-  getAllCategories,
   getUserCategories,
-  getCategoryPictograms,
   getUserCategoryPictograms,
   isPredefinedCategory,
   PREDEFINED_CATEGORIES

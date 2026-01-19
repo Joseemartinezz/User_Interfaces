@@ -60,7 +60,7 @@ const ColorSettingsScreen: React.FC<ColorSettingsScreenProps> = ({ navigation })
           showProfile={false}
         />
 
-        {/* Contenido */}
+        {/* Content */}
         <ScrollView
           style={[styles.content, { backgroundColor: theme.background }]}
           contentContainerStyle={styles.contentContainer}
@@ -73,7 +73,7 @@ const ColorSettingsScreen: React.FC<ColorSettingsScreenProps> = ({ navigation })
             </Text>
 
             <View style={styles.themeSelector}>
-              {/* Paleta 1 */}
+              {/* Palette 1 */}
               <TouchableOpacity
                 style={[
                   styles.themeOption,
@@ -99,7 +99,7 @@ const ColorSettingsScreen: React.FC<ColorSettingsScreenProps> = ({ navigation })
                 </View>
               </TouchableOpacity>
 
-              {/* Paleta 2 */}
+              {/* Palette 2 */}
               <TouchableOpacity
                 style={[
                   styles.themeOption,
@@ -125,7 +125,7 @@ const ColorSettingsScreen: React.FC<ColorSettingsScreenProps> = ({ navigation })
                 </View>
               </TouchableOpacity>
 
-              {/* Paleta 3 - Evergreen/Dark Teal */}
+              {/* Palette 3 - Evergreen/Dark Teal */}
               <TouchableOpacity
                 style={[
                   styles.themeOption,
@@ -152,7 +152,7 @@ const ColorSettingsScreen: React.FC<ColorSettingsScreenProps> = ({ navigation })
                 </View>
               </TouchableOpacity>
 
-              {/* Paleta 4 - Light Yellow/Emerald */}
+              {/* Palette 4 - Light Yellow/Emerald */}
               <TouchableOpacity
                 style={[
                   styles.themeOption,
@@ -179,7 +179,7 @@ const ColorSettingsScreen: React.FC<ColorSettingsScreenProps> = ({ navigation })
                 </View>
               </TouchableOpacity>
 
-              {/* Paleta 5 - Lavender Blush/Aquamarine */}
+              {/* Palette 5 - Lavender Blush/Aquamarine */}
               <TouchableOpacity
                 style={[
                   styles.themeOption,
@@ -206,7 +206,7 @@ const ColorSettingsScreen: React.FC<ColorSettingsScreenProps> = ({ navigation })
                 </View>
               </TouchableOpacity>
 
-              {/* Paleta 6 - Pecan Beige/Desert Sand */}
+              {/* Palette 6 - Pecan Beige/Desert Sand */}
               <TouchableOpacity
                 style={[
                   styles.themeOption,

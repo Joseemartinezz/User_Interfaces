@@ -49,7 +49,7 @@ async function searchPictograms(
   try {
     console.log(`🔍 Searching ARASAAC pictograms: "${searchTerm}" in language: ${language}`);
     const url = `${ARASAAC_BASE_URL}/pictograms/${language}/search/${encodeURIComponent(searchTerm)}`;
-    console.log(`📡 URL de ARASAAC: ${url}`);
+    console.log(`📡 ARASAAC URL: ${url}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -82,9 +82,9 @@ async function getPictogramById(
   language: string = 'es'
 ): Promise<ArasaacPictogram> {
   try {
-    console.log(`🔍 Obteniendo pictograma ARASAAC ID: ${pictogramId} en idioma: ${language}`);
+    console.log(`🔍 Getting ARASAAC pictogram ID: ${pictogramId} in language: ${language}`);
     const url = `${ARASAAC_BASE_URL}/pictograms/${language}/${pictogramId}`;
-    console.log(`📡 URL de ARASAAC: ${url}`);
+    console.log(`📡 ARASAAC URL: ${url}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -94,7 +94,7 @@ async function getPictogramById(
     });
 
     if (!response.ok) {
-      console.error(`❌ Error de ARASAAC: ${response.status} ${response.statusText}`);
+      console.error(`❌ ARASAAC error: ${response.status} ${response.statusText}`);
       
       if (response.status === 404) {
         throw new Error(`Pictogram with ID ${pictogramId} was not found`);
@@ -158,7 +158,7 @@ async function getPictogramImage(
       url += '?' + params.join('&');
     }
 
-    console.log(`📡 URL de ARASAAC: ${url}`);
+    console.log(`📡 ARASAAC URL: ${url}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -168,7 +168,7 @@ async function getPictogramImage(
     });
 
     if (!response.ok) {
-      console.error(`❌ Error de ARASAAC: ${response.status} ${response.statusText}`);
+      console.error(`❌ ARASAAC error: ${response.status} ${response.statusText}`);
       
       if (response.status === 404) {
         throw new Error(`Pictogram with ID ${pictogramId} was not found`);
@@ -227,7 +227,7 @@ async function searchMultiplePictograms(
         const pictograms = await searchPictograms(word, language);
         return { word, pictograms, error: false };
       } catch (error) {
-        console.error(`❌ Error buscando "${word}":`, error);
+        console.error(`❌ Error searching "${word}":`, error);
         return { word, pictograms: [], error: true };
       }
     });

@@ -38,7 +38,7 @@ export async function generatePhrases(words: string[]): Promise<string[]> {
   }
 
   try {
-    console.log(`🔄 Intentando conectar a: ${API_BASE_URL}/api/azure/generate-phrases`);
+    console.log(`🔄 Attempting to connect to: ${API_BASE_URL}/api/azure/generate-phrases`);
     const response = await fetch(`${API_BASE_URL}/api/azure/generate-phrases`, {
       method: 'POST',
       headers: {
@@ -48,7 +48,7 @@ export async function generatePhrases(words: string[]): Promise<string[]> {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
       console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
@@ -87,7 +87,7 @@ export async function generateMorePhrases(
   }
 
   try {
-    console.log(`🔄 Intentando conectar a: ${API_BASE_URL}/api/azure/generate-more-phrases`);
+    console.log(`🔄 Attempting to connect to: ${API_BASE_URL}/api/azure/generate-more-phrases`);
     const response = await fetch(`${API_BASE_URL}/api/azure/generate-more-phrases`, {
       method: 'POST',
       headers: {
@@ -97,7 +97,7 @@ export async function generateMorePhrases(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
       console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }

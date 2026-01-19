@@ -96,7 +96,7 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
   },
-  // Nuevos estilos
+  // New styles
   optionsList: {
     marginTop: 8,
     gap: 10,
@@ -172,7 +172,7 @@ export const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '300',
   },
-  // Estilos para modal
+  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

@@ -65,7 +65,7 @@ export const styles = StyleSheet.create({
     marginHorizontal: 12,
     marginBottom: 12,
     flex: 1,
-    minHeight: 0, // Importante para que el ScrollView funcione dentro de flex
+    minHeight: 0, // Important for ScrollView to work inside flex
   },
   sectionTitle: {
     fontSize: 18,
@@ -94,7 +94,7 @@ export const styles = StyleSheet.create({
   },
   categoryScrollView: {
     flex: 1,
-    minHeight: 0, // Importante para que el ScrollView funcione dentro de flex
+    minHeight: 0, // Important for ScrollView to work inside flex
   },
   grid3x3Container: {
     paddingBottom: 10,
@@ -281,7 +281,7 @@ export const styles = StyleSheet.create({
     maxHeight: 75,
     minHeight: 55,
     marginHorizontal: 4,
-    maxWidth: Dimensions.get('window').width - 104, // Ancho de pantalla menos espacio para flechas (40*2 + padding)
+    maxWidth: Dimensions.get('window').width - 104, // Screen width minus arrow space (40*2 + padding)
   },
   categoryIndicatorsScrollContent: {
     paddingHorizontal: 8, // Padding to prevent first button from being cut when scaling

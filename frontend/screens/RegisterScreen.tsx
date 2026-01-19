@@ -80,7 +80,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          {/* Header con gradiente visual */}
+          {/* Header with visual gradient */}
           <View style={[styles.headerContainer, {
             backgroundColor: theme.secondary,
             paddingTop: Math.max(insets.top + 20, Platform.OS === 'ios' ? 60 : 40)
@@ -97,7 +97,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             </View>
           </View>
 
-          {/* Formulario */}
+          {/* Form */}
           <View style={styles.formContainer}>
             <View style={styles.form}>
               {/* Full Name Input */}

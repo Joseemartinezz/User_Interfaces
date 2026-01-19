@@ -55,7 +55,7 @@ const PictogramImage: React.FC<PictogramImageProps> = React.memo(({ arasaacId, s
 
     // Execute logs after interactions to avoid blocking UI
     const task = InteractionManager.runAfterInteractions(() => {
-      console.log(`🖼️ Pictograma ID ${arasaacId} - URL: ${imageUrl}`);
+      console.log(`🖼️ Pictogram ID ${arasaacId} - URL: ${imageUrl}`);
     });
 
     // Optimized cleanup - does not block during unmount

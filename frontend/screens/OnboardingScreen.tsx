@@ -29,13 +29,6 @@ const DEFAULT_CATEGORIES = [
   { name: 'Transport', emoji: '🚗' },
 ];
 
-// Language options
-const LANGUAGE_OPTIONS = [
-  { code: 'es', label: 'Spanish', emoji: '🇪🇸' },
-  { code: 'en', label: 'English', emoji: '🇬🇧' },
-  { code: 'it', label: 'Italian', emoji: '🇮🇹' },
-];
-
 
 /**
  * Welcome and initial setup screen for new users
@@ -53,7 +46,6 @@ const OnboardingScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Configuration states
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [selectedTheme, setSelectedTheme] = useState(1);
   const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
   const [childAge, setChildAge] = useState('');
@@ -61,7 +53,7 @@ const OnboardingScreen: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
-  const totalSteps = 5;
+  const totalSteps = 4;
 
   // ============================================================================
   // PASSWORD VALIDATION UTILITIES
@@ -121,7 +113,7 @@ const OnboardingScreen: React.FC = () => {
       }
     }
 
-    if (currentStep === 6) {
+    if (currentStep === 4) {
       // Validate password with hardened requirements
       if (!parentPassword || parentPassword.length < MIN_PASSWORD_LENGTH) {
         setPasswordError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
@@ -163,7 +155,6 @@ const OnboardingScreen: React.FC = () => {
 
       // Save all preferences to Firestore
       await updatePreferences({
-        language: selectedLanguage,
         theme: selectedTheme,
         hiddenCategories,
         childAge: parseInt(childAge),
@@ -219,47 +210,6 @@ const OnboardingScreen: React.FC = () => {
         );
 
       case 2:
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={[styles.stepTitle, { color: theme.primary }]}>
-              🌍 Language
-            </Text>
-            <Text style={[styles.stepDescription, { color: theme.text }]}>
-              Select your preferred language:
-            </Text>
-            <View style={styles.optionsContainer}>
-              {LANGUAGE_OPTIONS.map((lang) => (
-                <TouchableOpacity
-                  key={lang.code}
-                  style={[
-                    styles.optionButton,
-                    {
-                      borderColor: selectedLanguage === lang.code ? theme.primary : theme.textSecondary,
-                      backgroundColor: selectedLanguage === lang.code ? theme.secondary : theme.white,
-                    },
-                  ]}
-                  onPress={() => setSelectedLanguage(lang.code)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.optionEmoji}>{lang.emoji}</Text>
-                  <Text
-                    style={[
-                      styles.optionLabel,
-                      {
-                        color: selectedLanguage === lang.code ? theme.primary : theme.text,
-                        fontWeight: selectedLanguage === lang.code ? 'bold' : 'normal',
-                      },
-                    ]}
-                  >
-                    {lang.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        );
-
-      case 3:
         return (
           <View style={styles.stepContainer}>
             <Text style={[styles.stepTitle, { color: theme.primary }]}>
@@ -446,7 +396,7 @@ const OnboardingScreen: React.FC = () => {
           </View>
         );
 
-      case 4:
+      case 3:
         return (
           <View style={styles.stepContainer}>
             <View style={styles.categoriesHeader}>
@@ -505,7 +455,7 @@ const OnboardingScreen: React.FC = () => {
           </View>
         );
 
-      case 5:
+      case 4:
         // Calculate password strength for visual indicator
         const strength = getPasswordStrength(parentPassword);
         const strengthColors = {

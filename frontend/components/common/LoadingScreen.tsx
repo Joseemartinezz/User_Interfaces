@@ -48,7 +48,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.content}>
-        {/* Icono animado */}
+        {/* Animated icon */}
         <Animated.View
           style={[
             styles.iconContainer,
@@ -65,12 +65,12 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
           />
         </Animated.View>
 
-        {/* Texto principal */}
+        {/* Main text */}
         <Text style={[styles.mainText, { color: theme.primary }]}>
           {message}
         </Text>
 
-        {/* Indicador de carga simple */}
+        {/* Simple loading indicator */}
         <View style={styles.dotsContainer}>
           {[0, 1, 2].map((index) => (
             <Animated.View

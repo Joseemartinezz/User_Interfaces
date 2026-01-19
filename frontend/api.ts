@@ -31,8 +31,8 @@ function getCurrentUserId(): string | null {
 }
 
 // Log de la URL del API para debugging
-console.log('🔗 API_BASE_URL configurada:', API_BASE_URL);
-console.log('🔗 EXPO_PUBLIC_API_URL:', process.env.EXPO_PUBLIC_API_URL || 'no configurada (usando default)');
+console.log('🔗 API_BASE_URL configured:', API_BASE_URL);
+console.log('🔗 EXPO_PUBLIC_API_URL:', process.env.EXPO_PUBLIC_API_URL || 'not configured (using default)');
 
 /**
  * Tests connection with backend server
@@ -138,13 +138,12 @@ export interface User {
   email: string;
   fullName: string;
   preferences: {
-    language: string;
     theme: number;
   };
 }
 
 /**
- * Obtiene los datos del usuario actual
+ * Gets the current user's data
  */
 export async function getUser(): Promise<User | null> {
   try {
@@ -182,7 +181,7 @@ export async function getUser(): Promise<User | null> {
 }
 
 /**
- * Actualiza los datos del usuario
+ * Updates the user's data
  */
 export async function updateUser(updates: {
   email?: string;
@@ -237,7 +236,7 @@ export async function resetUser(): Promise<User | null> {
 }
 
 /**
- * Obtiene la URL del avatar de un usuario
+ * Gets the avatar URL for a user
  */
 export async function getUserAvatarUrl(user: {
   id?: string | number;
@@ -333,9 +332,9 @@ export async function getCategoryPictogramIds(categoryName: string, userId?: str
 
     const data = await response.json();
     const ids = data.pictogramIds || [];
-    console.log(`   ✅ Obtenidos ${ids.length} IDs de pictogramas para "${categoryName}"`);
+    console.log(`   ✅ Obtained ${ids.length} pictogram IDs for "${categoryName}"`);
     if (ids.length > 0) {
-      console.log(`   📋 Primeros IDs: ${ids.slice(0, 10).join(', ')}${ids.length > 10 ? '...' : ''}`);
+      console.log(`   📋 First IDs: ${ids.slice(0, 10).join(', ')}${ids.length > 10 ? '...' : ''}`);
     }
     return ids;
   } catch (error: any) {
@@ -361,7 +360,7 @@ export async function createCategoryWithPictograms(
   userId?: string
 ): Promise<{ category: string; pictogramIds: number[]; count: number }> {
   try {
-    // Obtener userId si no se proporciona
+    // Get userId if not provided
     const finalUserId = userId || getCurrentUserId();
     if (!finalUserId) {
       throw new Error('User not authenticated. Please log in.');
@@ -419,7 +418,7 @@ export async function deleteCategoryWithPictograms(
   userId?: string
 ): Promise<void> {
   try {
-    // Obtener userId si no se proporciona
+    // Get userId if not provided
     const finalUserId = userId || getCurrentUserId();
     if (!finalUserId) {
       throw new Error('User not authenticated. Please log in.');

@@ -8,13 +8,9 @@ const fetch = require('node-fetch');
 const { generateAzurePhrases, generateMoreAzurePhrases, testAzureConnection } = require('./services/azureService.ts');
 const { generateAacImage, generateAacImagesForPhrases } = require('./services/imageService.ts');
 const {
-  getAllCategories,
   getUserCategories,
-  getCategoryPictograms,
   getUserCategoryPictograms,
-  createCategory,
   createUserCategory,
-  deleteCategory,
   deleteUserCategory,
   initializePredefinedCategories,
   isPredefinedCategory,
@@ -530,13 +526,14 @@ app.post('/api/generate-images', async (req, res) => {
 });
 
 // ==========================================
-// ENDPOINTS DE AZURE OPENAI (Directos - no usados por los endpoints principales)
+// ==========================================
+// AZURE OPENAI ENDPOINTS (Direct - not used by main endpoints)
 // ==========================================
 
 /**
- * Endpoint directo para generar frases con Azure OpenAI
+ * Direct endpoint to generate phrases with Azure OpenAI
  * POST /api/azure/generate-phrases
- * Nota: Los endpoints principales /api/generate-phrases ya usan Azure primero
+ * Note: Main endpoints /api/generate-phrases already use Azure first
  */
 app.post('/api/azure/generate-phrases', async (req, res) => {
   try {
@@ -579,67 +576,8 @@ app.post('/api/azure/generate-phrases', async (req, res) => {
     console.error('❌ Error generating phrases with Azure OpenAI:', error);
     
     res.status(500).json({ 
-      error: 'Error al generar frases',
-      message: error.message || 'Error desconocido',
-      details: process.env.NODE_ENV === 'development' ? {
-        originalError: error.message
-      } : undefined
-    });
-  }
-});
-
-// ==========================================
-// ENDPOINTS DE AZURE OPENAI (Directos - no usados por los endpoints principales)
-// ==========================================
-
-/**
- * Endpoint directo para generar frases con Azure OpenAI
- * POST /api/azure/generate-phrases
- * Nota: Los endpoints principales /api/generate-phrases ya usan Azure primero
- */
-app.post('/api/azure/generate-phrases', async (req, res) => {
-  try {
-    const { words } = req.body;
-
-    if (!words || !Array.isArray(words) || words.length === 0) {
-      return res.status(400).json({ error: 'An array of words is required' });
-    }
-
-    if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
-      return res.status(500).json({
-        error: 'Azure OpenAI is not configured',
-        message: 'Add AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY to backend/.env file'
-      });
-    }
-
-    console.log('🔄 Calling Azure OpenAI API with words:', words);
-    
-    try {
-      const phrases = await generateAzurePhrases(words);
-      console.log(`✅ Response received from Azure OpenAI`);
-      console.log('📄 Generated phrases:', phrases);
-
-      res.json({ phrases });
-    } catch (azureError) {
-      console.error('❌ Azure OpenAI error:', azureError);
-      
-      let errorMessage = azureError.message || 'Unknown error';
-      if (azureError.message?.includes('401') || azureError.message?.includes('Unauthorized')) {
-        errorMessage = 'Azure OpenAI API Key invalid. Verify your API key.';
-      } else if (azureError.message?.includes('429') || azureError.message?.includes('rate limit')) {
-        errorMessage = 'Azure OpenAI API quota exceeded. Verify your plan.';
-      } else if (azureError.message?.includes('404') || azureError.message?.includes('Not Found')) {
-        errorMessage = 'Azure OpenAI deployment is not available. Verify the configuration.';
-      }
-      
-      throw new Error(errorMessage);
-    }
-  } catch (error) {
-    console.error('❌ Error generating phrases with Azure OpenAI:', error);
-    
-    res.status(500).json({ 
-      error: 'Error al generar frases',
-      message: error.message || 'Error desconocido',
+      error: 'Error generating phrases',
+      message: error.message || 'Unknown error',
       details: process.env.NODE_ENV === 'development' ? {
         originalError: error.message
       } : undefined
@@ -799,7 +737,7 @@ app.get('/api/arasaac/pictogram/:language/:idPictogram', async (req, res) => {
     const { language, idPictogram } = req.params;
 
     if (!idPictogram) {
-      return res.status(400).json({ error: 'Se requiere un ID de pictograma' });
+      return res.status(400).json({ error: 'A pictogram ID is required' });
     }
 
     // Use ARASAAC service to get pictogram
@@ -860,7 +798,7 @@ app.get('/', (req, res) => {
       // Gemini endpoints
       generatePhrases: 'POST /api/generate-phrases',
       generateMorePhrases: 'POST /api/generate-more-phrases',
-      // Azure OpenAI endpoints (directos)
+      // Azure OpenAI endpoints (direct)
       azureGeneratePhrases: 'POST /api/azure/generate-phrases',
       azureGenerateMorePhrases: 'POST /api/azure/generate-more-phrases',
       // ARASAAC endpoints
@@ -888,23 +826,23 @@ app.get('/', (req, res) => {
 let userData = {
   id: 'default-user',
   email: 'user@example.com',
-  fullName: 'Usuario',
+  fullName: 'User',
   preferences: {
-    language: 'es',
+    language: 'en',
     theme: 1
   }
 };
 
 /**
- * GET /api/user - Obtiene datos del usuario actual
+ * GET /api/user - Gets current user data
  */
 app.get('/api/user', (req, res) => {
   try {
     res.json({ user: userData });
   } catch (error) {
-    console.error('❌ Error obteniendo usuario:', error);
+    console.error('❌ Error getting user:', error);
     res.status(500).json({ 
-      error: 'Error al obtener usuario',
+      error: 'Error getting user',
       message: error.message
     });
   }
@@ -950,9 +888,9 @@ app.post('/api/user/reset', (req, res) => {
     userData = {
       id: 'default-user',
       email: 'user@example.com',
-      fullName: 'Usuario',
+      fullName: 'User',
       preferences: {
-        language: 'es',
+        language: 'en',
         theme: 1,
         fontSize: 'medium'
       }
@@ -1024,23 +962,22 @@ app.get('/api/user/initials', (req, res) => {
 
 /**
  * GET /api/categories
- * Get all categories with their pictogram IDs
- * If userId is provided, returns only the user's categories
+ * Get all categories with their pictogram IDs for a specific user
+ * Requires userId query parameter
  */
 app.get('/api/categories', async (req, res) => {
   try {
     const userId = req.query.userId;
     
-    let categories;
-    if (userId) {
-      // Load categories for specific user
-      categories = await getUserCategories(userId);
-      console.log(`✅ Categories loaded for user ${userId}: ${Object.keys(categories).length} categories`);
-    } else {
-      // Load all categories (backward compatibility)
-      categories = await getAllCategories();
-      console.log(`✅ All categories loaded: ${Object.keys(categories).length} categories`);
+    if (!userId) {
+      return res.status(400).json({
+        error: 'Missing userId',
+        message: 'userId query parameter is required'
+      });
     }
+    
+    const categories = await getUserCategories(userId);
+    console.log(`✅ Categories loaded for user ${userId}: ${Object.keys(categories).length} categories`);
     
     res.json({ categories });
   } catch (error) {
@@ -1055,19 +992,21 @@ app.get('/api/categories', async (req, res) => {
 /**
  * GET /api/categories/:categoryName
  * Get pictogram IDs for a specific category
- * If userId is provided, searches in the user's categories
+ * Requires userId query parameter
  */
 app.get('/api/categories/:categoryName', async (req, res) => {
   try {
     const { categoryName } = req.params;
     const userId = req.query.userId;
     
-    let pictogramIds;
-    if (userId) {
-      pictogramIds = await getUserCategoryPictograms(userId, categoryName);
-    } else {
-      pictogramIds = await getCategoryPictograms(categoryName);
+    if (!userId) {
+      return res.status(400).json({
+        error: 'Missing userId',
+        message: 'userId query parameter is required'
+      });
     }
+    
+    const pictogramIds = await getUserCategoryPictograms(userId, categoryName);
     
     res.json({
       category: categoryName,

@@ -142,10 +142,10 @@ interface ThemeContextType {
   setTheme: (paletteNumber: number, showNotification?: boolean) => Promise<void>;
 }
 
-// Crear el contexto
+// Create the context
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-// Props del provider
+// Provider props
 interface ThemeProviderProps {
   children: ReactNode;
 }
@@ -212,7 +212,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 };
 
 /**
- * Hook para usar el tema en componentes
+ * Hook to use theme in components
  * @throws Error si se usa fuera del ThemeProvider
  */
 export const useTheme = (): ThemeContextType => {

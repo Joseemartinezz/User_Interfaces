@@ -143,7 +143,7 @@ const CategoriesScreen: React.FC = () => {
             finalCategoryName,
             categoryDescription.trim(),
             50,
-            user?.id // Pasar userId del usuario actual
+            user?.id // Pass current user's userId
           );
         } catch (backendError: any) {
           // If backend creation fails, still allow creating the category in Firebase
@@ -219,7 +219,7 @@ const CategoriesScreen: React.FC = () => {
         {/* Header */}
         <Header title="Categories" backgroundColor={selectedColor} showProfile={false} />
 
-        {/* Contenido principal */}
+        {/* Main content */}
         <View style={[styles.content, { backgroundColor: theme.background }]}>
           {/* Categories grid */}
           <ScrollView
@@ -290,7 +290,7 @@ const CategoriesScreen: React.FC = () => {
               Add New Category
             </Text>
 
-            {/* Input para el nombre */}
+            {/* Name input */}
             <TextInput
               style={[styles.modalInput, { borderColor: theme.primary, color: theme.primary }]}
               placeholder="Category name"
@@ -300,7 +300,7 @@ const CategoriesScreen: React.FC = () => {
               editable={!isSaving}
             />
 
-            {/* Input para el emoji */}
+            {/* Emoji input */}
             <TextInput
               style={[styles.modalInput, { borderColor: theme.primary, color: theme.primary }]}
               placeholder="Emoji (optional)"

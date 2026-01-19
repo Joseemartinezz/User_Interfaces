@@ -17,11 +17,11 @@ import {
 import { User, UserPreferences, CustomPCSSymbol } from '../types/user';
 import { Timestamp } from 'firebase/firestore';
 
-// Key para AsyncStorage
+// Key for AsyncStorage
 const USER_STORAGE_KEY = '@aac_user_data';
 
 /**
- * Contexto de usuario con Firebase
+ * User context with Firebase
  */
 interface UserContextType {
   user: User | null;
@@ -51,7 +51,7 @@ interface UserProviderProps {
 }
 
 /**
- * Provider de usuario que gestiona el estado global con Firebase
+ * User provider that manages global state with Firebase
  */
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -67,7 +67,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       email: userData.email || firebaseUser.email || '',
       fullName: userData.fullName || firebaseUser.displayName || '',
       preferences: userData.preferences || {
-        language: 'en',
         theme: 1,
         customPCSSymbols: [],
         categories: [],
@@ -80,16 +79,16 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   };
 
   /**
-   * Carga los datos del usuario desde Firestore
+   * Loads user data from Firestore
    */
   const loadUserData = async (firebaseUser: FirebaseUser) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      console.log('📥 Cargando datos del usuario:', firebaseUser.uid);
+      console.log('📥 Loading user data:', firebaseUser.uid);
 
-      // Obtener datos de Firestore
+      // Get data from Firestore
       const userData = await getUserData(firebaseUser.uid);
       
       if (userData) {
@@ -100,14 +99,14 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
         console.log('✅ User data loaded and saved to cache');
       } else {
-        console.log('⚠️ Usuario sin datos en Firestore, creando documento...');
-        // Si no existe el documento, crearlo
+        console.log('⚠️ User without data in Firestore, creating document...');
+        // If document doesn't exist, create it
         await createUserDocument(
           firebaseUser.uid,
           firebaseUser.email || '',
-          firebaseUser.displayName || 'Usuario'
+          firebaseUser.displayName || 'User'
         );
-        // Recargar datos
+        // Reload data
         await loadUserData(firebaseUser);
       }
     } catch (err: any) {
@@ -164,14 +163,14 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
       const firebaseUser = await registerUser(email, password, fullName);
       
-      // Crear documento en Firestore
+      // Create document in Firestore
       await createUserDocument(firebaseUser.uid, email, fullName);
       
       // Data will be loaded automatically by the listener
-      console.log('✅ Usuario registrado exitosamente');
+      console.log('✅ User registered successfully');
     } catch (err: any) {
-      console.error('❌ Error registrando usuario:', err);
-      setError(err.message || 'Error al registrar usuario');
+      console.error('❌ Error registering user:', err);
+      setError(err.message || 'Error registering user');
       throw err;
     }
   };
@@ -216,11 +215,11 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   };
 
   /**
-   * Actualiza datos del usuario (nombre, email)
+   * Updates user data (name, email)
    */
   const updateUser = async (updates: Partial<Omit<User, 'id' | 'preferences'>>) => {
     if (!user) {
-      throw new Error('No hay usuario autenticado');
+      throw new Error('No authenticated user');
     }
 
     try {
@@ -229,15 +228,15 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
       await updateUserData(user.id, updates);
       
-      // Actualizar estado local
+      // Update local state
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
       await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
       
-      console.log('✅ Usuario actualizado');
+      console.log('✅ User updated');
     } catch (err: any) {
-      console.error('❌ Error actualizando usuario:', err);
-      setError(err.message || 'Error al actualizar usuario');
+      console.error('❌ Error updating user:', err);
+      setError(err.message || 'Error updating user');
       throw err;
     }
   };
@@ -247,7 +246,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
    */
   const updatePreferences = async (preferences: Partial<UserPreferences>) => {
     if (!user) {
-      throw new Error('No hay usuario autenticado');
+      throw new Error('No authenticated user');
     }
 
     try {
@@ -256,7 +255,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
       await updateUserPreferences(user.id, preferences);
       
-      // Actualizar estado local
+      // Update local state
       const updatedUser = {
         ...user,
         preferences: { ...user.preferences, ...preferences }
@@ -264,10 +263,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       setUser(updatedUser);
       await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
       
-      console.log('✅ Preferencias actualizadas');
+      console.log('✅ Preferences updated');
     } catch (err: any) {
-      console.error('❌ Error actualizando preferencias:', err);
-      setError(err.message || 'Error al actualizar preferencias');
+      console.error('❌ Error updating preferences:', err);
+      setError(err.message || 'Error updating preferences');
       throw err;
     }
   };
@@ -327,7 +326,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   };
 
   /**
-   * Refresca los datos del usuario desde Firestore
+   * Refreshes user data from Firestore
    */
   const refreshUser = async () => {
     const firebaseUser = getCurrentUser();

@@ -36,7 +36,6 @@ export interface ActionButtonPictograms {
  * User preferences
  */
 export interface UserPreferences {
-  language: string;
   theme: number;
   customPCSSymbols: CustomPCSSymbol[];
   categories: UserCategory[];
@@ -50,7 +49,7 @@ export interface UserPreferences {
 }
 
 /**
- * Datos completos del usuario en Firestore
+ * Complete user data in Firestore
  */
 export interface UserData {
   id: string;

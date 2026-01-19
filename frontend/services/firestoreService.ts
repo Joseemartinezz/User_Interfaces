@@ -29,7 +29,6 @@ export async function createUserDocument(
       email,
       fullName,
       preferences: {
-        language: 'en',
         theme: 1,
         customPCSSymbols: [],
         categories: [],

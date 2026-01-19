@@ -42,7 +42,7 @@ export async function generateImageForPhrase(phrase: string): Promise<string> {
       throw new Error('No image received in server response');
     }
 
-    // Retornar la imagen en base64 con el prefijo data:image
+    // Return the image in base64 with the data:image prefix
     return `data:image/png;base64,${data.imageBase64}`;
   } catch (error: any) {
     console.error('Error generating image:', error);
@@ -51,7 +51,7 @@ export async function generateImageForPhrase(phrase: string): Promise<string> {
       throw new Error('Could not connect to server. Verify that the backend is running.');
     }
     
-    throw new Error(error.message || 'Error generando imagen para la frase');
+    throw new Error(error.message || 'Error generating image for the phrase');
   }
 }
 
@@ -66,7 +66,7 @@ export async function generateImagesForPhrases(phrases: string[]): Promise<Gener
   }
 
   try {
-    // Usar el endpoint batch del backend para mejor performance
+    // Use the backend batch endpoint for better performance
     const response = await fetch(`${API_BASE_URL}/api/generate-images`, {
       method: 'POST',
       headers: {
@@ -82,7 +82,7 @@ export async function generateImagesForPhrases(phrases: string[]): Promise<Gener
 
     const data = await response.json();
     
-    // Convertir las respuestas del backend al formato esperado
+    // Convert the backend responses to the expected format
     return data.images.map((img: { phrase: string; imageBase64: string }) => ({
       phrase: img.phrase,
       imageUrl: img.imageBase64 ? `data:image/png;base64,${img.imageBase64}` : '',
@@ -99,7 +99,7 @@ export async function generateImagesForPhrases(phrases: string[]): Promise<Gener
         return { phrase, imageUrl, isBase64: true };
       } catch (error) {
         console.error(`Error generating image for phrase "${phrase}":`, error);
-        // Retornar sin imagen en caso de error
+        // Return without image in case of error
         return { phrase, imageUrl: '', isBase64: false };
       }
     });

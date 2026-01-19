@@ -97,7 +97,8 @@ const FlashcardSelectionScreen: React.FC = () => {
   const [phrasesWithImages, setPhrasesWithImages] = useState<PhraseWithImage[]>([]);
   const [allPhrases, setAllPhrases] = useState<string[]>(initialPhrases);
   const [isGeneratingMore, setIsGeneratingMore] = useState(false);
-  const [isLoadingInitialImages, setIsLoadingInitialImages] = useState(false);
+  // Start with true to prevent flash of content before images are loaded
+  const [isLoadingInitialImages, setIsLoadingInitialImages] = useState(initialPhrases.length > 0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tappedIndex, setTappedIndex] = useState<number | null>(null);
@@ -129,19 +130,8 @@ const FlashcardSelectionScreen: React.FC = () => {
     const loadImagesForPhrases = async () => {
       console.log('🎨 Loading images for initial phrases...');
 
-      // Limitar a solo las primeras 3 frases
+      // Limit to only the first 3 phrases
       const firstThreePhrases = initialPhrases.slice(0, 3);
-
-      // Activar pantalla de carga
-      setIsLoadingInitialImages(true);
-
-      // Inicializar con loading state
-      const initialData: PhraseWithImage[] = firstThreePhrases.map(phrase => ({
-        phrase,
-        imageUrl: '',
-        isLoading: true,
-      }));
-      setPhrasesWithImages(initialData);
 
       try {
         const images = await generateImagesForPhrases(firstThreePhrases);
@@ -152,8 +142,6 @@ const FlashcardSelectionScreen: React.FC = () => {
         }));
         setPhrasesWithImages(phrasesData);
         console.log('✅ Images loaded successfully');
-        // Disable loading screen when all images are ready
-        setIsLoadingInitialImages(false);
       } catch (error: any) {
         console.error('Error loading images:', error);
         showError('Could not generate images for some phrases');
@@ -164,7 +152,8 @@ const FlashcardSelectionScreen: React.FC = () => {
           isLoading: false,
         }));
         setPhrasesWithImages(phrasesData);
-        // Disable loading screen even if there's an error
+      } finally {
+        // Disable loading screen when done (success or error)
         setIsLoadingInitialImages(false);
       }
     };
@@ -187,7 +176,7 @@ const FlashcardSelectionScreen: React.FC = () => {
         });
         setCurrentIndex(indexToScroll);
       } catch (error) {
-        // Si falla, usar scrollToOffset como fallback
+        // If it fails, use scrollToOffset as fallback
         flatListRef.current.scrollToOffset({
           offset: SCREEN_WIDTH * indexToScroll,
           animated: false,
@@ -195,16 +184,16 @@ const FlashcardSelectionScreen: React.FC = () => {
         setCurrentIndex(indexToScroll);
       }
     }
-    // Actualizar el ref con el valor actual
+    // Update the ref with the current value
     previousSelectedIndex.current = selectedIndex;
   }, [selectedIndex]);
 
   // Animate selection transition
   useEffect(() => {
     if (selectedIndex !== null) {
-      // Animate IN - cuando se selecciona una frase
+      // Animate IN - when a phrase is selected
       Animated.parallel([
-        // Header se desliza hacia arriba y desaparece
+        // Header slides up and disappears
         Animated.timing(headerTranslateY, {
           toValue: -100,
           duration: 250,
@@ -216,7 +205,7 @@ const FlashcardSelectionScreen: React.FC = () => {
           duration: 150,
           useNativeDriver: true,
         }),
-        // Flashcard crece con un efecto de zoom elegante
+        // Flashcard grows with an elegant zoom effect
         Animated.spring(flashcardScale, {
           toValue: 1.08,
           friction: 8,
@@ -238,7 +227,7 @@ const FlashcardSelectionScreen: React.FC = () => {
             useNativeDriver: true,
           }),
         ]),
-        // Efecto de resplandor (glow)
+        // Glow effect
         Animated.sequence([
           Animated.timing(glowOpacity, {
             toValue: 0.6,
@@ -253,7 +242,7 @@ const FlashcardSelectionScreen: React.FC = () => {
             useNativeDriver: true,
           }),
         ]),
-        // Botones aparecen desde abajo
+        // Buttons appear from below
         Animated.sequence([
           Animated.delay(200),
           Animated.parallel([
@@ -272,7 +261,7 @@ const FlashcardSelectionScreen: React.FC = () => {
         ]),
       ]).start();
 
-      // Pulso continuo en la imagen
+      // Continuous image pulse
       // Stop any previous pulse animation
       if (imagePulseAnimation.current) {
         imagePulseAnimation.current.stop();
@@ -297,12 +286,12 @@ const FlashcardSelectionScreen: React.FC = () => {
 
     } else {
       resetHeaderAnimation();
-      // Detener el pulso de imagen cuando se deselecciona
+      // Stop image pulse when deselected
       if (imagePulseAnimation.current) {
         imagePulseAnimation.current.stop();
         imagePulseAnimation.current = null;
       }
-      // Animate OUT - cuando se deselecciona
+      // Animate OUT - when deselected
       Animated.parallel([
         Animated.timing(headerTranslateY, {
           toValue: 0,
@@ -358,7 +347,7 @@ const FlashcardSelectionScreen: React.FC = () => {
       language: 'en',
       pitch: 1.2,
       rate: 0.9,
-      volume: 0.5, // Reduced volume to avoid distortion
+      volume: 0.5,
     });
   }, [cleanPhrase]);
 
@@ -373,7 +362,7 @@ const FlashcardSelectionScreen: React.FC = () => {
       const childAge = user?.preferences.childAge;
       const morePhrases = await generateMorePhrases(words, allPhrases, childAge);
 
-      // Agregar las nuevas frases con loading state
+      // Add new phrases with loading state
       const newPhrasesWithLoading: PhraseWithImage[] = morePhrases.map(phrase => ({
         phrase,
         imageUrl: '',
@@ -391,7 +380,7 @@ const FlashcardSelectionScreen: React.FC = () => {
         isLoading: false,
       }));
 
-      // Actualizar solo las nuevas frases
+      // Update only the new phrases
       setPhrasesWithImages(prev => {
         const updated = [...prev];
         const startIndex = prev.length - morePhrases.length;
@@ -532,7 +521,7 @@ const FlashcardSelectionScreen: React.FC = () => {
     itemVisiblePercentThreshold: 50,
   }).current;
 
-  // Indicadores de deslizamiento (flechas sutiles)
+  // Slide indicators (subtle arrows)
   const showLeftArrow = phrasesWithImages.length > 1 && currentIndex > 0 && selectedIndex === null;
   const showRightArrow = phrasesWithImages.length > 1 && currentIndex < phrasesWithImages.length - 1 && selectedIndex === null;
 
@@ -541,7 +530,7 @@ const FlashcardSelectionScreen: React.FC = () => {
     return <LoadingScreen message="Creating your flashcards..." />;
   }
 
-  // Si hay una frase seleccionada, mostrar vista especial
+  // If there's a selected phrase, show special view
   if (selectedIndex !== null) {
     const selectedPhrase = phrasesWithImages[selectedIndex];
 
@@ -555,7 +544,7 @@ const FlashcardSelectionScreen: React.FC = () => {
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
           <StatusBar style="auto" />
 
-          {/* Header animado - se desliza hacia arriba y desaparece */}
+          {/* Animated header - slides up and disappears */}
           <Animated.View
             style={{
               transform: [{ translateY: headerTranslateY }],
@@ -569,7 +558,7 @@ const FlashcardSelectionScreen: React.FC = () => {
 
           {/* Selected flashcard (larger) with animation */}
           <View style={styles.selectedFlashcardWrapper}>
-            {/* Efecto de resplandor de fondo */}
+            {/* Background glow effect */}
             <Animated.View
               style={{
                 position: 'absolute',
@@ -642,7 +631,7 @@ const FlashcardSelectionScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Action buttons animados - aparecen desde abajo */}
+          {/* Animated action buttons - appear from below */}
           <Animated.View
             style={[
               styles.selectedActionButtons,
@@ -704,13 +693,13 @@ const FlashcardSelectionScreen: React.FC = () => {
     );
   }
 
-  // Vista normal con carrusel
+  // Normal view with carousel
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <StatusBar style="auto" />
 
-        {/* Header animado */}
+        {/* Animated header */}
         <Animated.View
           style={{
             transform: [{ translateY: headerTranslateY }],
@@ -722,7 +711,7 @@ const FlashcardSelectionScreen: React.FC = () => {
           />
         </Animated.View>
 
-        {/* Carrusel de flashcards */}
+        {/* Flashcards carousel */}
         {phrasesWithImages.length > 0 ? (
           <View style={styles.carouselWrapper}>
             {/* Flecha izquierda */}

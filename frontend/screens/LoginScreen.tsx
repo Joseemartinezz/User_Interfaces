@@ -64,7 +64,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.content, { backgroundColor: theme.background }]}>
-          {/* Header con gradiente visual */}
+          {/* Header with visual gradient */}
           <View style={[styles.headerContainer, {
             backgroundColor: theme.secondary,
             paddingTop: Math.max(insets.top + 20, Platform.OS === 'ios' ? 60 : 40)
@@ -81,7 +81,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             </View>
           </View>
 
-          {/* Formulario */}
+          {/* Form */}
           <View style={[styles.formContainer, { backgroundColor: theme.background }]}>
             <View style={styles.form}>
               {/* Email Input */}
@@ -160,7 +160,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.registerLink, { color: theme.primary }]}>
-                    Sign up here
+                    Sign up
                   </Text>
                 </TouchableOpacity>
               </View>

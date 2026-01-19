@@ -91,5 +91,5 @@ const Header: React.FC<HeaderProps> = ({
   );
 };
 
-// Memoizar el componente para evitar re-renders innecesarios
+// Memoize component to avoid unnecessary re-renders
 export default React.memo(Header);

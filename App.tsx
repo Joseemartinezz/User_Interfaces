@@ -4,28 +4,28 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { enableScreens } from 'react-native-screens';
 
-// Importar pantallas desde frontend
+// Import screens from frontend
 import PCSScreen from './frontend/screens/PCSScreen';
 import FlashcardSelectionScreen from './frontend/screens/FlashcardSelectionScreen';
 import ColorSettingsScreen from './frontend/screens/ColorSettingsScreen';
 import ParentMenuScreen from './frontend/screens/ParentMenuScreen';
 import ProfileScreen from './frontend/screens/ProfileScreen';
 
-// Importar Providers desde frontend
+// Import Providers from frontend
 import { ThemeProvider } from './frontend/context/ThemeContext';
 import { UserProvider } from './frontend/context/UserContext';
 
-// Habilitar optimización nativa de pantallas para mejor rendimiento
-// DEBE estar antes del NavigationContainer para evitar remounting
+// Enable native screen optimization for better performance
+// MUST be before NavigationContainer to avoid remounting
 enableScreens(true);
 
-// Crear el stack navigator
+// Create the stack navigator
 const Stack = createNativeStackNavigator();
 
 /**
- * Aplicación principal con navegación configurada
- * Optimizada para transiciones suaves y mejor rendimiento
- * FIXED: Animaciones nativas para navegación hacia atrás sin pantalla blanca
+ * Main application with configured navigation
+ * Optimized for smooth transitions and better performance
+ * FIXED: Native animations for back navigation without white screen
  */
 export default function App() {
     return (
@@ -36,24 +36,24 @@ export default function App() {
         initialRouteName="PCS"
         screenOptions={{
           headerShown: false,
-          // NO especificar animation aquí - permite animación nativa hacia atrás
-          // La animación hacia adelante será 'slide_from_right' por defecto
-          // La animación hacia atrás será automática y nativa (sin pantalla blanca)
+          // DO NOT specify animation here - allows native back animation
+          // Forward animation will be 'slide_from_right' by default
+          // Back animation will be automatic and native (no white screen)
           gestureEnabled: true,
           gestureDirection: 'horizontal',
           fullScreenGestureEnabled: true,
           presentation: 'card',
           animationTypeForReplace: 'push',
-          // Optimizaciones adicionales para transiciones suaves
+          // Additional optimizations for smooth transitions
           statusBarAnimation: 'fade',
-          // CRÍTICO: contentStyle asegura fondo consistente durante transiciones
-          // El color de fondo se manejará dinámicamente con el tema
+          // CRITICAL: contentStyle ensures consistent background during transitions
+          // Background color will be handled dynamically with the theme
           contentStyle: { backgroundColor: '#f5f5f5' },
-          // Habilitar optimizaciones de rendimiento
-          freezeOnBlur: false, // Mantener pantallas en memoria para navegación rápida
+          // Enable performance optimizations
+          freezeOnBlur: false, // Keep screens in memory for fast navigation
         }}
       >
-        {/* Pantalla de selección de palabras (PCS) - PANTALLA PRINCIPAL PARA NIÑOS */}
+        {/* Word selection screen (PCS) - MAIN SCREEN FOR CHILDREN */}
         <Stack.Screen 
           name="PCS" 
           component={PCSScreen}
@@ -63,32 +63,32 @@ export default function App() {
           }}
         />
 
-        {/* Pantalla de selección de frases */}
+        {/* Phrase selection screen */}
         <Stack.Screen 
           name="PhraseSelection" 
           component={FlashcardSelectionScreen}
-          // Sin animation explícita - usa animación nativa hacia atrás
+          // No explicit animation - uses native back animation
         />
 
-        {/* Pantalla de menú para padres */}
+        {/* Parent menu screen */}
         <Stack.Screen 
           name="ParentMenu" 
           component={ParentMenuScreen}
-          // Sin animation explícita - usa animación nativa hacia atrás
+          // No explicit animation - uses native back animation
         />
 
-        {/* Pantalla de ajustes */}
+        {/* Settings screen */}
         <Stack.Screen 
           name="Settings" 
           component={ColorSettingsScreen}
-          // Sin animation explícita - usa animación nativa hacia atrás
+          // No explicit animation - uses native back animation
         />
 
-        {/* Pantalla de perfil de usuario */}
+        {/* User profile screen */}
         <Stack.Screen 
           name="Profile" 
           component={ProfileScreen}
-          // Sin animation explícita - usa animación nativa hacia atrás
+          // No explicit animation - uses native back animation
         />
       </Stack.Navigator>
         </NavigationContainer>

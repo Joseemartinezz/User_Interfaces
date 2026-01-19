@@ -26,7 +26,7 @@ import { styles } from './PictogramExample.styles';
  */
 export default function PictogramExample() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [language, setLanguage] = useState('es');
+  const [language, setLanguage] = useState('en');
   const [pictograms, setPictograms] = useState<ArasaacPictogram[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [phraseWords, setPhraseWords] = useState('');
@@ -36,10 +36,10 @@ export default function PictogramExample() {
     imageUrl: string | null;
   }>>([]);
 
-  // Buscar pictogramas por palabra
+  // Search pictograms by word
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
-      Alert.alert('Error', 'Por favor ingresa una palabra para buscar');
+      Alert.alert('Error', 'Please enter a word to search');
       return;
     }
 
@@ -49,20 +49,20 @@ export default function PictogramExample() {
       setPictograms(results);
       
       if (results.length === 0) {
-        Alert.alert('Sin resultados', `No se encontraron pictogramas para "${searchTerm}"`);
+        Alert.alert('No results', `No pictograms found for "${searchTerm}"`);
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error al buscar pictogramas');
+      Alert.alert('Error', error.message || 'Error searching pictograms');
       console.error('Error searching pictograms:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Convertir frase en pictogramas
+  // Convert phrase to pictograms
   const handleConvertPhrase = async () => {
     if (!phraseWords.trim()) {
-      Alert.alert('Error', 'Por favor ingresa palabras separadas por espacios');
+      Alert.alert('Error', 'Please enter words separated by spaces');
       return;
     }
 
@@ -72,14 +72,14 @@ export default function PictogramExample() {
       const results = await convertWordsToPictograms(words, language);
       setPhraseResult(results);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error al convertir la frase');
+      Alert.alert('Error', error.message || 'Error converting phrase');
       console.error('Error converting phrase:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Renderizar un pictograma individual
+  // Render an individual pictogram
   const renderPictogram = (pictogram: ArasaacPictogram, index: number) => {
     const imageUrl = getPictogramImageUrl(pictogram._id, {
       color: true,
@@ -95,7 +95,7 @@ export default function PictogramExample() {
         />
         <Text style={styles.pictogramId}>ID: {pictogram._id}</Text>
         <Text style={styles.pictogramKeyword} numberOfLines={2}>
-          {pictogram.keywords[0]?.keyword || 'Sin nombre'}
+          {pictogram.keywords[0]?.keyword || 'No name'}
         </Text>
         <Text style={styles.pictogramDownloads}>
           ⬇️ {pictogram.downloads || 0}
@@ -106,11 +106,11 @@ export default function PictogramExample() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>Ejemplo de ARASAAC</Text>
+      <Text style={styles.title}>ARASAAC Example</Text>
       
-      {/* Selector de idioma */}
+      {/* Language selector */}
       <View style={styles.languageSelector}>
-        <Text style={styles.label}>Idioma:</Text>
+        <Text style={styles.label}>Language:</Text>
         <View style={styles.languageButtons}>
           {['es', 'en', 'fr', 'it'].map((lang) => (
             <TouchableOpacity
@@ -134,10 +134,10 @@ export default function PictogramExample() {
 
       {/* Pictogram search */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>1. Buscar Pictogramas</Text>
+        <Text style={styles.sectionTitle}>1. Search Pictograms</Text>
         <TextInput
           style={styles.input}
-          placeholder="Escribe una palabra (ej: casa, perro, comer)"
+          placeholder="Type a word (e.g.: house, dog, eat)"
           value={searchTerm}
           onChangeText={setSearchTerm}
           onSubmitEditing={handleSearch}
@@ -147,7 +147,7 @@ export default function PictogramExample() {
           onPress={handleSearch}
           disabled={isLoading}
         >
-          <Text style={styles.buttonText}>Buscar</Text>
+          <Text style={styles.buttonText}>Search</Text>
         </TouchableOpacity>
 
         {/* Search results */}
@@ -156,7 +156,7 @@ export default function PictogramExample() {
         {pictograms.length > 0 && !isLoading && (
           <View style={styles.resultsContainer}>
             <Text style={styles.resultsTitle}>
-              Se encontraron {pictograms.length} pictogramas
+              Found {pictograms.length} pictograms
             </Text>
             <ScrollView
               horizontal
@@ -169,12 +169,12 @@ export default function PictogramExample() {
         )}
       </View>
 
-      {/* Convertir frase en pictogramas */}
+      {/* Convert phrase to pictograms */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>2. Convertir Frase en Pictogramas</Text>
+        <Text style={styles.sectionTitle}>2. Convert Phrase to Pictograms</Text>
         <TextInput
           style={styles.input}
-          placeholder="Escribe palabras separadas por espacios"
+          placeholder="Type words separated by spaces"
           value={phraseWords}
           onChangeText={setPhraseWords}
           onSubmitEditing={handleConvertPhrase}
@@ -184,13 +184,13 @@ export default function PictogramExample() {
           onPress={handleConvertPhrase}
           disabled={isLoading}
         >
-          <Text style={styles.buttonText}>Convertir</Text>
+          <Text style={styles.buttonText}>Convert</Text>
         </TouchableOpacity>
 
         {/* Conversion result */}
         {phraseResult.length > 0 && !isLoading && (
           <View style={styles.phraseResultContainer}>
-            <Text style={styles.resultsTitle}>Resultado:</Text>
+            <Text style={styles.resultsTitle}>Result:</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -218,12 +218,12 @@ export default function PictogramExample() {
       </View>
 
       <View style={styles.infoBox}>
-        <Text style={styles.infoTitle}>ℹ️ Información</Text>
+        <Text style={styles.infoTitle}>ℹ️ Information</Text>
         <Text style={styles.infoText}>
-          • Los pictogramas se obtienen de ARASAAC (arasaac.org){'\n'}
-          • Puedes buscar en diferentes idiomas{'\n'}
-          • El número con ⬇️ indica popularidad del pictograma{'\n'}
-          • Algunos pictogramas soportan personalización (color, plural, etc.)
+          • Pictograms are sourced from ARASAAC (arasaac.org){'\n'}
+          • You can search in different languages{'\n'}
+          • The number with ⬇️ indicates pictogram popularity{'\n'}
+          • Some pictograms support customization (color, plural, etc.)
         </Text>
       </View>
     </ScrollView>

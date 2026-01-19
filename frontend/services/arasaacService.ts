@@ -86,7 +86,7 @@ export async function getPictogramById(
   const url = `${API_BASE_URL}/api/arasaac/pictogram/${language}/${pictogramId}`;
   
   try {
-    console.log(`   🌐 Llamando a: ${url}`);
+    console.log(`   🌐 Calling: ${url}`);
     const response = await fetch(url, {
       method: 'GET',
       headers: {

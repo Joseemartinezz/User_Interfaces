@@ -17,7 +17,7 @@ import OnboardingScreen from './screens/OnboardingScreen';
 import WelcomeOnboardingScreen from './screens/WelcomeOnboardingScreen';
 import LoadingScreen from './components/common/LoadingScreen';
 
-// Importar Providers
+// Import Providers
 import { ThemeProvider } from './context/ThemeContext';
 import { UserProvider, useUser } from './context/UserContext';
 import { ToastProvider } from './context/ToastContext';
@@ -208,9 +208,9 @@ function AppNavigator() {
 function RootNavigator() {
   const { isAuthenticated, isLoading, user } = useUser();
 
-  // Show loading while verifying authentication
+  // Show loading screen while verifying authentication
   if (isLoading) {
-    return <LoadingScreen message="Loading WizzWords..." />;
+    return <LoadingScreen message="Loading symbols..." />;
   }
 
   // Not authenticated: show login/register screens

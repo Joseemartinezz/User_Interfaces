@@ -13,7 +13,7 @@ function ensureDicebear() {
     } catch (error) {
       console.error('❌ Error cargando @dicebear/core:', error.message);
       console.error('   Asegúrate de que las dependencias estén instaladas: npm install');
-      throw new Error(`No se pudo cargar @dicebear/core: ${error.message}`);
+      throw new Error(`Could not load @dicebear/core: ${error.message}`);
     }
   }
   if (!dicebearCollection) {
@@ -109,10 +109,10 @@ async function generateAvatarDataUrl(seed) {
   }
   
   try {
-    // Generar SVG primero
+    // Generate SVG first
     const svg = generateUserAvatar(seed);
     
-    // Convertir SVG a PNG usando sharp
+    // Convert SVG to PNG using sharp
     const sharpInstance = ensureSharp();
     const pngBuffer = await sharpInstance(Buffer.from(svg))
       .resize(200, 200) // Tamaño fijo para avatares
@@ -123,7 +123,7 @@ async function generateAvatarDataUrl(seed) {
     const base64 = pngBuffer.toString('base64');
     const dataUrl = `data:image/png;base64,${base64}`;
     
-    // Guardar en caché
+    // Save to cache
     pngCache.set(seed, dataUrl);
     svgCache.set(seed, `data:image/svg+xml,${encodeURIComponent(svg)}`); // También cachear SVG por si acaso
     

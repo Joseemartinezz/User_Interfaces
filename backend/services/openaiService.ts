@@ -36,13 +36,13 @@ export async function testConnection(): Promise<boolean> {
     });
     return response.ok;
   } catch (error) {
-    console.error('❌ No se pudo conectar al servidor:', error);
+    console.error('❌ Could not connect to server:', error);
     return false;
   }
 }
 
 /**
- * Genera frases naturales a partir de palabras seleccionadas usando OpenAI
+ * Generates natural phrases from selected words using OpenAI
  * Usa el backend proxy para evitar problemas de CORS
  * @param words Array de palabras seleccionadas
  * @param model Modelo de OpenAI a usar (por defecto: 'gpt-5-mini')
@@ -56,7 +56,7 @@ export async function generatePhrases(
   }
 
   try {
-    console.log(`🔄 Intentando conectar a: ${API_BASE_URL}/api/openai/generate-phrases`);
+    console.log(`🔄 Attempting to connect to: ${API_BASE_URL}/api/openai/generate-phrases`);
     const response = await fetch(`${API_BASE_URL}/api/openai/generate-phrases`, {
       method: 'POST',
       headers: {
@@ -66,7 +66,7 @@ export async function generatePhrases(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as ErrorResponse;
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' })) as ErrorResponse;
       console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
@@ -107,7 +107,7 @@ export async function generateMorePhrases(
   }
 
   try {
-    console.log(`🔄 Intentando conectar a: ${API_BASE_URL}/api/openai/generate-more-phrases`);
+    console.log(`🔄 Attempting to connect to: ${API_BASE_URL}/api/openai/generate-more-phrases`);
     const response = await fetch(`${API_BASE_URL}/api/openai/generate-more-phrases`, {
       method: 'POST',
       headers: {
@@ -117,7 +117,7 @@ export async function generateMorePhrases(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as ErrorResponse;
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' })) as ErrorResponse;
       console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${JSON.stringify(errorData)}`);
     }
@@ -156,7 +156,7 @@ export async function textToPCSSequence(
   }
 
   try {
-    console.log(`🔄 Convirtiendo texto a PCS: "${text}"`);
+    console.log(`🔄 Converting text to PCS: "${text}"`);
     const response = await fetch(`${API_BASE_URL}/api/openai/text-to-pcs`, {
       method: 'POST',
       headers: {
@@ -166,7 +166,7 @@ export async function textToPCSSequence(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as ErrorResponse;
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' })) as ErrorResponse;
       console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.error || errorData.message || `Error ${response.status}`);
     }
@@ -194,7 +194,7 @@ export async function pcsSequenceToText(
   }
 
   try {
-    console.log(`🔄 Convirtiendo PCS a texto: ${symbols.join(', ')}`);
+    console.log(`🔄 Converting PCS to text: ${symbols.join(', ')}`);
     const response = await fetch(`${API_BASE_URL}/api/openai/pcs-to-text`, {
       method: 'POST',
       headers: {
@@ -204,7 +204,7 @@ export async function pcsSequenceToText(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' })) as ErrorResponse;
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' })) as ErrorResponse;
       console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.error || errorData.message || `Error ${response.status}`);
     }
