@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   FlatList,
   Dimensions,
@@ -12,14 +11,15 @@ import {
   Easing,
   ImageStyle,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
-import { generateMorePhrases } from '../api';
+import { generateMorePhrases } from '../services/api';
 import { getPictogramImageUrl } from '../services/arasaacService';
 import { generateImagesForPhrases, GeneratedImage } from '../services/imageService';
-import Header from '../components/common/Header';
-import LoadingScreen from '../components/common/LoadingScreen';
+import Header from '../components/Header';
+import LoadingScreen from '../components/LoadingScreen';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { useUser } from '../context/UserContext';
@@ -128,7 +128,7 @@ const FlashcardSelectionScreen: React.FC = () => {
   // Generate images for initial phrases (only first 3)
   useEffect(() => {
     const loadImagesForPhrases = async () => {
-      console.log('🎨 Loading images for initial phrases...');
+      console.log('Loading images for initial phrases...');
 
       // Limit to only the first 3 phrases
       const firstThreePhrases = initialPhrases.slice(0, 3);
@@ -141,7 +141,7 @@ const FlashcardSelectionScreen: React.FC = () => {
           isLoading: false,
         }));
         setPhrasesWithImages(phrasesData);
-        console.log('✅ Images loaded successfully');
+        console.log('Images loaded successfully');
       } catch (error: any) {
         console.error('Error loading images:', error);
         showError('Could not generate images for some phrases');
@@ -205,9 +205,9 @@ const FlashcardSelectionScreen: React.FC = () => {
           duration: 150,
           useNativeDriver: true,
         }),
-        // Flashcard grows with an elegant zoom effect
+        // Flashcard grows with an elegant zoom effect (reduced to avoid pixelation on iOS)
         Animated.spring(flashcardScale, {
-          toValue: 1.08,
+          toValue: 1.02,
           friction: 8,
           tension: 40,
           useNativeDriver: true,
@@ -541,21 +541,21 @@ const FlashcardSelectionScreen: React.FC = () => {
 
     return (
       <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-          <StatusBar style="auto" />
+        <StatusBar style="light" />
 
-          {/* Animated header - slides up and disappears */}
-          <Animated.View
-            style={{
-              transform: [{ translateY: headerTranslateY }],
-              opacity: headerOpacity,
-            }}
-          >
-            <Header
-              title="Generated Phrases"
-            />
-          </Animated.View>
+        {/* Animated header - slides up and disappears - outside SafeAreaView so it extends to top edge */}
+        <Animated.View
+          style={{
+            transform: [{ translateY: headerTranslateY }],
+            opacity: headerOpacity,
+          }}
+        >
+          <Header
+            title="Generated Phrases"
+          />
+        </Animated.View>
 
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom', 'left', 'right']}>
           {/* Selected flashcard (larger) with animation */}
           <View style={styles.selectedFlashcardWrapper}>
             {/* Background glow effect */}
@@ -591,14 +591,7 @@ const FlashcardSelectionScreen: React.FC = () => {
                 }}
               >
                 <View style={[styles.flashcard, styles.flashcardSelected, { backgroundColor: theme.white }]}>
-                  <Animated.View 
-                    style={[
-                      styles.imageContainer,
-                      {
-                        transform: [{ scale: imagePulse }],
-                      }
-                    ]}
-                  >
+                  <View style={styles.imageContainer}>
                     {/* Audio indicator badge - shows that tapping plays audio */}
                     <View style={styles.audioIndicatorBadge}>
                       <Text style={styles.audioIndicatorIcon}>🔊</Text>
@@ -619,7 +612,7 @@ const FlashcardSelectionScreen: React.FC = () => {
                         <Text style={styles.placeholderEmoji}>🖼️</Text>
                       </View>
                     )}
-                  </Animated.View>
+                  </View>
 
                   <View style={[styles.phraseTextContainer, { flex: 1, justifyContent: 'center' }]}>
                     <Text style={[styles.phraseText, styles.phraseTextLarge, { color: theme.primary }]}>
@@ -696,25 +689,25 @@ const FlashcardSelectionScreen: React.FC = () => {
   // Normal view with carousel
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar style="auto" />
+      <StatusBar style="light" />
 
-        {/* Animated header */}
-        <Animated.View
-          style={{
-            transform: [{ translateY: headerTranslateY }],
-            opacity: headerOpacity,
-          }}
-        >
-          <Header
-            title="Generated Phrases"
-          />
-        </Animated.View>
+      {/* Animated header - outside SafeAreaView so it extends to top edge */}
+      <Animated.View
+        style={{
+          transform: [{ translateY: headerTranslateY }],
+          opacity: headerOpacity,
+        }}
+      >
+        <Header
+          title="Generated Phrases"
+        />
+      </Animated.View>
 
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom', 'left', 'right']}>
         {/* Flashcards carousel */}
         {phrasesWithImages.length > 0 ? (
           <View style={styles.carouselWrapper}>
-            {/* Flecha izquierda */}
+            {/* Left arrow */}
             {showLeftArrow && (
               <View style={[styles.arrowIndicator, styles.arrowLeft]}>
                 <Text style={styles.arrowText}>‹</Text>
@@ -743,7 +736,7 @@ const FlashcardSelectionScreen: React.FC = () => {
               })}
             />
 
-            {/* Flecha derecha */}
+            {/* Right arrow */}
             {showRightArrow && (
               <View style={[styles.arrowIndicator, styles.arrowRight]}>
                 <Text style={styles.arrowText}>›</Text>

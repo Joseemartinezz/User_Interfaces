@@ -32,4 +32,3 @@ declare global {
     interface RootParamList extends RootStackParamList {}
   }
 }
-

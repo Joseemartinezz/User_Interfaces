@@ -6,18 +6,18 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  SafeAreaView,
   InteractionManager,
   FlatList,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { generatePhrases, getAllCategories, getCategoryPictogramIds } from '../api';
+import { generatePhrases, getAllCategories, getCategoryPictogramIds } from '../services/api';
 import { getPictogramImageUrl, getPictogramsByIds } from '../services/arasaacService';
-import Header from '../components/common/Header';
-import LoadingScreen from '../components/common/LoadingScreen';
+import Header from '../components/Header';
+import LoadingScreen from '../components/LoadingScreen';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
@@ -55,7 +55,7 @@ const PictogramImage: React.FC<PictogramImageProps> = React.memo(({ arasaacId, s
 
     // Execute logs after interactions to avoid blocking UI
     const task = InteractionManager.runAfterInteractions(() => {
-      console.log(`🖼️ Pictogram ID ${arasaacId} - URL: ${imageUrl}`);
+      console.log(`Pictogram ID ${arasaacId} - URL: ${imageUrl}`);
     });
 
     // Optimized cleanup - does not block during unmount
@@ -72,7 +72,7 @@ const PictogramImage: React.FC<PictogramImageProps> = React.memo(({ arasaacId, s
 
   const handleError = useCallback((error: any) => {
     const errorDetails = error.nativeEvent || error;
-    console.error(`❌ Error loading pictogram ID ${arasaacId}`);
+    console.error(`Error loading pictogram ID ${arasaacId}`);
 
     let finalErrorMessage = 'Error loading';
     if (errorDetails.error) {
@@ -247,7 +247,7 @@ const PCSScreen: React.FC = () => {
   useEffect(() => {
     const loadCategories = async () => {
       if (!user?.id) {
-        console.log('⚠️ User not authenticated, cannot load custom categories');
+        console.log('User not authenticated, cannot load custom categories');
         // Fallback to default categories
         const fallbackCategories: Record<string, number[]> = {};
         DEFAULT_CATEGORIES.forEach(cat => {
@@ -260,7 +260,7 @@ const PCSScreen: React.FC = () => {
       try {
         const categories = await getAllCategories(user.id);
         setBackendCategories(categories);
-        console.log(`✅ Categories loaded from backend for user ${user.id}:`, Object.keys(categories));
+        console.log(`Categories loaded from backend for user ${user.id}:`, Object.keys(categories));
         
         // Clean up cache: remove symbols from categories that no longer exist
         setCategorySymbolsCache(prevCache => {
@@ -270,7 +270,7 @@ const PCSScreen: React.FC = () => {
           // Remove cached symbols for deleted categories
           Object.keys(newCache).forEach(cachedCategory => {
             if (!categoryNames.includes(cachedCategory)) {
-              console.log(`🗑️ Clearing cache for deleted category: ${cachedCategory}`);
+              console.log(`Clearing cache for deleted category: ${cachedCategory}`);
               delete newCache[cachedCategory];
             }
           });
@@ -293,7 +293,7 @@ const PCSScreen: React.FC = () => {
         });
         
       } catch (error) {
-        console.error('❌ Error loading categories:', error);
+        console.error('Error loading categories:', error);
         // Fallback to default categories if failed
         const fallbackCategories: Record<string, number[]> = {};
         DEFAULT_CATEGORIES.forEach(cat => {
@@ -362,19 +362,19 @@ const PCSScreen: React.FC = () => {
   ) => {
     // Avoid loading if already loading
     if (loadingCategories.has(categoryName)) {
-      console.log(`⏭️ Already loading "${categoryName}", skipping...`);
+      console.log(`Already loading "${categoryName}", skipping...`);
       return;
     }
 
     try {
-      console.log(`🔄 Starting load of pictograms for "${categoryName}" (index ${startIndex}, count ${count})`);
+      console.log(`Starting load of pictograms for "${categoryName}" (index ${startIndex}, count ${count})`);
       setLoadingCategories(prev => new Set(prev).add(categoryName));
 
       // Get pictogram IDs for this category
       const pictogramIds = await getCategoryPictogramIds(categoryName, user?.id);
 
       if (pictogramIds.length === 0) {
-        console.warn(`⚠️ No pictogram IDs found for "${categoryName}"`);
+        console.warn(`No pictogram IDs found for "${categoryName}"`);
         setCategorySymbolsCache(prev => ({ ...prev, [categoryName]: [] }));
         setCategoryLoadProgress(prev => ({ ...prev, [categoryName]: 0 }));
         return;
@@ -384,11 +384,11 @@ const PCSScreen: React.FC = () => {
       const idsToLoad = pictogramIds.slice(startIndex, startIndex + count);
 
       if (idsToLoad.length === 0) {
-        console.log(`✅ All pictograms already loaded for "${categoryName}"`);
+        console.log(`All pictograms already loaded for "${categoryName}"`);
         return;
       }
 
-      console.log(`📥 Loading ${idsToLoad.length} pictograms from ARASAAC...`);
+      console.log(`Loading ${idsToLoad.length} pictograms from ARASAAC...`);
 
       // Get pictogram information from ARASAAC
       const pictogramsData = await getPictogramsByIds(idsToLoad, 'en');
@@ -405,7 +405,7 @@ const PCSScreen: React.FC = () => {
           isCustom: false,
         }));
 
-      console.log(`✅ Converted ${newSymbols.length} pictograms to symbols for "${categoryName}"`);
+      console.log(`Converted ${newSymbols.length} pictograms to symbols for "${categoryName}"`);
 
       // Update cache combining with existing symbols
       setCategorySymbolsCache(prev => {
@@ -425,9 +425,9 @@ const PCSScreen: React.FC = () => {
         [categoryName]: Math.min(startIndex + count, pictogramIds.length),
       }));
 
-      console.log(`✅ Loaded ${newSymbols.length} pictograms for "${categoryName}" (${startIndex + count}/${pictogramIds.length})`);
+      console.log(`Loaded ${newSymbols.length} pictograms for "${categoryName}" (${startIndex + count}/${pictogramIds.length})`);
     } catch (error: any) {
-      console.error(`❌ Error loading pictograms for "${categoryName}":`, error);
+      console.error(`Error loading pictograms for "${categoryName}":`, error);
       console.error(`   Message:`, error.message);
       console.error(`   Stack:`, error.stack);
     } finally {
@@ -689,14 +689,15 @@ const PCSScreen: React.FC = () => {
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar style="auto" />
+      <StatusBar style="light" />
 
-        {/* Header */}
-        <Header
-          title="WizzWords"
-          showBackButton={!!topic}
-        />
+      {/* Header - outside SafeAreaView so it extends to top edge */}
+      <Header
+        title="WizzWords"
+        showBackButton={!!topic}
+      />
+
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom', 'left', 'right']}>
 
         {/* Selected words with pictograms */}
         {/* CRITICAL: Avoid layout shift - always render container with fixed height */}

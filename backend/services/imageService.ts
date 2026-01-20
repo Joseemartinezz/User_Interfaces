@@ -36,14 +36,14 @@ function buildAacImagePrompt(phrase) {
   // Create a safer, descriptive and generic prompt
   // We avoid including the phrase directly if it might be problematic
   // Instead, we use a more descriptive and safe format
-  return `A cheerful, simple illustration for children showing a positive and happy scene. 
-The illustration should be colorful, friendly, and easy to understand. 
-Use soft, rounded shapes, bright colors, and a warm, welcoming style. 
-The image should show appropriate, family-friendly content suitable for young children. 
-Keep the design simple with a clean, uncluttered background. 
-No text, letters, numbers, or symbols should appear in the image. 
-The overall feeling should be positive, happy, and inclusive. 
-Illustrate the concept: ${sanitizedPhrase}`.trim();
+    return `A cheerful, simple illustration for children showing a positive and happy scene. 
+  The illustration should be colorful, friendly, and easy to understand. 
+  Use soft, rounded shapes, bright colors, and a warm, welcoming style. 
+  The image should show appropriate, family-friendly content suitable for young children. 
+  Keep the design simple with a clean, uncluttered background. 
+  No text, letters, numbers, or symbols should appear in the image. 
+  The overall feeling should be positive, happy, and inclusive. 
+  Illustrate the concept: ${sanitizedPhrase}`.trim();
 }
 
 /**
@@ -103,9 +103,9 @@ async function generateAacImage(phrase, retryAttempt = 0) {
     const prompt = buildAacImagePrompt(phrase);
 
     if (retryAttempt === 0) {
-      console.log(`🎨 Generating image with Azure OpenAI DALL-E 3 for phrase: "${phrase}"`);
+      console.log(`Generating image with Azure OpenAI DALL-E 3 for phrase: "${phrase}"`);
     } else {
-      console.log(`🔄 Retrying image generation (attempt ${retryAttempt + 1}/${MAX_RETRIES + 1}) for phrase: "${phrase}"`);
+      console.log(`Retrying image generation (attempt ${retryAttempt + 1}/${MAX_RETRIES + 1}) for phrase: "${phrase}"`);
     }
 
     // The endpoint already comes complete with deploymentName and api-version
@@ -162,7 +162,7 @@ async function generateAacImage(phrase, retryAttempt = 0) {
         // For rate limiting, retry with longer delay
         if (retryAttempt < MAX_RETRIES) {
           const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryAttempt); // Exponential backoff
-          console.log(`⏳ Rate limit detected. Waiting ${delay}ms before retrying...`);
+          console.log(`Rate limit detected. Waiting ${delay}ms before retrying...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           return generateAacImage(phrase, retryAttempt + 1);
         }
@@ -187,9 +187,9 @@ async function generateAacImage(phrase, retryAttempt = 0) {
     const imageBase64 = await urlToBase64(imageUrl);
 
     if (retryAttempt > 0) {
-      console.log(`✅ Image generated successfully after ${retryAttempt + 1} attempts for: "${phrase}"`);
+      console.log(`Image generated successfully after ${retryAttempt + 1} attempts for: "${phrase}"`);
     } else {
-      console.log(`✅ Image generated successfully for: "${phrase}"`);
+      console.log(`Image generated successfully for: "${phrase}"`);
     }
     return imageBase64;
   } catch (error) {
@@ -221,12 +221,12 @@ async function generateAacImage(phrase, retryAttempt = 0) {
     if (isConnectionError && retryAttempt < MAX_RETRIES) {
       const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryAttempt); // Exponential backoff: 1s, 2s, 4s
       const errorInfo = errorCode || errorMessage || 'unknown';
-      console.log(`⚠️ Transient connection error detected (${errorInfo}). Retrying automatically in ${delay}ms... (attempt ${retryAttempt + 1}/${MAX_RETRIES + 1})`);
+      console.log(`Transient connection error detected (${errorInfo}). Retrying automatically in ${delay}ms... (attempt ${retryAttempt + 1}/${MAX_RETRIES + 1})`);
       await new Promise(resolve => setTimeout(resolve, delay));
       return generateAacImage(phrase, retryAttempt + 1);
     }
 
-    console.error(`❌ Error generating image for "${phrase}" (attempt ${retryAttempt + 1}):`, error);
+    console.error(`Error generating image for "${phrase}" (attempt ${retryAttempt + 1}):`, error);
     
     if (error.message?.includes('API Key') || error.message?.includes('not configured')) {
       throw new Error('Azure OpenAI API Key invalid or not configured. Verify AZURE_OPENAI_IMAGE_API_KEY in backend/.env');
@@ -255,7 +255,7 @@ async function generateAacImagesForPhrases(phrases) {
     return [];
   }
 
-  console.log(`🎨 Generating ${phrases.length} images in parallel with staggered delays...`);
+  console.log(`Generating ${phrases.length} images in parallel with staggered delays...`);
 
   // Helper function for delay
   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -281,12 +281,12 @@ async function generateAacImagesForPhrases(phrases) {
       
       lastRequestTime = Date.now();
       
-      console.log(`🖼️ Starting image generation ${index + 1}/${phrases.length} for: "${phrase}"`);
+      console.log(`Starting image generation ${index + 1}/${phrases.length} for: "${phrase}"`);
       const imageBase64 = await generateAacImage(phrase);
-      console.log(`✅ Image ${index + 1}/${phrases.length} completed`);
+      console.log(`Image ${index + 1}/${phrases.length} completed`);
       return { phrase, imageBase64 };
     } catch (error) {
-      console.error(`❌ Error generating image ${index + 1}/${phrases.length} for "${phrase}":`, error);
+      console.error(`Error generating image ${index + 1}/${phrases.length} for "${phrase}":`, error);
       // Return without image in case of error (after all retries)
       return { phrase, imageBase64: '' };
     }
@@ -294,7 +294,7 @@ async function generateAacImagesForPhrases(phrases) {
 
   const results = await Promise.all(imagePromises);
   const successful = results.filter(r => r.imageBase64 !== '').length;
-  console.log(`✅ ${successful}/${phrases.length} images generated successfully`);
+  console.log(`${successful}/${phrases.length} images generated successfully`);
 
   return results;
 }
@@ -330,7 +330,7 @@ async function testOpenAIConnection() {
     const result = await response.json() as AzureOpenAIImageResponse;
     return result.data && result.data.length > 0;
   } catch (error) {
-    console.error('❌ Error testing connection with Azure OpenAI:', error);
+    console.error('Error testing connection with Azure OpenAI:', error);
     return false;
   }
 }

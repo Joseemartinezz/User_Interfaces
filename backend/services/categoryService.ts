@@ -1,14 +1,12 @@
 // Category Service for Dynamic Pictogram Categories
 // Manages category-to-pictogram mappings using a JSON file
 // Uses Azure OpenAI (with Gemini fallback) to find relevant pictograms for new categories
-// 
-// OPTIMIZED VERSION: Improved scoring, ranking, and AI prompt engineering
+
 
 const fs = require('fs').promises;
 const path = require('path');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Path to categories JSON files
 const PREDEFINED_CATEGORIES_FILE_PATH = path.join(__dirname, '../data/predefinedCategories.json');
 const USER_CATEGORIES_DIR = path.join(__dirname, '../data/user_categories');
 
@@ -164,10 +162,10 @@ async function loadPredefinedCategories(): Promise<Record<string, number[]>> {
   } catch (error: any) {
     if (error.code === 'ENOENT') {
       // File doesn't exist, return empty object
-      console.warn('⚠️ Predefined categories file not found. Run the initialization script.');
+      console.warn('Predefined categories file not found. Run the initialization script.');
       return {};
     }
-    console.error('❌ Error loading predefined categories:', error);
+    console.error('Error loading predefined categories:', error);
     throw error;
   }
 }
@@ -186,7 +184,7 @@ async function loadUserCategories(userId: string): Promise<Record<string, number
       // File doesn't exist, return empty object
       return {};
     }
-    console.error(`❌ Error loading user categories for ${userId}:`, error);
+    console.error(`Error loading user categories for ${userId}:`, error);
     throw error;
   }
 }
@@ -205,9 +203,9 @@ async function saveUserCategories(userId: string, categories: Record<string, num
       JSON.stringify(categories, null, 2),
       'utf-8'
     );
-    console.log(`✅ User categories saved successfully for user ${userId}`);
+    console.log(`User categories saved successfully for user ${userId}`);
   } catch (error) {
-    console.error(`❌ Error saving user categories for ${userId}:`, error);
+    console.error(`Error saving user categories for ${userId}:`, error);
     throw error;
   }
 }
@@ -223,7 +221,7 @@ async function loadMasterPictograms(): Promise<Array<{ id: number; keywords: str
     );
     return JSON.parse(data);
   } catch (error) {
-    console.error('❌ Error loading master pictograms:', error);
+    console.error('Error loading master pictograms:', error);
     throw error;
   }
 }
@@ -249,7 +247,7 @@ async function getUniqueTags(): Promise<string[]> {
   }
 
   cachedUniqueTags = Array.from(tagSet).sort();
-  console.log(`📊 Cached ${cachedUniqueTags.length} unique tags from database`);
+  console.log(`Cached ${cachedUniqueTags.length} unique tags from database`);
   return cachedUniqueTags;
 }
 
@@ -408,21 +406,21 @@ function findPictogramsByCategory(
  * If file doesn't exist, generates it from master database
  */
 async function initializePredefinedCategories(): Promise<Record<string, number[]>> {
-  console.log('🔄 Loading predefined categories...');
+  console.log('Loading predefined categories...');
 
   // Try to load from file first
   let categories = await loadPredefinedCategories();
 
   // If file is empty or doesn't exist, generate it
   if (Object.keys(categories).length === 0) {
-    console.log('⚠️ Predefined categories file is empty, generating from master database...');
+    console.log('Predefined categories file is empty, generating from master database...');
     const pictograms = await loadMasterPictograms();
     categories = {};
 
     for (const categoryName of PREDEFINED_CATEGORIES) {
       const pictogramIds = findPictogramsByCategory(categoryName, pictograms);
       categories[categoryName] = pictogramIds;
-      console.log(`✅ ${categoryName}: ${pictogramIds.length} pictograms found`);
+      console.log(`${categoryName}: ${pictogramIds.length} pictograms found`);
     }
 
     // Save to predefined categories file
@@ -433,9 +431,9 @@ async function initializePredefinedCategories(): Promise<Record<string, number[]
       JSON.stringify(categories, null, 2),
       'utf-8'
     );
-    console.log('✅ Predefined categories generated and saved');
+    console.log('Predefined categories generated and saved');
   } else {
-    console.log('✅ Predefined categories loaded from file');
+    console.log('Predefined categories loaded from file');
   }
 
   return categories;
@@ -459,8 +457,8 @@ async function findPictogramsWithAI(
   description?: string
 ): Promise<number[]> {
   console.log('\n' + '='.repeat(80));
-  console.log(`🔍 STARTING PICTOGRAM SEARCH FOR CATEGORY: "${categoryName}"`);
-  if (description) console.log(`📝 Description: "${description}"`);
+  console.log(`STARTING PICTOGRAM SEARCH FOR CATEGORY: "${categoryName}"`);
+  if (description) console.log(`Description: "${description}"`);
   console.log('='.repeat(80));
 
   const config = {
@@ -477,12 +475,12 @@ async function findPictogramsWithAI(
   const pictograms = await loadMasterPictograms();
   const uniqueTags = await getUniqueTags();
 
-  console.log(`📊 Database stats: ${pictograms.length} pictograms, ${uniqueTags.length} unique tags`);
+  console.log(`Database stats: ${pictograms.length} pictograms, ${uniqueTags.length} unique tags`);
 
   // ============================================================================
   // STEP 1: AI-DRIVEN KEYWORD/TAG GENERATION
   // ============================================================================
-  console.log('\n🤖 STEP 1: AI-driven keyword/tag generation...');
+  console.log('\nSTEP 1: AI-driven keyword/tag generation...');
 
   // Get relevant tags from database for AI context
   const categoryNameLower = categoryName.toLowerCase();
@@ -599,18 +597,18 @@ Return ONLY valid JSON (no markdown, no explanation):
         .filter((t: string) => t.length >= 2);
     }
 
-    console.log(`   ✅ AI generated ${aiSearchTerms.keywords.length} keywords: [${aiSearchTerms.keywords.slice(0, 10).join(', ')}...]`);
-    console.log(`   ✅ AI generated ${aiSearchTerms.tags.length} tags: [${aiSearchTerms.tags.join(', ')}]`);
+    console.log(`   AI generated ${aiSearchTerms.keywords.length} keywords: [${aiSearchTerms.keywords.slice(0, 10).join(', ')}...]`);
+    console.log(`   AI generated ${aiSearchTerms.tags.length} tags: [${aiSearchTerms.tags.join(', ')}]`);
 
   } catch (aiError: any) {
-    console.warn(`   ⚠️ Azure OpenAI failed: ${aiError.message}`);
-    console.log('   🔄 Attempting fallback to Gemini...');
+    console.warn(`   Azure OpenAI failed: ${aiError.message}`);
+    console.log('   Attempting fallback to Gemini...');
     
     // Try Gemini as fallback (same pattern as index.js)
     try {
       const geminiApiKey = process.env.GEMINI_API_KEY;
       if (!geminiApiKey) {
-        console.log('   ⚠️ Gemini API key not configured, continuing with local search only...');
+        console.log('   Gemini API key not configured, continuing with local search only...');
       } else {
         const genAI = new GoogleGenerativeAI(geminiApiKey);
         
@@ -631,21 +629,21 @@ Return ONLY valid JSON (no markdown, no explanation):
         
         for (const modelName of modelsToTry) {
           try {
-            console.log(`   📡 Trying Gemini model: ${modelName}...`);
+            console.log(`   Trying Gemini model: ${modelName}...`);
             const model = genAI.getGenerativeModel({ model: modelName });
             const result = await model.generateContent(geminiPrompt);
             const response = await result.response;
             geminiOutput = response.text();
-            console.log(`   ✅ Gemini response received from ${modelName}`);
+            console.log(`   Gemini response received from ${modelName}`);
             break;
           } catch (modelError: any) {
-            console.log(`   ⚠️ ${modelName} failed: ${modelError.message?.substring(0, 100)}`);
+            console.log(`   ${modelName} failed: ${modelError.message?.substring(0, 100)}`);
             continue;
           }
         }
         
         if (geminiOutput) {
-          console.log(`   📝 Gemini raw response: ${geminiOutput.substring(0, 200)}...`);
+          console.log(`   Gemini raw response: ${geminiOutput.substring(0, 200)}...`);
           
           // Parse Gemini response (same as Azure)
           try {
@@ -656,27 +654,27 @@ Return ONLY valid JSON (no markdown, no explanation):
               aiSearchTerms.keywords = parsed.keywords
                 .map((k: any) => String(k).toLowerCase().trim())
                 .filter((k: string) => k.length >= 2);
-              console.log(`   ✅ Gemini generated ${aiSearchTerms.keywords.length} keywords`);
+              console.log(`   Gemini generated ${aiSearchTerms.keywords.length} keywords`);
             }
             if (parsed.tags && Array.isArray(parsed.tags)) {
               aiSearchTerms.tags = parsed.tags
                 .map((t: any) => String(t).toLowerCase().trim())
                 .filter((t: string) => t.length >= 2);
-              console.log(`   ✅ Gemini generated ${aiSearchTerms.tags.length} tags`);
+              console.log(`   Gemini generated ${aiSearchTerms.tags.length} tags`);
             }
             
-            console.log(`   📊 Gemini keywords: [${aiSearchTerms.keywords.slice(0, 10).join(', ')}${aiSearchTerms.keywords.length > 10 ? '...' : ''}]`);
-            console.log(`   📊 Gemini tags: [${aiSearchTerms.tags.join(', ')}]`);
+            console.log(`   Gemini keywords: [${aiSearchTerms.keywords.slice(0, 10).join(', ')}${aiSearchTerms.keywords.length > 10 ? '...' : ''}]`);
+            console.log(`   Gemini tags: [${aiSearchTerms.tags.join(', ')}]`);
           } catch (parseError: any) {
-            console.error(`   ❌ Failed to parse Gemini response: ${parseError.message}`);
+            console.error(`   Failed to parse Gemini response: ${parseError.message}`);
             console.log('   Continuing with local search results only...');
           }
         } else {
-          console.log('   ⚠️ All Gemini models failed, continuing with local search only...');
+          console.log('   All Gemini models failed, continuing with local search only...');
         }
       }
     } catch (geminiError: any) {
-      console.error(`   ❌ Gemini fallback also failed: ${geminiError.message}`);
+      console.error(`   Gemini fallback also failed: ${geminiError.message}`);
       console.log('   Continuing with local search results only...');
     }
   }
@@ -684,7 +682,7 @@ Return ONLY valid JSON (no markdown, no explanation):
   // ============================================================================
   // STEP 2: SCORE AND RANK PICTOGRAMS USING AI-GENERATED TERMS
   // ============================================================================
-  console.log('\n📊 STEP 2: Scoring and ranking pictograms...');
+  console.log('\nSTEP 2: Scoring and ranking pictograms...');
 
   const scoredPictograms: ScoredPictogram[] = [];
 
@@ -712,13 +710,13 @@ Return ONLY valid JSON (no markdown, no explanation):
       });
     }
   } else {
-    console.warn('   ⚠️ No AI keywords/tags generated, returning empty results');
+    console.warn('   No AI keywords/tags generated, returning empty results');
   }
 
   // ============================================================================
   // STEP 3: FILTER AND LIMIT FINAL RESULTS
   // ============================================================================
-  console.log('\n📋 STEP 3: Filtering and limiting results...');
+  console.log('\nSTEP 3: Filtering and limiting results...');
 
   // Take top results up to maxResults
   const finalResults = scoredPictograms
@@ -727,7 +725,7 @@ Return ONLY valid JSON (no markdown, no explanation):
 
   // Log final results summary
   console.log('\n' + '='.repeat(80));
-  console.log(`✅ SEARCH COMPLETE: Found ${finalResults.length} pictograms for "${categoryName}"`);
+  console.log(`SEARCH COMPLETE: Found ${finalResults.length} pictograms for "${categoryName}"`);
   console.log(`   - AI-generated keywords: ${aiSearchTerms.keywords.length}`);
   console.log(`   - AI-generated tags: ${aiSearchTerms.tags.length}`);
   console.log(`   - Total matches: ${scoredPictograms.length}`);
@@ -787,7 +785,7 @@ async function createUserCategory(
   }
 
   // Use AI to find relevant pictograms
-  console.log(`🔄 Finding pictograms for new category "${sanitizedName}" for user ${userId}${description ? ` with description: "${description}"` : ''}...`);
+  console.log(`Finding pictograms for new category "${sanitizedName}" for user ${userId}${description ? ` with description: "${description}"` : ''}...`);
   const pictogramIds = await findPictogramsWithAI(sanitizedName, limitedMaxResults, description);
 
   // ============================================================================
@@ -797,14 +795,14 @@ async function createUserCategory(
 
   // Graceful handling: Return empty array if no pictograms found (don't throw)
   if (uniquePictogramIds.length === 0) {
-    console.warn(`⚠️ No pictograms found for category "${sanitizedName}". Creating empty category.`);
+    console.warn(`No pictograms found for category "${sanitizedName}". Creating empty category.`);
   }
 
   // Add to user categories
   userCategories[sanitizedName] = uniquePictogramIds;
   await saveUserCategories(userId, userCategories);
 
-  console.log(`✅ Category "${sanitizedName}" created for user ${userId} with ${uniquePictogramIds.length} pictograms`);
+  console.log(`Category "${sanitizedName}" created for user ${userId} with ${uniquePictogramIds.length} pictograms`);
   return uniquePictogramIds;
 }
 
@@ -825,7 +823,7 @@ async function deleteUserCategory(userId: string, categoryName: string): Promise
   delete userCategories[categoryName];
   await saveUserCategories(userId, userCategories);
 
-  console.log(`✅ Category "${categoryName}" deleted for user ${userId}`);
+  console.log(`Category "${categoryName}" deleted for user ${userId}`);
 }
 
 /**

@@ -86,7 +86,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       setIsLoading(true);
       setError(null);
 
-      console.log('📥 Loading user data:', firebaseUser.uid);
+      console.log('Loading user data:', firebaseUser.uid);
 
       // Get data from Firestore
       const userData = await getUserData(firebaseUser.uid);
@@ -97,9 +97,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         
         // Save to cache
         await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-        console.log('✅ User data loaded and saved to cache');
+        console.log('User data loaded and saved to cache');
       } else {
-        console.log('⚠️ User without data in Firestore, creating document...');
+        console.log('User without data in Firestore, creating document...');
         // If document doesn't exist, create it
         await createUserDocument(
           firebaseUser.uid,
@@ -110,7 +110,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         await loadUserData(firebaseUser);
       }
     } catch (err: any) {
-      console.error('❌ Error loading user data:', err);
+      console.error('Error loading user data:', err);
       setError(err.message || 'Error loading user data');
       
       // Try loading from cache as fallback
@@ -118,10 +118,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         const cachedUser = await AsyncStorage.getItem(USER_STORAGE_KEY);
         if (cachedUser) {
           setUser(JSON.parse(cachedUser));
-          console.log('⚠️ Using cached data');
+          console.log('Using cached data');
         }
       } catch (cacheErr) {
-        console.error('❌ Error loading cache:', cacheErr);
+        console.error('Error loading cache:', cacheErr);
       }
     } finally {
       setIsLoading(false);
@@ -134,10 +134,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   useEffect(() => {
     const unsubscribe = subscribeToAuthChanges(async (firebaseUser) => {
       if (firebaseUser) {
-        console.log('🔐 User authenticated:', firebaseUser.uid);
+        console.log('User authenticated:', firebaseUser.uid);
         await loadUserData(firebaseUser);
       } else {
-        console.log('👋 User not authenticated');
+        console.log('User not authenticated');
         setUser(null);
         setIsLoading(false);
         // Clear cache
@@ -159,7 +159,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   ) => {
     try {
       setError(null);
-      console.log('📝 Registering user:', email);
+      console.log('Registering user:', email);
 
       const firebaseUser = await registerUser(email, password, fullName);
       
@@ -167,9 +167,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       await createUserDocument(firebaseUser.uid, email, fullName);
       
       // Data will be loaded automatically by the listener
-      console.log('✅ User registered successfully');
+      console.log('User registered successfully');
     } catch (err: any) {
-      console.error('❌ Error registering user:', err);
+      console.error('Error registering user:', err);
       setError(err.message || 'Error registering user');
       throw err;
     }
@@ -181,14 +181,14 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const loginWithEmailAndPassword = async (email: string, password: string) => {
     try {
       setError(null);
-      console.log('🔐 Logging in:', email);
+      console.log('Logging in:', email);
 
       await loginUser(email, password);
       
       // Data will be loaded automatically by the listener
-      console.log('✅ Session started successfully');
+      console.log('Session started successfully');
     } catch (err: any) {
-      console.error('❌ Error logging in:', err);
+      console.error('Error logging in:', err);
       setError(err.message || 'Error logging in');
       throw err;
     }
@@ -200,15 +200,15 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       setError(null);
-      console.log('👋 Logging out');
+      console.log('Logging out');
 
       await firebaseSignOut();
       setUser(null);
       await AsyncStorage.removeItem(USER_STORAGE_KEY);
       
-      console.log('✅ Session closed');
+      console.log('Session closed');
     } catch (err: any) {
-      console.error('❌ Error logging out:', err);
+      console.error('Error logging out:', err);
       setError(err.message || 'Error logging out');
       throw err;
     }
@@ -224,7 +224,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
     try {
       setError(null);
-      console.log('✏️ Updating user');
+      console.log('Updating user');
 
       await updateUserData(user.id, updates);
       
@@ -233,9 +233,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       setUser(updatedUser);
       await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
       
-      console.log('✅ User updated');
+      console.log('User updated');
     } catch (err: any) {
-      console.error('❌ Error updating user:', err);
+      console.error('Error updating user:', err);
       setError(err.message || 'Error updating user');
       throw err;
     }
@@ -251,7 +251,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
     try {
       setError(null);
-      console.log('⚙️ Updating preferences');
+      console.log('Updating preferences');
 
       await updateUserPreferences(user.id, preferences);
       
@@ -263,9 +263,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       setUser(updatedUser);
       await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
       
-      console.log('✅ Preferences updated');
+      console.log('Preferences updated');
     } catch (err: any) {
-      console.error('❌ Error updating preferences:', err);
+      console.error('Error updating preferences:', err);
       setError(err.message || 'Error updating preferences');
       throw err;
     }
@@ -281,7 +281,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
     try {
       setError(null);
-      console.log('➕ Adding custom symbol:', symbol.word);
+      console.log('Adding custom symbol:', symbol.word);
 
       const newSymbol: CustomPCSSymbol = {
         ...symbol,
@@ -292,9 +292,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       const updatedSymbols = [...user.preferences.customPCSSymbols, newSymbol];
       await updatePreferences({ customPCSSymbols: updatedSymbols });
       
-      console.log('✅ Symbol added');
+      console.log('Symbol added');
     } catch (err: any) {
-      console.error('❌ Error adding symbol:', err);
+      console.error('Error adding symbol:', err);
       setError(err.message || 'Error adding symbol');
       throw err;
     }
@@ -310,16 +310,16 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
     try {
       setError(null);
-      console.log('➖ Removing symbol:', symbolId);
+      console.log('Removing symbol:', symbolId);
 
       const updatedSymbols = user.preferences.customPCSSymbols.filter(
         (s) => s.id !== symbolId
       );
       await updatePreferences({ customPCSSymbols: updatedSymbols });
       
-      console.log('✅ Symbol removed');
+      console.log('Symbol removed');
     } catch (err: any) {
-      console.error('❌ Error removing symbol:', err);
+      console.error('Error removing symbol:', err);
       setError(err.message || 'Error removing symbol');
       throw err;
     }

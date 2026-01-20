@@ -69,4 +69,3 @@ export interface User {
   fullName: string;
   preferences: UserPreferences;
 }
-

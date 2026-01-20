@@ -2,13 +2,6 @@
 // Service for interacting with ARASAAC API directly
 // This service makes direct calls to https://api.arasaac.org/api
 
-// Note: fetch is available globally in Node.js 18+, no need to import it
-// If using older Node.js, fetch is already imported in index.js
-// Using global fetch (available via node-fetch in index.js)
-
-/**
- * Base URL of ARASAAC API
- */
 const ARASAAC_BASE_URL = 'https://api.arasaac.org/api';
 
 /**
@@ -36,20 +29,20 @@ interface ArasaacPictogram {
 /**
  * Searches ARASAAC pictograms by search term
  * @param searchTerm Search term in the specified language
- * @param language Language code (e.g. 'es', 'en', 'it', 'fr') - defaults to 'es'
+ * @param language Language code (e.g. 'en', 'es', 'it', 'fr') - defaults to 'en'
  */
 async function searchPictograms(
   searchTerm: string,
-  language: string = 'es'
+  language: string = 'en'
 ): Promise<ArasaacPictogram[]> {
   if (!searchTerm || searchTerm.trim() === '') {
     return [];
   }
 
   try {
-    console.log(`🔍 Searching ARASAAC pictograms: "${searchTerm}" in language: ${language}`);
+    console.log(`Searching ARASAAC pictograms: "${searchTerm}" in language: ${language}`);
     const url = `${ARASAAC_BASE_URL}/pictograms/${language}/search/${encodeURIComponent(searchTerm)}`;
-    console.log(`📡 ARASAAC URL: ${url}`);
+    console.log(`ARASAAC URL: ${url}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -59,15 +52,15 @@ async function searchPictograms(
     });
 
     if (!response.ok) {
-      console.error(`❌ ARASAAC error: ${response.status} ${response.statusText}`);
+      console.error(`ARASAAC error: ${response.status} ${response.statusText}`);
       throw new Error(`ARASAAC API error: ${response.status} ${response.statusText}`);
     }
 
     const pictograms = await response.json() as ArasaacPictogram[];
-    console.log(`✅ Found ${pictograms.length} pictograms in ARASAAC`);
+    console.log(`Found ${pictograms.length} pictograms in ARASAAC`);
     return pictograms;
   } catch (error: any) {
-    console.error('❌ Error searching pictograms in ARASAAC:', error);
+    console.error('Error searching pictograms in ARASAAC:', error);
     throw new Error(error.message || 'Error searching pictograms in ARASAAC');
   }
 }
@@ -75,16 +68,16 @@ async function searchPictograms(
 /**
  * Gets information for a specific pictogram by its ID
  * @param pictogramId Pictogram ID
- * @param language Language code (e.g. 'es', 'en', 'it', 'fr') - defaults to 'es'
+ * @param language Language code (e.g. 'en', 'es', 'it', 'fr') - defaults to 'en'
  */
 async function getPictogramById(
   pictogramId: number,
-  language: string = 'es'
+  language: string = 'en'
 ): Promise<ArasaacPictogram> {
   try {
-    console.log(`🔍 Getting ARASAAC pictogram ID: ${pictogramId} in language: ${language}`);
+    console.log(`Getting ARASAAC pictogram ID: ${pictogramId} in language: ${language}`);
     const url = `${ARASAAC_BASE_URL}/pictograms/${language}/${pictogramId}`;
-    console.log(`📡 ARASAAC URL: ${url}`);
+    console.log(`ARASAAC URL: ${url}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -94,7 +87,7 @@ async function getPictogramById(
     });
 
     if (!response.ok) {
-      console.error(`❌ ARASAAC error: ${response.status} ${response.statusText}`);
+      console.error(`ARASAAC error: ${response.status} ${response.statusText}`);
       
       if (response.status === 404) {
         throw new Error(`Pictogram with ID ${pictogramId} was not found`);
@@ -104,10 +97,10 @@ async function getPictogramById(
     }
 
     const pictogram = await response.json() as ArasaacPictogram;
-    console.log(`✅ Pictogram obtained: ${pictogram._id}`);
+    console.log(`Pictogram obtained: ${pictogram._id}`);
     return pictogram;
   } catch (error: any) {
-    console.error('❌ Error getting pictogram from ARASAAC:', error);
+    console.error('Error getting pictogram from ARASAAC:', error);
     throw new Error(error.message || 'Error getting pictogram from ARASAAC');
   }
 }
@@ -158,7 +151,7 @@ async function getPictogramImage(
       url += '?' + params.join('&');
     }
 
-    console.log(`📡 ARASAAC URL: ${url}`);
+    console.log(`ARASAAC URL: ${url}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -168,7 +161,7 @@ async function getPictogramImage(
     });
 
     if (!response.ok) {
-      console.error(`❌ ARASAAC error: ${response.status} ${response.statusText}`);
+      console.error(`ARASAAC error: ${response.status} ${response.statusText}`);
       
       if (response.status === 404) {
         throw new Error(`Pictogram with ID ${pictogramId} was not found`);
@@ -196,11 +189,11 @@ async function getPictogramImage(
     }
     
     const contentType = response.headers.get('content-type') || 'image/png';
-    console.log(`✅ Image obtained: ${imageBuffer.length} bytes, type: ${contentType}`);
+    console.log(`Image obtained: ${imageBuffer.length} bytes, type: ${contentType}`);
 
     return { buffer: imageBuffer, contentType };
   } catch (error: any) {
-    console.error('❌ Error getting image from ARASAAC:', error);
+    console.error('Error getting image from ARASAAC:', error);
     throw new Error(error.message || 'Error getting image from ARASAAC');
   }
 }
@@ -208,18 +201,18 @@ async function getPictogramImage(
 /**
  * Searches pictograms for multiple words
  * @param words Array of words to search
- * @param language Language code - defaults to 'es'
+ * @param language Language code - defaults to 'en'
  */
 async function searchMultiplePictograms(
   words: string[],
-  language: string = 'es'
+  language: string = 'en'
 ): Promise<Record<string, { pictograms: ArasaacPictogram[]; error: boolean }>> {
   if (!words || words.length === 0) {
     return {};
   }
 
   try {
-    console.log(`🔍 Searching pictograms for ${words.length} words in language: ${language}`);
+    console.log(`Searching pictograms for ${words.length} words in language: ${language}`);
 
     // Search pictograms for each word in parallel
     const searchPromises = words.map(async (word) => {
@@ -227,7 +220,7 @@ async function searchMultiplePictograms(
         const pictograms = await searchPictograms(word, language);
         return { word, pictograms, error: false };
       } catch (error) {
-        console.error(`❌ Error searching "${word}":`, error);
+        console.error(`Error searching "${word}":`, error);
         return { word, pictograms: [], error: true };
       }
     });
@@ -240,10 +233,10 @@ async function searchMultiplePictograms(
       resultsMap[word] = { pictograms, error };
     });
 
-    console.log(`✅ Search completed for ${words.length} words`);
+    console.log(`Search completed for ${words.length} words`);
     return resultsMap;
   } catch (error: any) {
-    console.error('❌ Error in multiple search:', error);
+    console.error('Error in multiple search:', error);
     throw new Error(error.message || 'Error searching multiple pictograms');
   }
 }

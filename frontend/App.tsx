@@ -15,7 +15,7 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import WelcomeOnboardingScreen from './screens/WelcomeOnboardingScreen';
-import LoadingScreen from './components/common/LoadingScreen';
+import LoadingScreen from './components/LoadingScreen';
 
 // Import Providers
 import { ThemeProvider } from './context/ThemeContext';
@@ -123,7 +123,6 @@ function AppNavigator() {
         animation: 'slide_from_right', // Unified smooth transition
         animationDuration: 300, // Consistent timing
         animationTypeForReplace: 'push',
-        statusBarAnimation: 'fade',
         contentStyle: { backgroundColor: '#f5f5f5' },
         freezeOnBlur: false,
       }}
@@ -135,7 +134,7 @@ function AppNavigator() {
         options={{
           animation: 'fade_from_bottom',
           animationDuration: 250,
-          presentation: 'modal',
+          presentation: 'fullScreenModal',
         }}
       />
 
@@ -143,6 +142,11 @@ function AppNavigator() {
       <Stack.Screen
         name="CategoryDetail"
         component={CategoryDetailScreen}
+        options={{
+          animation: 'fade_from_bottom',
+          animationDuration: 250,
+          presentation: 'fullScreenModal',
+        }}
       />
 
       {/* Word selection screen (PCS) - MAIN SCREEN FOR CHILDREN */}
@@ -183,7 +187,7 @@ function AppNavigator() {
         options={{
           animation: 'fade_from_bottom',
           animationDuration: 250,
-          presentation: 'modal',
+          presentation: 'fullScreenModal',
         }}
       />
 
@@ -194,7 +198,7 @@ function AppNavigator() {
         options={{
           animation: 'fade_from_bottom',
           animationDuration: 250,
-          presentation: 'modal',
+          presentation: 'fullScreenModal',
         }}
       />
     </Stack.Navigator>

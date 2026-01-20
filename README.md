@@ -4,7 +4,7 @@
 
 **Augmentative and Alternative Communication (AAC) platform that helps children with special needs communicate through ARASAAC pictograms and AI-powered phrase generation.**
 
-[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Documentation](#-documentation) • [Technologies](#-technologies)
+[Features](#-features) • [Installation](#-installation) • [API Configuration](#-api-configuration) • [Usage](#-usage) • [Architecture](#-architecture) • [Technologies](#-technologies)
 
 </div>
 
@@ -90,16 +90,33 @@
 
 3. **Configure environment variables**
    
-   Create `.env` file in the root:
+   Create `frontend/.env` file:
    ```env
-   EXPO_PUBLIC_GEMINI_API_KEY=your_api_key_here
+   EXPO_PUBLIC_API_URL=http://localhost:3000
+   EXPO_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
+   
+   # Firebase Configuration
+   EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+   EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   EXPO_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+   EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+   EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
    ```
    
    Create `backend/.env` file:
    ```env
-   GEMINI_API_KEY=your_api_key_here
-   AZURE_OPENAI_API_KEY=your_azure_key_optional
-   AZURE_OPENAI_URL=your_azure_url_optional
+   PORT=3000
+   GEMINI_API_KEY=your_gemini_api_key
+   
+   # Azure OpenAI (Primary) - Optional
+   AZURE_OPENAI_PHRASE_URL=https://your-resource.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview
+   AZURE_OPENAI_PHRASE_KEY=your_azure_key
+   AZURE_OPENAI_PHRASE_DEPLOYMENT=gpt-5-mini
+   
+   # Azure OpenAI Image Generation (DALL-E) - Optional
+   AZURE_OPENAI_IMAGE_ENDPOINT=https://your-resource.cognitiveservices.azure.com/openai/deployments/dall-e-3/images/generations?api-version=2024-02-01
+   AZURE_OPENAI_IMAGE_API_KEY=your_azure_image_key
    ```
 
 4. **Start the backend server** (Terminal 1)
@@ -117,16 +134,123 @@
 ### Platform Configuration
 
 #### Android Emulator
-- Edit `frontend/api.ts` and change `API_BASE_URL` to `http://10.0.2.2:3000`
+- Set `EXPO_PUBLIC_API_URL=http://10.0.2.2:3000` in `frontend/.env`
 
 #### iOS Simulator
 - ✅ Already configured for `http://localhost:3000`
 
 #### Physical Device
-- Change `API_BASE_URL` in `frontend/api.ts` to `http://YOUR_LOCAL_IP:3000`
+- Set `EXPO_PUBLIC_API_URL=http://YOUR_LOCAL_IP:3000` in `frontend/.env`
 - Find your local IP:
   - **Windows**: `ipconfig` → look for "IPv4"
   - **Mac/Linux**: `ifconfig` or `ip addr`
+
+---
+
+## 🔧 API Configuration
+
+### Google Gemini API
+
+1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Sign in and create a new API key
+3. Add to `backend/.env`:
+   ```env
+   GEMINI_API_KEY=your_gemini_api_key
+   ```
+
+**Available Models:**
+- `gemini-1.5-flash`: Fast and cost-effective (default)
+- `gemini-1.5-pro`: More powerful for complex tasks
+
+### Azure OpenAI API (Optional)
+
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Navigate to your Azure OpenAI resource
+3. Go to "Keys and Endpoint" section
+4. Copy the complete endpoint URL and API key
+
+**Configuration:**
+```env
+# Phrase Generation
+AZURE_OPENAI_PHRASE_URL=https://your-resource.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview
+AZURE_OPENAI_PHRASE_KEY=your_key
+AZURE_OPENAI_PHRASE_DEPLOYMENT=gpt-5-mini
+
+# Image Generation (DALL-E)
+AZURE_OPENAI_IMAGE_ENDPOINT=https://your-resource.cognitiveservices.azure.com/openai/deployments/dall-e-3/images/generations?api-version=2024-02-01
+AZURE_OPENAI_IMAGE_API_KEY=your_key
+```
+
+**Available Models:**
+- `gpt-5-mini`: Cost-effective (default)
+- `gpt-4o`: More powerful but expensive
+
+### Verifying Configuration
+
+After starting the backend, you'll see:
+```
+📡 API Keys configured:
+   - Azure OpenAI (Primary): ✅ Yes (or ❌ No)
+   - Gemini (Secondary/Fallback): ✅ Yes (or ❌ No)
+```
+
+---
+
+## 🖼️ ARASAAC Integration
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/arasaac/search/:language/:searchTerm` | GET | Search pictograms |
+| `/api/arasaac/pictogram/:language/:idPictogram` | GET | Get pictogram details |
+| `/api/arasaac/image/:idPictogram` | GET | Get pictogram image |
+| `/api/arasaac/search-multiple` | POST | Search multiple words |
+
+### Image Customization Options
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `color` | Boolean | Color version |
+| `backgroundColor` | String | Background color (e.g., "white") |
+| `plural` | Boolean | Plural form |
+| `skin` | String | Skin color variation |
+| `hair` | String | Hair color variation |
+
+**Example:**
+```bash
+curl "http://localhost:3000/api/arasaac/image/2?color=true&backgroundColor=white"
+```
+
+### Common Pictogram IDs
+
+| Category | Word | ID |
+|----------|------|----|
+| **Pronouns** | I (yo) | 6632 |
+| | You (tú) | 6625 |
+| **Verbs** | Want (querer) | 5441 |
+| | Like (gustar) | 37826 |
+| | Play (jugar) | 23392 |
+| **Food** | Pizza | 2527 |
+| **Places** | School | 32446 |
+| **Emotions** | Happy | 14325 |
+| | Sad | 35066 |
+
+### Using in React Native
+
+```typescript
+import { getPictogramImageUrl } from './services/arasaacService';
+
+// Basic image
+const url = getPictogramImageUrl(2);
+
+// With customization
+const url = getPictogramImageUrl(2, {
+  color: true,
+  backgroundColor: 'white',
+  plural: false
+});
+```
 
 ---
 
@@ -161,30 +285,70 @@
 
 ---
 
-## 🏗️ Project Structure
+## 🏛️ Architecture
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer - React Native/Expo"
+        A[App.tsx] --> B[Navigation]
+        B --> C[WelcomeScreen]
+        B --> D[PCSScreen]
+        B --> E[PhraseSelectionScreen]
+        B --> F[ParentMenuScreen]
+        B --> G[ColorSettingsScreen]
+        
+        D --> H[Pictogram Grid]
+        E --> J[Phrase List]
+        E --> K[Text-to-Speech]
+        
+        L[ThemeContext] --> A
+        M[API Client] --> N[Services]
+    end
+    
+    subgraph "API Gateway - Express.js"
+        O[Express Server] --> P[CORS Middleware]
+        O --> Q[Route Handlers]
+        
+        Q --> R[/api/generate-phrases]
+        Q --> S[/api/arasaac/*]
+        Q --> V[/api/health]
+    end
+    
+    subgraph "Services Layer"
+        X[Gemini Service] --> Y[Google Gemini API]
+        Z[Azure Service] --> AA[Azure OpenAI API]
+        AB[ARASAAC Service] --> AC[ARASAAC API]
+    end
+    
+    subgraph "Data Layer"
+        AF[Firebase Firestore] --> AG[User Profiles]
+        AK[Firebase Auth] --> AL[Authentication]
+    end
+    
+    N --> O
+```
+
+### Project Structure
 
 ```
 wizzwords-aac-platform/
 ├── frontend/                 # React Native/Expo application
 │   ├── screens/              # Application screens
 │   ├── components/           # Reusable components
-│   ├── services/            # Services (Firebase, API, etc.)
-│   ├── context/             # Context providers (Theme, User, Toast)
-│   ├── types/               # TypeScript definitions
-│   └── assets/             # Images and resources
+│   ├── services/             # Services (Firebase, API, etc.)
+│   ├── context/              # Context providers (Theme, User, Toast)
+│   ├── types/                # TypeScript definitions
+│   └── assets/               # Images and resources
 │
-├── backend/                 # Node.js/Express server
-│   ├── services/            # Services (ARASAAC, Gemini, Azure, etc.)
-│   ├── data/               # Data and categories
-│   ├── utils/              # Utilities
-│   └── index.js            # Main server
+├── backend/                  # Node.js/Express server
+│   ├── services/             # Services (ARASAAC, Gemini, Azure, etc.)
+│   ├── data/                 # Data and categories
+│   └── index.js              # Main server
 │
-├── docs/                    # Complete documentation
-│   ├── configuration/      # Configuration guides
-│   ├── development/        # Development documentation
-│   └── technical.md        # Technical documentation
+├── docs/                     # Documentation
+│   └── images/               # Documentation images
 │
-└── README.md                # This file
+└── README.md                 # This file
 ```
 
 ---
@@ -208,30 +372,13 @@ wizzwords-aac-platform/
 ### AI Services
 - **Google Gemini AI** (Gemini 1.5 Flash/Pro)
 - **Azure OpenAI** (GPT-5-mini as alternative)
+- **Azure OpenAI DALL-E 3** for image generation
 - **ARASAAC API** for pictograms
 
 ### Storage
 - **Firebase Firestore** for user data
 - **Firebase Storage** for files
 - **AsyncStorage** for local data
-
----
-
-## 📚 Documentation
-
-Complete documentation is available in the [`docs/`](./docs/) folder:
-
-- **[Configuration Guide](./docs/configuration/)** - API and service configuration
-- **[Technical Documentation](./docs/technical.md)** - Architecture and technical details
-- **[Project Brief](./docs/project-brief.md)** - Project overview
-- **[Project Status](./docs/status.md)** - Current status and roadmap
-
-### Quick Guides
-
-- [API Configuration](./docs/configuration/api-setup.md)
-- [ARASAAC Configuration](./docs/configuration/arasaac-setup.md)
-- [Environment Variables Configuration](./docs/configuration/env-config.md)
-- [Firebase Configuration](./docs/configuration/platform-setup.md)
 
 ---
 
@@ -256,12 +403,36 @@ npm run server               # Start backend server
 npm run server:dev           # Start with auto-reload
 ```
 
-### Code Structure
+### API Endpoints Reference
 
-- **Frontend**: TypeScript with functional components and hooks
-- **Backend**: TypeScript with modular services
-- **Styles**: React Native StyleSheet with dynamic themes
-- **Navigation**: React Navigation with custom transitions
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check |
+| `/api/generate-phrases` | POST | Generate phrases (Azure primary, Gemini fallback) |
+| `/api/generate-more-phrases` | POST | Generate additional phrases |
+| `/api/azure/generate-phrases` | POST | Direct Azure OpenAI call |
+| `/api/generate-image` | POST | Generate image with DALL-E |
+| `/api/arasaac/search/:lang/:term` | GET | Search pictograms |
+| `/api/arasaac/image/:id` | GET | Get pictogram image |
+| `/api/categories` | GET/POST | Manage categories |
+| `/api/avatar` | POST | Generate user avatar |
+
+### Troubleshooting
+
+**"API Key not configured"**
+- Verify the key is in the correct `.env` file
+- Restart the server after adding the key
+
+**"Cannot connect to backend"**
+- Verify backend server is running
+- Check `EXPO_PUBLIC_API_URL` matches your platform
+
+**"CORS Error"**
+- Always use backend proxy endpoints for ARASAAC
+- Never call external APIs directly from frontend
+
+**Android connection issues**
+- Use `http://10.0.2.2:3000` instead of `localhost`
 
 ---
 
@@ -285,7 +456,7 @@ This project is an academic prototype developed for the **Advanced User Interfac
 
 <div align="center">
 
-![Politecnico di Milano](./docs/images/PolimiLogo.png)
+![Politecnico di Milano](./assets/PolimiLogo.png)
 
 **Politecnico di Milano (Polimi)**
 
@@ -303,5 +474,6 @@ Developed as part of the Advanced User Interfaces academic project.
 
 - **ARASAAC** for providing the open-source pictogram library
 - **Google Gemini** for the AI API
+- **Azure OpenAI** for the enterprise AI services
 - **Expo** for the React Native framework
 - **Firebase** for backend services

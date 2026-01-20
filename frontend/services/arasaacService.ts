@@ -86,7 +86,7 @@ export async function getPictogramById(
   const url = `${API_BASE_URL}/api/arasaac/pictogram/${language}/${pictogramId}`;
   
   try {
-    console.log(`   🌐 Calling: ${url}`);
+    console.log(`   Calling: ${url}`);
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -97,14 +97,14 @@ export async function getPictogramById(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
       const errorMessage = errorData.error || `Error ${response.status}`;
-      console.error(`   ❌ Error ${response.status} getting pictogram ${pictogramId}:`, errorMessage);
+      console.error(`   Error ${response.status} getting pictogram ${pictogramId}:`, errorMessage);
       throw new Error(errorMessage);
     }
 
     const pictogram = await response.json();
     return pictogram;
   } catch (error: any) {
-    console.error(`   ❌ Error getting pictogram ${pictogramId}:`, error.message || error);
+    console.error(`   Error getting pictogram ${pictogramId}:`, error.message || error);
     if (error.message?.includes('Network request failed') || error.message?.includes('Failed to fetch')) {
       throw new Error(`Could not connect to backend. Verify it is running at ${API_BASE_URL}`);
     }
@@ -223,31 +223,31 @@ export async function getPictogramsByIds(
     return [];
   }
 
-  console.log(`🔍 Getting ${pictogramIds.length} pictograms from ARASAAC (language: ${language})`);
+  console.log(`Getting ${pictogramIds.length} pictograms from ARASAAC (language: ${language})`);
   console.log(`   IDs: ${pictogramIds.slice(0, 10).join(', ')}${pictogramIds.length > 10 ? '...' : ''}`);
 
   try {
     // Get information for each pictogram in parallel
     const promises = pictogramIds.map(async (id) => {
       try {
-        console.log(`   📥 Getting pictogram ID: ${id}`);
+        console.log(`   Getting pictogram ID: ${id}`);
         const pictogram = await getPictogramById(id, language);
         // Get main text (first keyword)
         const text = pictogram.keywords?.[0]?.keyword || `Pictogram ${id}`;
-        console.log(`   ✅ Pictogram ${id} obtained: "${text}"`);
+        console.log(`   Pictogram ${id} obtained: "${text}"`);
         return { id, pictogram, text };
       } catch (error: any) {
-        console.warn(`⚠️ Could not get pictogram ${id}:`, error.message || error);
+        console.warn(`Could not get pictogram ${id}:`, error.message || error);
         return { id, pictogram: null, text: `Pictogram ${id}` };
       }
     });
 
     const results = await Promise.all(promises);
     const successful = results.filter(r => r.pictogram !== null).length;
-    console.log(`✅ Obtained ${successful}/${pictogramIds.length} pictograms successfully`);
+    console.log(`Obtained ${successful}/${pictogramIds.length} pictograms successfully`);
     return results;
   } catch (error: any) {
-    console.error('❌ Error getting pictograms by IDs:', error);
+    console.error('Error getting pictograms by IDs:', error);
     throw new Error(error.message || 'Error getting pictograms.');
   }
 }

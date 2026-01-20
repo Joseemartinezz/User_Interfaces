@@ -92,7 +92,7 @@ export async function generateImagesForPhrases(phrases: string[]): Promise<Gener
     console.error('Error generating images for phrases:', error);
     
     // Fallback: generate images one by one if batch endpoint fails
-    console.log('⚠️ Fallback: generating images individually...');
+    console.log('Fallback: generating images individually...');
     const imagePromises = phrases.map(async (phrase) => {
       try {
         const imageUrl = await generateImageForPhrase(phrase);

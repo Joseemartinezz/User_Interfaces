@@ -3,25 +3,25 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   Modal,
   TextInput,
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
-import Header from '../components/common/Header';
-import ConfirmModal from '../components/common/ConfirmModal';
+import Header from '../components/Header';
+import ConfirmModal from '../components/ConfirmModal';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
 import { RootStackParamList } from '../types/navigation';
 import { styles } from './CategoryDetailScreen.styles';
-import { deleteCategoryWithPictograms } from '../api';
+import { deleteCategoryWithPictograms } from '../services/api';
 
 type CategoryDetailParams = {
   categoryId: string;
@@ -213,10 +213,10 @@ const CategoryDetailScreen: React.FC = () => {
       // This ensures the category's pictogram mappings are removed from the user's file
       try {
         await deleteCategoryWithPictograms(categoryName, user?.id);
-        console.log(`✅ Category "${categoryName}" removed from backend`);
+        console.log(`Category "${categoryName}" removed from backend`);
       } catch (backendError: any) {
         // Log warning but continue - category might not exist in backend yet
-        console.warn(`⚠️ Could not delete from backend: ${backendError.message}`);
+        console.warn(`Could not delete from backend: ${backendError.message}`);
         // Don't throw - we still want to remove from Firebase
       }
 
@@ -236,13 +236,13 @@ const CategoryDetailScreen: React.FC = () => {
         await updatePreferences({
           customPCSSymbols: updatedSymbols
         });
-        console.log(`🗑️ Removed ${currentSymbols.length - updatedSymbols.length} custom symbols from category "${categoryName}"`);
+        console.log(`Removed ${currentSymbols.length - updatedSymbols.length} custom symbols from category "${categoryName}"`);
       }
 
       showSuccess('Category deleted successfully');
       navigation.goBack();
     } catch (error: any) {
-      console.error('❌ Error deleting category:', error);
+      console.error('Error deleting category:', error);
       showError(error.message || 'Error deleting category');
     } finally {
       setIsDeletingCategory(false);
@@ -251,16 +251,16 @@ const CategoryDetailScreen: React.FC = () => {
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar style="auto" />
+      <StatusBar style="light" />
 
-        {/* Header */}
-        <Header
-          title={categoryName}
-          backgroundColor={selectedColor}
-          showBackButton={true}
-        />
+      {/* Header - outside SafeAreaView so it extends to top edge */}
+      <Header
+        title={categoryName}
+        backgroundColor={selectedColor}
+        showBackButton={true}
+      />
 
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom', 'left', 'right']}>
         {/* Main content */}
         <ScrollView
           style={[styles.content, { backgroundColor: theme.background }]}

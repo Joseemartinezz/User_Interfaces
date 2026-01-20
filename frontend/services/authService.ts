@@ -6,14 +6,14 @@ import {
   User as FirebaseUser,
   updateProfile
 } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { auth } from './firebase';
 
 /**
  * Registers a new user with email and password
  */
 export async function registerUser(email: string, password: string, fullName: string): Promise<FirebaseUser> {
   try {
-    console.log('📝 Registering new user:', email);
+    console.log('Registering new user:', email);
     
     // Create user in Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -24,10 +24,10 @@ export async function registerUser(email: string, password: string, fullName: st
       displayName: fullName
     });
     
-    console.log('✅ User registered successfully:', user.uid);
+    console.log('User registered successfully:', user.uid);
     return user;
   } catch (error: any) {
-    console.error('❌ Error registering user:', error);
+    console.error('Error registering user:', error);
     throw handleAuthError(error);
   }
 }
@@ -37,15 +37,15 @@ export async function registerUser(email: string, password: string, fullName: st
  */
 export async function loginUser(email: string, password: string): Promise<FirebaseUser> {
   try {
-    console.log('🔐 Logging in:', email);
+    console.log('Logging in:', email);
     
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
-    console.log('✅ Session started successfully:', user.uid);
+    console.log('Session started successfully:', user.uid);
     return user;
   } catch (error: any) {
-    console.error('❌ Error logging in:', error);
+    console.error('Error logging in:', error);
     throw handleAuthError(error);
   }
 }
@@ -55,11 +55,11 @@ export async function loginUser(email: string, password: string): Promise<Fireba
  */
 export async function signOut(): Promise<void> {
   try {
-    console.log('👋 Signing out');
+    console.log('Signing out');
     await firebaseSignOut(auth);
-    console.log('✅ Session closed successfully');
+    console.log('Session closed successfully');
   } catch (error: any) {
-    console.error('❌ Error signing out:', error);
+    console.error('Error signing out:', error);
     throw error;
   }
 }

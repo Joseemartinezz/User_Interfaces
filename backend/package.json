@@ -1,7 +1,7 @@
 {
   "name": "aac-backend",
   "version": "1.0.0",
-  "description": "Backend proxy para AAC App - Evita problemas de CORS",
+  "description": "Backend proxy for AAC App - Avoids CORS issues",
   "main": "index.js",
   "scripts": {
     "start": "npx ts-node index.js",

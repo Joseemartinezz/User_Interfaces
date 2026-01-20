@@ -62,7 +62,7 @@ export const styles: ReturnType<typeof StyleSheet.create> = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     flexShrink: 0,
     position: 'relative',
-    overflow: 'hidden', // Contiene sombras durante animaciones de escala
+    overflow: 'hidden', // Contains shadows during scale animations
   },
   // Audio indicator badge
   audioIndicatorBadge: {
@@ -77,8 +77,8 @@ export const styles: ReturnType<typeof StyleSheet.create> = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     zIndex: 10,
-    overflow: 'hidden', // Previene artefactos durante transformaciones
-    // Sin sombras ni elevation - elementos escalados no deben tener sombras
+    overflow: 'hidden', // Prevents artifacts during transformations
+    // No shadows or elevation - scaled elements should not have shadows
   },
   audioIndicatorIcon: {
     fontSize: 20,
@@ -203,7 +203,7 @@ export const styles: ReturnType<typeof StyleSheet.create> = StyleSheet.create({
     padding: 16,
     paddingHorizontal: 40,
     paddingTop: 30,
-    paddingBottom: 20,
+    paddingBottom: -17,
     marginTop: 10,
     flexDirection: 'row',
     gap: 16,
@@ -242,7 +242,7 @@ export const styles: ReturnType<typeof StyleSheet.create> = StyleSheet.create({
     padding: 16,
     paddingHorizontal: 40,
     paddingTop: 20,
-    paddingBottom: 37,
+    paddingBottom: 0,
     marginTop: 10,
     flexDirection: 'row',
     gap: 16,
@@ -341,7 +341,7 @@ export const styles: ReturnType<typeof StyleSheet.create> = StyleSheet.create({
     paddingVertical: 4,
     gap: 8,
     marginTop: 0,
-    marginBottom: 0,
+    marginBottom: -12,
   },
   dot: {
     width: 8,

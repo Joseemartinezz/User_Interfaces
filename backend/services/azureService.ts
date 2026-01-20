@@ -1,10 +1,6 @@
 // Azure OpenAI API service for generating phrases
 // Backend service that proxies Azure OpenAI API calls
 
-// Note: fetch is available globally in Node.js 18+, no need to import it
-
-// It's recommended to place sensitive keys and endpoints in environment variables!
-// Helper function to get env vars (reads them at runtime, not module load time)
 function getAzureConfig() {
   return {
     url: process.env.AZURE_OPENAI_PHRASE_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_URL || '',
@@ -40,7 +36,7 @@ function testAzureConnection() {
   })
     .then(response => response.ok)
     .catch(error => {
-      console.error('❌ Could not connect to Azure OpenAI:', error);
+      console.error('Could not connect to Azure OpenAI:', error);
       return false;
     });
 }
@@ -64,21 +60,21 @@ async function generateAzurePhrases(words, childAge) {
 
     const instructions = 'You are a helpful assistant that creates natural, child-friendly phrases for AAC communication devices.';
     const input = `
-You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
-${ageContext}
-Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
-${words.join(', ')}
+      You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
+      ${ageContext}
+      Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
+      ${words.join(', ')}
 
-IMPORTANT: You MUST generate EXACTLY 3 phrases. No more, no less. Generate exactly 3 phrases.
+      IMPORTANT: You MUST generate EXACTLY 3 phrases. No more, no less. Generate exactly 3 phrases.
 
-Guidelines:
-- The phrases must be short but contain ALL information provided.
-- They should sound natural when spoken aloud.
-- They must be grammatically correct and easy for a child.
-- Use vocabulary and sentence complexity appropriate for the child's age.
-- Generate EXACTLY 3 different phrases. Do not generate 1, 2, 4, 5, or any other number. Only 3.
-- Return exactly 3 phrases, one per line, numbered starting from 1.
-`;
+      Guidelines:
+      - The phrases must be short but contain ALL information provided.
+      - They should sound natural when spoken aloud.
+      - They must be grammatically correct and easy for a child.
+      - Use vocabulary and sentence complexity appropriate for the child's age.
+      - Generate EXACTLY 3 different phrases. Do not generate 1, 2, 4, 5, or any other number. Only 3.
+      - Return exactly 3 phrases, one per line, numbered starting from 1.
+    `;
 
     const response = await fetch(config.url, {
       method: 'POST',
@@ -139,7 +135,7 @@ Guidelines:
     // Limit to exactly 3 phrases for initial generation
     return extractedPhrases.slice(0, 3);
   } catch (error) {
-    console.error('❌ Error generating phrases with Azure OpenAI:', error);
+    console.error('Error generating phrases with Azure OpenAI:', error);
     throw new Error(error.message || 'Error generating phrases with Azure OpenAI.');
   }
 }
@@ -163,24 +159,25 @@ async function generateMoreAzurePhrases(words, existingPhrases, childAge) {
 
     const instructions = 'You are a helpful assistant that creates natural, child-friendly phrases for AAC communication devices.';
     const input = `
-You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
-${ageContext}
-Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
-${words.join(', ')}
+      You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
+      ${ageContext}
+      Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
+      ${words.join(', ')}
 
-IMPORTANT: You MUST generate EXACTLY 1 phrase. No more, no less. Just one single phrase.
+      IMPORTANT: You MUST generate EXACTLY 1 phrase. No more, no less. Just one single phrase.
 
-Guidelines:
-- The phrase must be short but contain ALL information provided.
-- It should sound natural when spoken aloud.
-- It must be grammatically correct and easy for a child.
-- Use vocabulary and sentence complexity appropriate for the child's age.
-- Generate EXACTLY 1 phrase. No more, no less. Just one single phrase.
-- Return exactly 1 phrase.
+      Guidelines:
+      - The phrase must be short but contain ALL information provided.
+      - It should sound natural when spoken aloud.
+      - It must be grammatically correct and easy for a child.
+      - Use vocabulary and sentence complexity appropriate for the child's age.
+      - Generate EXACTLY 1 phrase. No more, no less. Just one single phrase.
+      - Return exactly 1 phrase.
 
-Do NOT repeat these already generated phrases: ${existingPhrases.join(', ')}.
+      Do NOT repeat these already generated phrases: ${existingPhrases.join(', ')}.
 
-Remember: Generate EXACTLY 1 new phrase only.`;
+      Remember: Generate EXACTLY 1 new phrase only.
+    `;
 
     const response = await fetch(config.url, {
       method: 'POST',
@@ -241,7 +238,7 @@ Remember: Generate EXACTLY 1 new phrase only.`;
     // Limit to exactly 1 phrase for "Generate More"
     return extractedPhrases.slice(0, 1);
   } catch (error) {
-    console.error('❌ Error generating more phrases with Azure OpenAI:', error);
+    console.error('Error generating more phrases with Azure OpenAI:', error);
     throw new Error(error.message || 'Error generating more phrases with Azure OpenAI.');
   }
 }

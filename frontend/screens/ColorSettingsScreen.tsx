@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Switch,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Header from '../components/common/Header';
+import Header from '../components/Header';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
@@ -51,15 +51,15 @@ const ColorSettingsScreen: React.FC<ColorSettingsScreenProps> = ({ navigation })
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar style="auto" />
+      <StatusBar style="light" />
 
-        {/* Header */}
-        <Header
-          title="Color Theme"
-          showProfile={false}
-        />
+      {/* Header - outside SafeAreaView so it extends to top edge */}
+      <Header
+        title="Color Theme"
+        showProfile={false}
+      />
 
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom', 'left', 'right']}>
         {/* Content */}
         <ScrollView
           style={[styles.content, { backgroundColor: theme.background }]}

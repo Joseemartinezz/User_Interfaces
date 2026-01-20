@@ -98,7 +98,7 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  // Estilos para modal
+  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

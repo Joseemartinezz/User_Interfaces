@@ -6,18 +6,18 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  SafeAreaView,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
-import { getUserAvatarUrl } from '../api';
-import { getInitials, isValidEmail, isValidName } from '../utils/index';
-import Header from '../components/common/Header';
+import { getUserAvatarUrl } from '../services/api';
+import { getInitials, isValidEmail, isValidName } from '../services/utils';
+import Header from '../components/Header';
 import { RootStackParamList } from '../types/navigation';
 import { styles } from './ProfileScreen.styles';
 
@@ -158,15 +158,15 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar style="auto" />
+      <StatusBar style="light" />
 
-        {/* Header */}
-        <Header
-          title="My Profile"
-          showProfile={false}
-        />
+      {/* Header - outside SafeAreaView so it extends to top edge */}
+      <Header
+        title="My Profile"
+        showProfile={false}
+      />
 
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom', 'left', 'right']}>
         <ScrollView
           style={[styles.content, { backgroundColor: theme.background }]}
           contentContainerStyle={styles.contentContainer}

@@ -3,8 +3,6 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const fetch = require('node-fetch');
 const { generateAzurePhrases, generateMoreAzurePhrases, testAzureConnection } = require('./services/azureService.ts');
 const { generateAacImage, generateAacImagesForPhrases } = require('./services/imageService.ts');
 const {
@@ -22,6 +20,18 @@ const {
   getPictogramImage,
   searchMultiplePictograms
 } = require('./services/arasaacService.ts');
+const {
+  isGeminiConfigured,
+  generateGeminiPhrases,
+  generateMoreGeminiPhrases,
+  formatGeminiError
+} = require('./services/geminiService.ts');
+const {
+  generateUserAvatar,
+  generateAvatarDataUrl,
+  createUserSeed,
+  getInitials
+} = require('./services/avatarService.ts');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,7 +46,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware logging for all requests
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
-  console.log(`\n📥 [${timestamp}] ${req.method} ${req.path}`);
+  console.log(`\n[${timestamp}] ${req.method} ${req.path}`);
   console.log(`   Origin: ${req.headers.origin || 'N/A'}`);
   console.log(`   User-Agent: ${req.headers['user-agent']?.substring(0, 50) || 'N/A'}`);
   if (Object.keys(req.query).length > 0) {
@@ -49,7 +59,7 @@ app.use((req, res, next) => {
   // Intercept response to log status
   const originalSend = res.send;
   res.send = function(data) {
-    console.log(`📤 [${timestamp}] ${req.method} ${req.path} → ${res.statusCode}`);
+    console.log(`[${timestamp}] ${req.method} ${req.path} -> ${res.statusCode}`);
     return originalSend.call(this, data);
   };
   
@@ -99,67 +109,22 @@ const AZURE_OPENAI_PHRASE_URL = process.env.AZURE_OPENAI_PHRASE_URL || process.e
 const AZURE_OPENAI_PHRASE_KEY = process.env.AZURE_OPENAI_PHRASE_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_KEY;
 
 if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
-  console.warn('⚠️ WARNING: Azure OpenAI for phrases is not configured in environment variables');
+  console.warn('WARNING: Azure OpenAI for phrases is not configured in environment variables');
   console.warn('   Add AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY to backend/.env file');
   console.warn('   Azure OpenAI is the primary AI provider');
 } else {
-  console.log('✅ Azure OpenAI configured (Primary Provider)');
+  console.log('Azure OpenAI configured (Primary Provider)');
 }
 
 // Gemini Configuration (Secondary Provider/Fallback)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 if (!GEMINI_API_KEY) {
-  console.warn('⚠️ WARNING: GEMINI_API_KEY is not configured in environment variables');
+  console.warn('WARNING: GEMINI_API_KEY is not configured in environment variables');
   console.warn('   Add GEMINI_API_KEY=your_key_here to backend/.env file');
   console.warn('   Gemini will be used as fallback if Azure OpenAI fails');
 } else {
-  console.log('✅ Gemini configured (Secondary Provider/Fallback)');
-}
-
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY || '');
-
-/**
- * Lists available Gemini models
- * Useful for debugging
- */
-async function listAvailableModels() {
-  try {
-    // Try to list models if method is available
-    if (typeof genAI.listModels === 'function') {
-      const models = await genAI.listModels();
-      const modelNames = Array.isArray(models) 
-        ? models.map(model => model.name || model)
-        : [];
-      console.log('📋 Available models:', modelNames);
-      return modelNames;
-    } else {
-      console.log('⚠️ listModels() is not available in this SDK version');
-      return [];
-    }
-  } catch (error) {
-    console.error('❌ Error listing models:', error.message);
-    return [];
-  }
-}
-
-/**
- * Extracts numbered phrases from the response text
- */
-function extractPhrases(text) {
-  const lines = text.split('\n');
-  const phrases = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    // Search for lines that start with number followed by period
-    const match = trimmed.match(/^\d+\.\s*(.+)$/);
-    if (match && match[1]) {
-      phrases.push(match[1].trim());
-    }
-  }
-
-  return phrases.length > 0 ? phrases : [text.trim()];
+  console.log('Gemini configured (Secondary Provider/Fallback)');
 }
 
 /**
@@ -177,88 +142,34 @@ app.post('/api/generate-phrases', async (req, res) => {
     // Try first with Azure OpenAI (Primary Provider)
     if (AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) {
       try {
-        console.log('🔄 Attempting to generate phrases with Azure OpenAI (Primary Provider)...');
+        console.log('Attempting to generate phrases with Azure OpenAI (Primary Provider)...');
         const phrases = await generateAzurePhrases(words, childAge);
-        console.log('✅ Phrases generated successfully with Azure OpenAI');
+        console.log('Phrases generated successfully with Azure OpenAI');
         return res.json({ phrases });
       } catch (azureError) {
-        console.error('❌ Azure OpenAI failed:', azureError.message);
-        console.log('⚠️ Attempting with Gemini as fallback...');
+        console.error('Azure OpenAI failed:', azureError.message);
+        console.log('Attempting with Gemini as fallback...');
       }
     } else {
-      console.log('⚠️ Azure OpenAI is not configured, using Gemini as primary provider...');
+      console.log('Azure OpenAI is not configured, using Gemini as primary provider...');
     }
 
     // If Azure failed or is not configured, try with Gemini (Secondary Provider)
-    if (!GEMINI_API_KEY) {
+    if (!isGeminiConfigured()) {
       return res.status(500).json({ 
         error: 'No AI provider is configured',
         message: 'Configure AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY, or GEMINI_API_KEY in backend/.env'
       });
     }
 
-    // Build age-specific context for the prompt
-    const ageContext = childAge 
-      ? `The child is ${childAge} years old. Adjust the language complexity, vocabulary, and sentence structure to be age-appropriate for a ${childAge}-year-old child.`
-      : 'Adjust the language complexity and vocabulary to be appropriate for a child.';
-
-    const basePrompt = `
-You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
-${ageContext}
-Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
-${words.join(', ')}
-
-Guidelines:
-- The phrases must be short but contain ALL information provided.
-- They should sound natural when spoken aloud.
-- They must be grammatically correct and easy for a child.
-- Use vocabulary and sentence complexity appropriate for the child's age.
-- Generate exactly 3 different phrases.
-- Return one phrase per line, numbered starting from 1.
-`;
-
-    console.log('🔄 Calling Gemini API with words:', words);
-    
-    // Try with different Gemini models in order of preference
-    const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro'];
-    let text = null;
-    let lastError = null;
-    
-    for (const modelName of modelsToTry) {
-      try {
-        console.log(`📡 Attempting with Gemini model: ${modelName}...`);
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(basePrompt);
-        const response = await result.response;
-        text = response.text();
-        console.log(`✅ Response received from Gemini with model: ${modelName}`);
-        console.log('📄 Full text:', text);
-        break; // If it works, exit the loop
-      } catch (modelError) {
-        const errorMsg = modelError.message || String(modelError);
-        console.log(`❌ ${modelName} failed:`, errorMsg.substring(0, 150));
-        lastError = modelError;
-        continue; // Try next model
-      }
+    const phrases = await generateGeminiPhrases(words, childAge);
+    console.log(`Generated ${phrases.length} phrases with Gemini`);
+    if (phrases.length !== 3) {
+      console.warn(`Warning: Expected 3 phrases but got ${phrases.length}`);
     }
-    
-    if (!text) {
-      // If all Gemini models failed
-      console.log('⚠️ All Gemini models failed. Listing available models...');
-      await listAvailableModels();
-      throw lastError || new Error('All AI providers failed. Verify your configuration.');
-    }
-
-    const phrases = extractPhrases(text);
-    // Limit to exactly 3 phrases for initial generation
-    const limitedPhrases = phrases.slice(0, 3);
-    console.log(`📊 Extracted phrases: ${phrases.length}, limited to: ${limitedPhrases.length}`);
-    if (limitedPhrases.length !== 3) {
-      console.warn(`⚠️ Warning: Expected 3 phrases but got ${limitedPhrases.length}`);
-    }
-    res.json({ phrases: limitedPhrases });
+    res.json({ phrases });
   } catch (error) {
-    console.error('❌ Error generating phrases:', error);
+    console.error('Error generating phrases:', error);
     console.error('Error details:', {
       message: error.message,
       status: error.status,
@@ -267,15 +178,7 @@ Guidelines:
       stack: error.stack?.split('\n').slice(0, 5).join('\n')
     });
     
-    // More useful error message
-    let errorMessage = error.message || 'Unknown error';
-    if (error.message?.includes('404') || error.message?.includes('not found')) {
-      errorMessage = 'Gemini model is not available. Verify your API key and available models.';
-    } else if (error.message?.includes('API_KEY') || error.message?.includes('API key')) {
-      errorMessage = 'Invalid Gemini API Key or no permissions. Verify your API key.';
-    } else if (error.message?.includes('quota') || error.message?.includes('limit')) {
-      errorMessage = 'Gemini API quota exceeded. Verify your plan.';
-    }
+    const errorMessage = formatGeminiError(error);
     
     res.status(500).json({ 
       error: 'Error generating phrases',
@@ -307,96 +210,40 @@ app.post('/api/generate-more-phrases', async (req, res) => {
     // Try first with Azure OpenAI (Primary Provider)
     if (AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) {
       try {
-        console.log('🔄 Attempting to generate more phrases with Azure OpenAI (Primary Provider)...');
+        console.log('Attempting to generate more phrases with Azure OpenAI (Primary Provider)...');
         const phrases = await generateMoreAzurePhrases(words, existingPhrases, childAge);
         // Limit to exactly 1 phrase for "Generate More" (one additional phrase)
         const limitedPhrases = phrases.slice(0, 1);
-        console.log(`📊 Azure phrases: ${phrases.length}, limited to: ${limitedPhrases.length}`);
+        console.log(`Azure phrases: ${phrases.length}, limited to: ${limitedPhrases.length}`);
         if (limitedPhrases.length !== 1) {
-          console.warn(`⚠️ Warning: Expected 1 phrase but got ${limitedPhrases.length}`);
+          console.warn(`Warning: Expected 1 phrase but got ${limitedPhrases.length}`);
         }
-        console.log('✅ Phrase generated successfully with Azure OpenAI');
+        console.log('Phrase generated successfully with Azure OpenAI');
         return res.json({ phrases: limitedPhrases });
       } catch (azureError) {
-        console.error('❌ Azure OpenAI failed:', azureError.message);
-        console.log('⚠️ Attempting with Gemini as fallback...');
+        console.error('Azure OpenAI failed:', azureError.message);
+        console.log('Attempting with Gemini as fallback...');
       }
     } else {
-      console.log('⚠️ Azure OpenAI is not configured, using Gemini as primary provider...');
+      console.log('Azure OpenAI is not configured, using Gemini as primary provider...');
     }
 
     // If Azure failed or is not configured, try with Gemini (Secondary Provider)
-    if (!GEMINI_API_KEY) {
+    if (!isGeminiConfigured()) {
       return res.status(500).json({ 
         error: 'No AI provider is configured',
         message: 'Configure AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY, or GEMINI_API_KEY in backend/.env'
       });
     }
 
-    // Build age-specific context for the prompt
-    const ageContext = childAge 
-      ? `The child is ${childAge} years old. Adjust the language complexity, vocabulary, and sentence structure to be age-appropriate for a ${childAge}-year-old child.`
-      : 'Adjust the language complexity and vocabulary to be appropriate for a child.';
-
-    const basePrompt = `
-You are helping a child who uses an Augmentative and Alternative Communication (AAC) device.
-${ageContext}
-Your task is to create simple, natural, child-friendly spoken phrases that include the following words:
-${words.join(', ')}
-
-IMPORTANT: You MUST generate EXACTLY 1 phrase. No more, no less. Just one single phrase.
-
-Guidelines:
-- The phrase must be short but contain ALL information provided.
-- It should sound natural when spoken aloud.
-- It must be grammatically correct and easy for a child.
-- Use vocabulary and sentence complexity appropriate for the child's age.
-- Generate EXACTLY 1 phrase. Do not generate 2, 3, or any other number. Only 1.
-- Return exactly 1 phrase.
-`;
-
-    const promptMore = basePrompt + '\n\nDo NOT repeat any of these phrases:\n' + existingPhrases.join('\n') + '\n\nRemember: Generate EXACTLY 1 new phrase only.';
-
-    // Try with different Gemini models in order of preference
-    const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro'];
-    let text = null;
-    let lastError = null;
-    
-    for (const modelName of modelsToTry) {
-      try {
-        console.log(`📡 Attempting with Gemini model: ${modelName} to generate more phrases...`);
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(promptMore);
-        const response = await result.response;
-        text = response.text();
-        console.log(`✅ Response received from Gemini with model: ${modelName}`);
-        console.log('📄 Full text:', text);
-        break; // If it works, exit the loop
-      } catch (modelError) {
-        const errorMsg = modelError.message || String(modelError);
-        console.log(`❌ ${modelName} failed:`, errorMsg.substring(0, 150));
-        lastError = modelError;
-        continue; // Try next model
-      }
+    const phrases = await generateMoreGeminiPhrases(words, existingPhrases, childAge);
+    console.log(`Generated ${phrases.length} phrases with Gemini`);
+    if (phrases.length !== 1) {
+      console.warn(`Warning: Expected 1 phrase but got ${phrases.length}`);
     }
-    
-    if (!text) {
-      // If all Gemini models failed
-      console.log('⚠️ All Gemini models failed. Listing available models...');
-      await listAvailableModels();
-      throw lastError || new Error('All AI providers failed. Verify your configuration.');
-    }
-
-    const phrases = extractPhrases(text);
-    // Limit to exactly 1 phrase for "Generate More" (one additional phrase)
-    const limitedPhrases = phrases.slice(0, 1);
-    console.log(`📊 Extracted phrases: ${phrases.length}, limited to: ${limitedPhrases.length}`);
-    if (limitedPhrases.length !== 1) {
-      console.warn(`⚠️ Warning: Expected 1 phrase but got ${limitedPhrases.length}`);
-    }
-    res.json({ phrases: limitedPhrases });
+    res.json({ phrases });
   } catch (error) {
-    console.error('❌ Error generating more phrases:', error);
+    console.error('Error generating more phrases:', error);
     console.error('Error details:', {
       message: error.message,
       status: error.status,
@@ -405,15 +252,7 @@ Guidelines:
       stack: error.stack?.split('\n').slice(0, 5).join('\n')
     });
     
-    // More useful error message
-    let errorMessage = error.message || 'Unknown error';
-    if (error.message?.includes('404') || error.message?.includes('not found')) {
-      errorMessage = 'Gemini model is not available. Verify your API key and available models.';
-    } else if (error.message?.includes('API_KEY') || error.message?.includes('API key')) {
-      errorMessage = 'Invalid Gemini API Key or no permissions. Verify your API key.';
-    } else if (error.message?.includes('quota') || error.message?.includes('limit')) {
-      errorMessage = 'Gemini API quota exceeded. Verify your plan.';
-    }
+    const errorMessage = formatGeminiError(error);
     
     res.status(500).json({ 
       error: 'Error generating more phrases',
@@ -453,7 +292,7 @@ app.post('/api/generate-image', async (req, res) => {
       phrase: phrase.trim() 
     });
   } catch (error) {
-    console.error('❌ Error generating image:', error);
+    console.error('Error generating image:', error);
     
     let statusCode = 500;
     let errorMessage = error.message || 'Unknown error generating image';
@@ -513,7 +352,7 @@ app.post('/api/generate-images', async (req, res) => {
       successful: results.filter(r => r.imageBase64 !== '').length
     });
   } catch (error) {
-    console.error('❌ Error generating images:', error);
+    console.error('Error generating images:', error);
     
     res.status(500).json({ 
       error: 'Error generating images',
@@ -550,16 +389,16 @@ app.post('/api/azure/generate-phrases', async (req, res) => {
       });
     }
 
-    console.log('🔄 Calling Azure OpenAI API with words:', words);
+    console.log('Calling Azure OpenAI API with words:', words);
     
     try {
       const phrases = await generateAzurePhrases(words);
-      console.log(`✅ Response received from Azure OpenAI`);
-      console.log('📄 Generated phrases:', phrases);
+      console.log(`Response received from Azure OpenAI`);
+      console.log('Generated phrases:', phrases);
 
       res.json({ phrases });
     } catch (azureError) {
-      console.error('❌ Azure OpenAI error:', azureError);
+      console.error('Azure OpenAI error:', azureError);
       
       let errorMessage = azureError.message || 'Unknown error';
       if (azureError.message?.includes('401') || azureError.message?.includes('Unauthorized')) {
@@ -573,7 +412,7 @@ app.post('/api/azure/generate-phrases', async (req, res) => {
       throw new Error(errorMessage);
     }
   } catch (error) {
-    console.error('❌ Error generating phrases with Azure OpenAI:', error);
+    console.error('Error generating phrases with Azure OpenAI:', error);
     
     res.status(500).json({ 
       error: 'Error generating phrases',
@@ -608,18 +447,18 @@ app.post('/api/azure/generate-more-phrases', async (req, res) => {
       });
     }
 
-    console.log('🔄 Calling Azure OpenAI API to generate more phrases...');
+    console.log('Calling Azure OpenAI API to generate more phrases...');
     console.log('   Words:', words);
     console.log('   Existing phrases:', existingPhrases);
     
     try {
       const phrases = await generateMoreAzurePhrases(words, existingPhrases);
-      console.log(`✅ Response received from Azure OpenAI`);
-      console.log('📄 Generated phrases:', phrases);
+      console.log(`Response received from Azure OpenAI`);
+      console.log('Generated phrases:', phrases);
 
       res.json({ phrases });
     } catch (azureError) {
-      console.error('❌ Azure OpenAI error:', azureError);
+      console.error('Azure OpenAI error:', azureError);
       
       let errorMessage = azureError.message || 'Unknown error';
       if (azureError.message?.includes('401') || azureError.message?.includes('Unauthorized')) {
@@ -633,7 +472,7 @@ app.post('/api/azure/generate-more-phrases', async (req, res) => {
       throw new Error(errorMessage);
     }
   } catch (error) {
-    console.error('❌ Error generating more phrases with Azure OpenAI:', error);
+    console.error('Error generating more phrases with Azure OpenAI:', error);
     
     res.status(500).json({ 
       error: 'Error generating more phrases',
@@ -646,7 +485,7 @@ app.post('/api/azure/generate-more-phrases', async (req, res) => {
 });
 
 // ==========================================
-// ENDPOINTS DE ARASAAC
+// ARASAAC ENDPOINTS
 // ==========================================
 
 /**
@@ -665,7 +504,7 @@ app.get('/api/arasaac/image/:idPictogram', async (req, res) => {
       return res.status(400).json({ error: 'Pictogram ID is required' });
     }
 
-    console.log(`🖼️ Serving pictogram image ID: ${idPictogram}`);
+    console.log(`Serving pictogram image ID: ${idPictogram}`);
     console.log(`   Request from: ${req.headers['user-agent'] || 'Unknown'}`);
 
     // Use ARASAAC service to get image
@@ -687,7 +526,7 @@ app.get('/api/arasaac/image/:idPictogram', async (req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.send(imageBuffer);
   } catch (error) {
-    console.error('❌ Error getting image from ARASAAC:', error);
+    console.error('Error getting image from ARASAAC:', error);
     
     if (error.message?.includes('not found')) {
       return res.status(404).json({ 
@@ -720,7 +559,7 @@ app.get('/api/arasaac/search/:language/:searchTerm', async (req, res) => {
 
     res.json(pictograms);
   } catch (error) {
-    console.error('❌ Error searching pictograms in ARASAAC:', error);
+    console.error('Error searching pictograms in ARASAAC:', error);
     res.status(500).json({ 
       error: 'Error searching pictograms',
       message: error.message
@@ -745,7 +584,7 @@ app.get('/api/arasaac/pictogram/:language/:idPictogram', async (req, res) => {
 
     res.json(pictogram);
   } catch (error) {
-    console.error('❌ Error getting pictogram from ARASAAC:', error);
+    console.error('Error getting pictogram from ARASAAC:', error);
     
     if (error.message?.includes('not found')) {
       return res.status(404).json({ 
@@ -767,7 +606,7 @@ app.get('/api/arasaac/pictogram/:language/:idPictogram', async (req, res) => {
  */
 app.post('/api/arasaac/search-multiple', async (req, res) => {
   try {
-    const { words, language = 'es' } = req.body;
+    const { words, language = 'en' } = req.body;
 
     if (!words || !Array.isArray(words) || words.length === 0) {
       return res.status(400).json({ error: 'An array of words is required' });
@@ -778,7 +617,7 @@ app.post('/api/arasaac/search-multiple', async (req, res) => {
 
     res.json(resultsMap);
   } catch (error) {
-    console.error('❌ Error in multiple search:', error);
+    console.error('Error in multiple search:', error);
     res.status(500).json({ 
       error: 'Error searching multiple pictograms',
       message: error.message
@@ -813,7 +652,7 @@ app.get('/', (req, res) => {
       avatar: 'POST /api/avatar',
       userInitials: 'GET /api/user/initials'
     },
-    hasGeminiApiKey: !!GEMINI_API_KEY,
+    hasGeminiApiKey: isGeminiConfigured(),
     hasAzureOpenAI: !!(AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY)
   });
 });
@@ -840,7 +679,7 @@ app.get('/api/user', (req, res) => {
   try {
     res.json({ user: userData });
   } catch (error) {
-    console.error('❌ Error getting user:', error);
+    console.error('Error getting user:', error);
     res.status(500).json({ 
       error: 'Error getting user',
       message: error.message
@@ -869,10 +708,10 @@ app.put('/api/user', (req, res) => {
       userData.preferences = { ...userData.preferences, ...preferences };
     }
     
-    console.log('✅ User updated:', userData);
+    console.log('User updated:', userData);
     res.json({ user: userData });
   } catch (error) {
-    console.error('❌ Error updating user:', error);
+    console.error('Error updating user:', error);
     res.status(500).json({ 
       error: 'Error updating user',
       message: error.message
@@ -896,10 +735,10 @@ app.post('/api/user/reset', (req, res) => {
       }
     };
     
-    console.log('🔄 User reset to default values');
+    console.log('User reset to default values');
     res.json({ user: userData });
   } catch (error) {
-    console.error('❌ Error resetting user:', error);
+    console.error('Error resetting user:', error);
     res.status(500).json({ 
       error: 'Error resetting user',
       message: error.message
@@ -916,19 +755,16 @@ app.post('/api/avatar', async (req, res) => {
   try {
     const { userId, email, fullName } = req.body;
     
-    // Import avatar generator
-    const avatarGenerator = require('./utils/avatarGenerator.js');
-    
     // Create consistent seed
-    const seed = avatarGenerator.createUserSeed(userId, email, fullName);
+    const seed = createUserSeed(userId, email, fullName);
     
-    // Generate avatar (now async because it converts SVG to PNG)
-    const avatarUrl = await avatarGenerator.generateAvatarDataUrl(seed);
+    // Generate avatar (async because it converts SVG to PNG)
+    const avatarUrl = await generateAvatarDataUrl(seed);
     
-    console.log(`✅ Avatar generated for seed: ${seed.substring(0, 10)}...`);
+    console.log(`Avatar generated for seed: ${seed.substring(0, 10)}...`);
     res.json({ avatarUrl, seed });
   } catch (error) {
-    console.error('❌ Error generating avatar:', error);
+    console.error('Error generating avatar:', error);
     res.status(500).json({ 
       error: 'Error generating avatar',
       message: error.message
@@ -941,12 +777,11 @@ app.post('/api/avatar', async (req, res) => {
  */
 app.get('/api/user/initials', (req, res) => {
   try {
-    const avatarGenerator = require('./utils/avatarGenerator.js');
-    const initials = avatarGenerator.getInitials(userData.fullName, userData.email);
+    const initials = getInitials(userData.fullName, userData.email);
     
     res.json({ initials });
   } catch (error) {
-    console.error('❌ Error getting initials:', error);
+    console.error('Error getting initials:', error);
     res.status(500).json({ 
       error: 'Error getting initials',
       message: error.message
@@ -977,11 +812,11 @@ app.get('/api/categories', async (req, res) => {
     }
     
     const categories = await getUserCategories(userId);
-    console.log(`✅ Categories loaded for user ${userId}: ${Object.keys(categories).length} categories`);
+    console.log(`Categories loaded for user ${userId}: ${Object.keys(categories).length} categories`);
     
     res.json({ categories });
   } catch (error) {
-    console.error('❌ Error getting categories:', error);
+    console.error('Error getting categories:', error);
     res.status(500).json({
       error: 'Error getting categories',
       message: error.message
@@ -1015,7 +850,7 @@ app.get('/api/categories/:categoryName', async (req, res) => {
       isPredefined: isPredefinedCategory(categoryName)
     });
   } catch (error) {
-    console.error('❌ Error getting category pictograms:', error);
+    console.error('Error getting category pictograms:', error);
     res.status(500).json({
       error: 'Error getting category pictograms',
       message: error.message
@@ -1027,7 +862,7 @@ app.get('/api/categories/:categoryName', async (req, res) => {
  * POST /api/categories
  * Create a new custom category
  * Body: { categoryName: string, maxResults?: number, description?: string, userId: string }
- * Header: Authorization: Bearer <userId> (opcional si viene en body)
+ * Header: Authorization: Bearer <userId> (optional if provided in body)
  */
 app.post('/api/categories', authenticateUser, async (req, res) => {
   try {
@@ -1060,7 +895,7 @@ app.post('/api/categories', authenticateUser, async (req, res) => {
       message: `Category "${trimmedName}" created successfully with ${pictogramIds.length} pictograms for user ${userId}`
     });
   } catch (error) {
-    console.error('❌ Error creating category:', error);
+    console.error('Error creating category:', error);
     
     // Check if it's a duplicate error
     if (error.message.includes('already exists')) {
@@ -1098,7 +933,7 @@ app.delete('/api/categories/:categoryName', authenticateUser, async (req, res) =
       message: `Category "${categoryName}" deleted successfully for user ${userId}`
     });
   } catch (error) {
-    console.error('❌ Error deleting category:', error);
+    console.error('Error deleting category:', error);
     
     if (error.message.includes('does not exist')) {
       return res.status(404).json({
@@ -1127,7 +962,7 @@ app.post('/api/categories/initialize', async (req, res) => {
       predefinedCategories: PREDEFINED_CATEGORIES
     });
   } catch (error) {
-    console.error('❌ Error initializing categories:', error);
+    console.error('Error initializing categories:', error);
     res.status(500).json({
       error: 'Error initializing categories',
       message: error.message
@@ -1141,7 +976,7 @@ app.post('/api/categories/initialize', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok',
-    hasGeminiApiKey: !!GEMINI_API_KEY,
+    hasGeminiApiKey: isGeminiConfigured(),
     hasAzureOpenAI: !!(AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY)
   });
 });
@@ -1149,16 +984,16 @@ app.get('/api/health', (req, res) => {
 // Listen on all interfaces (0.0.0.0) to allow connections from emulators and devices
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`🚀 Backend server running at http://localhost:${PORT}`);
-  console.log(`🌐 Also available at http://127.0.0.1:${PORT}`);
-  console.log(`\n📡 API Keys configured:`);
-  console.log(`   - Azure OpenAI (Primary): ${(AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) ? '✅ Yes' : '❌ No'}`);
-  console.log(`   - Gemini (Secondary/Fallback): ${GEMINI_API_KEY ? '✅ Yes' : '❌ No'}`);
-  console.log(`\n💡 To connect from:`);
+  console.log(`Backend server running at http://localhost:${PORT}`);
+  console.log(`Also available at http://127.0.0.1:${PORT}`);
+  console.log(`\nAPI Keys configured:`);
+  console.log(`   - Azure OpenAI (Primary): ${(AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) ? 'Yes' : 'No'}`);
+  console.log(`   - Gemini (Secondary/Fallback): ${GEMINI_API_KEY ? 'Yes' : 'No'}`);
+  console.log(`\nTo connect from:`);
   console.log(`   - Web/Browser: http://localhost:${PORT} or http://127.0.0.1:${PORT}`);
   console.log(`   - Android Emulator: http://10.0.2.2:${PORT}`);
   console.log(`   - iOS Simulator: http://localhost:${PORT}`);
-  console.log(`\n📋 Available endpoints:`);
+  console.log(`\nAvailable endpoints:`);
   console.log(`   - GET  /api/health - Check server status`);
   console.log(`   - GET  / - Server information`);
   console.log(`   - POST /api/generate-phrases - Generate phrases`);
@@ -1168,7 +1003,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - POST /api/categories - Create new custom category`);
   console.log(`   - DELETE /api/categories/:name - Delete custom category`);
   console.log(`   - POST /api/categories/initialize - Initialize predefined categories`);
-  console.log(`\n🔍 Logging enabled: All requests will be logged here`);
+  console.log(`\nLogging enabled: All requests will be logged here`);
   console.log(`${'='.repeat(60)}\n`);
 });
 

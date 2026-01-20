@@ -3,18 +3,18 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   Modal,
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { CommonActions } from '@react-navigation/native';
-import Header from '../components/common/Header';
-import ConfirmModal from '../components/common/ConfirmModal';
+import Header from '../components/Header';
+import ConfirmModal from '../components/ConfirmModal';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
@@ -382,15 +382,15 @@ const ParentMenuScreen: React.FC = () => {
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar style="auto" />
+      <StatusBar style="light" />
 
-        {/* Header */}
-        <Header
-          title="Parent Menu"
-          showProfile={false}
-        />
+      {/* Header - outside SafeAreaView so it extends to top edge */}
+      <Header
+        title="Parent Menu"
+        showProfile={false}
+      />
 
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom', 'left', 'right']}>
         {/* Main content */}
         <ScrollView
           style={[styles.content, { backgroundColor: theme.background }]}

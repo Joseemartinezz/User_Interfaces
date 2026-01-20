@@ -213,7 +213,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
 /**
  * Hook to use theme in components
- * @throws Error si se usa fuera del ThemeProvider
+ * @throws Error if used outside of ThemeProvider
  */
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);

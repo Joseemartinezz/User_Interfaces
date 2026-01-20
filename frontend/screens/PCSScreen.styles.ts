@@ -105,7 +105,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   symbolButton: {
-    width: '30%', // 3 columnas con espacio entre ellas (100% / 3 - espacio)
+    width: '30%', // 3 columns with spacing between them (100% / 3 - spacing)
     aspectRatio: 1,
     borderRadius: 12,
     alignItems: 'center',
@@ -143,8 +143,8 @@ export const styles = StyleSheet.create({
     padding: 16,
     paddingHorizontal: 40,
     paddingTop: 0,
-    paddingBottom: 37,
-    marginTop: 10,
+    paddingBottom: 0,
+    marginTop: 0,
     flexDirection: 'row',
     gap: 16,
     flexShrink: 0,
@@ -248,8 +248,8 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 8,
-    paddingTop: 12,
-    paddingBottom: 4,
+    paddingTop: 10,
+    paddingBottom: 0,
     gap: 4,
   },
   navButtonWrapper: {

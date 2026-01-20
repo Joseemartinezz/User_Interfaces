@@ -3,25 +3,25 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   Modal,
   TextInput,
   Switch,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Timestamp } from 'firebase/firestore';
-import Header from '../components/common/Header';
+import Header from '../components/Header';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
 import { RootStackParamList } from '../types/navigation';
 import { UserCategory } from '../types/user';
 import { styles } from './CategoriesScreen.styles';
-import { createCategoryWithPictograms } from '../api';
+import { createCategoryWithPictograms } from '../services/api';
 
 type CategoriesParams = {
   selectedColor?: string;
@@ -148,7 +148,7 @@ const CategoriesScreen: React.FC = () => {
         } catch (backendError: any) {
           // If backend creation fails, still allow creating the category in Firebase
           // but warn the user
-          console.warn('⚠️ Failed to create category in backend:', backendError);
+          console.warn('Failed to create category in backend:', backendError);
           showWarning('Could not add standard symbols. The category will be created without them.');
         }
       }
@@ -213,12 +213,12 @@ const CategoriesScreen: React.FC = () => {
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar style="auto" />
+      <StatusBar style="light" />
 
-        {/* Header */}
-        <Header title="Categories" backgroundColor={selectedColor} showProfile={false} />
+      {/* Header - outside SafeAreaView so it extends to top edge */}
+      <Header title="Categories" backgroundColor={selectedColor} showProfile={false} />
 
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom', 'left', 'right']}>
         {/* Main content */}
         <View style={[styles.content, { backgroundColor: theme.background }]}>
           {/* Categories grid */}
