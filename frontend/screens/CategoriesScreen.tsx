@@ -8,6 +8,8 @@ import {
   TextInput,
   Switch,
   ActivityIndicator,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -21,7 +23,7 @@ import { useToast } from '../context/ToastContext';
 import { RootStackParamList } from '../types/navigation';
 import { UserCategory } from '../types/user';
 import { styles } from './CategoriesScreen.styles';
-import { createCategoryWithPictograms } from '../services/api';
+import { createCategoryWithPictograms, createEmptyCategory } from '../services/api';
 
 type CategoriesParams = {
   selectedColor?: string;
@@ -136,7 +138,7 @@ const CategoriesScreen: React.FC = () => {
     setIsSaving(true);
     try {
 
-      // If including standard symbols, create category in backend first
+      // If including standard symbols, create category in backend with AI-generated pictograms
       if (includeStandardSymbols) {
         try {
           await createCategoryWithPictograms(
@@ -150,6 +152,14 @@ const CategoriesScreen: React.FC = () => {
           // but warn the user
           console.warn('Failed to create category in backend:', backendError);
           showWarning('Could not add standard symbols. The category will be created without them.');
+        }
+      } else {
+        // Create empty category in backend (so it appears in PCSScreen)
+        try {
+          await createEmptyCategory(finalCategoryName, user?.id);
+        } catch (backendError: any) {
+          // If backend creation fails, still allow creating the category in Firebase
+          console.warn('Failed to create empty category in backend:', backendError);
         }
       }
 
@@ -284,105 +294,117 @@ const CategoriesScreen: React.FC = () => {
         animationType="slide"
         onRequestClose={handleCloseModal}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.white }]}>
-            <Text style={[styles.modalTitle, { color: theme.primary }]}>
-              Add New Category
-            </Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.modalContent, { backgroundColor: theme.white }]}>
+                <Text style={[styles.modalTitle, { color: theme.primary }]}>
+                  Add New Category
+                </Text>
 
-            {/* Name input */}
-            <TextInput
-              style={[styles.modalInput, { borderColor: theme.primary, color: theme.primary }]}
-              placeholder="Category name"
-              placeholderTextColor="#999"
-              value={newCategoryName}
-              onChangeText={setNewCategoryName}
-              editable={!isSaving}
-            />
+                {/* Name input */}
+                <TextInput
+                  style={[styles.modalInput, { borderColor: theme.primary, color: theme.primary }]}
+                  placeholder="Category name"
+                  placeholderTextColor="#999"
+                  value={newCategoryName}
+                  onChangeText={setNewCategoryName}
+                  editable={!isSaving}
+                />
 
-            {/* Emoji input */}
-            <TextInput
-              style={[styles.modalInput, { borderColor: theme.primary, color: theme.primary }]}
-              placeholder="Emoji (optional)"
-              placeholderTextColor="#999"
-              value={newCategoryEmoji}
-              onChangeText={setNewCategoryEmoji}
-              editable={!isSaving}
-              maxLength={2}
-            />
+                {/* Emoji input */}
+                {/* Note: maxLength increased to 20 to support complex emojis (family, flags, skin tones) */}
+                {/* which can be 4-20+ Unicode code points but render as a single visual character */}
+                <TextInput
+                  style={[styles.modalInput, { borderColor: theme.primary, color: theme.primary }]}
+                  placeholder="Emoji (optional)"
+                  placeholderTextColor="#999"
+                  value={newCategoryEmoji}
+                  onChangeText={(text) => {
+                    // Allow the text but limit to what looks like ~2 emojis visually
+                    // Using Intl.Segmenter would be ideal but it's not available in React Native
+                    // Instead, we just allow reasonable length for complex emojis
+                    if (text.length <= 20) {
+                      setNewCategoryEmoji(text);
+                    }
+                  }}
+                  editable={!isSaving}
+                />
 
-            {/* Toggle to include standard PCS symbols */}
-            <View style={styles.switchContainer}>
-              <Text style={[styles.switchLabel, { color: theme.primary }]}>
-                Include standard PCS symbols
-              </Text>
-              <Switch
-                value={includeStandardSymbols}
-                onValueChange={setIncludeStandardSymbols}
-                disabled={isSaving}
-                trackColor={{ false: theme.accent, true: theme.primary }}
-                thumbColor="white"
-              />
-            </View>
+                {/* Toggle to include standard PCS symbols */}
+                <View style={styles.switchContainer}>
+                  <Text style={[styles.switchLabel, { color: theme.primary }]}>
+                    Include standard PCS symbols
+                  </Text>
+                  <Switch
+                    value={includeStandardSymbols}
+                    onValueChange={setIncludeStandardSymbols}
+                    disabled={isSaving}
+                    trackColor={{ false: theme.accent, true: theme.primary }}
+                    thumbColor="white"
+                  />
+                </View>
 
-            {/* Conditional fields for standard symbols */}
-            {includeStandardSymbols && (
-              <TextInput
-                style={[
-                  styles.modalInput,
-                  styles.modalTextArea,
-                  { borderColor: theme.primary, color: theme.primary }
-                ]}
-                placeholder="Description of this category (e.g. Feelings and emotional states like happy, sad, angry, excited)"
-                placeholderTextColor="#999"
-                value={categoryDescription}
-                onChangeText={setCategoryDescription}
-                editable={!isSaving}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            )}
+                {/* Conditional fields for standard symbols */}
+                {includeStandardSymbols && (
+                  <TextInput
+                    style={[
+                      styles.modalInput,
+                      styles.modalTextArea,
+                      { borderColor: theme.primary, color: theme.primary }
+                    ]}
+                    placeholder="Description of this category"
+                    placeholderTextColor="#999"
+                    value={categoryDescription}
+                    onChangeText={setCategoryDescription}
+                    editable={!isSaving}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                )}
 
-            {/* Action buttons */}
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalCancelButton, { borderColor: theme.accent }]}
-                onPress={handleCloseModal}
-                disabled={isSaving}
-              >
-                <Text style={[styles.modalButtonText, { color: theme.primary }]}>Cancel</Text>
-              </TouchableOpacity>
+                {/* Action buttons */}
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalCancelButton, { borderColor: theme.accent }]}
+                    onPress={handleCloseModal}
+                    disabled={isSaving}
+                  >
+                    <Text style={[styles.modalButtonText, { color: theme.primary }]}>Cancel</Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  styles.modalSaveButton,
-                  {
-                    backgroundColor: theme.primary,
-                    opacity: (
+                  <TouchableOpacity
+                    style={[
+                      styles.modalButton,
+                      styles.modalSaveButton,
+                      {
+                        backgroundColor: theme.primary,
+                        opacity: (
+                          !newCategoryName.trim() ||
+                          isSaving ||
+                          (includeStandardSymbols && !categoryDescription.trim())
+                        ) ? 0.5 : 1
+                      }
+                    ]}
+                    onPress={handleAddCategory}
+                    disabled={
                       !newCategoryName.trim() ||
                       isSaving ||
                       (includeStandardSymbols && !categoryDescription.trim())
-                    ) ? 0.5 : 1
-                  }
-                ]}
-                onPress={handleAddCategory}
-                disabled={
-                  !newCategoryName.trim() ||
-                  isSaving ||
-                  (includeStandardSymbols && !categoryDescription.trim())
-                }
-              >
-                {isSaving ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Text style={styles.modalSaveButtonText}>Add</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+                    }
+                  >
+                    {isSaving ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text style={styles.modalSaveButtonText}>Add</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );

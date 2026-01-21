@@ -7,6 +7,8 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -51,82 +53,86 @@ const PasswordModal: React.FC<PasswordModalProps> = React.memo(({
       animationType="fade"
       onRequestClose={onCancel}
     >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContainer, { backgroundColor: theme.white }]}>
-          <Text style={[styles.modalTitle, { color: theme.primary }]}>
-            🔐 Parent Menu
-          </Text>
-          <Text style={[styles.modalDescription, { color: theme.text }]}>
-            Enter the password to access the configuration menu:
-          </Text>
-          <TextInput
-            style={[
-              styles.modalInput,
-              {
-                borderColor: errorMessage ? '#EF4444' : theme.primary,
-                color: theme.text
-              }
-            ]}
-            placeholder="Password"
-            placeholderTextColor={theme.textSecondary}
-            value={passwordInput}
-            onChangeText={onPasswordChange}
-            secureTextEntry
-            autoFocus
-            onSubmitEditing={onSubmit}
-            editable={!isLockedOut}
-          />
-
-          {/* Inline error message with lockout countdown */}
-          {errorMessage && (
-            <View style={{
-              backgroundColor: '#FEE2E2',
-              padding: 12,
-              borderRadius: 8,
-              marginTop: 8,
-              marginBottom: 8,
-              borderColor: '#EF4444',
-              borderWidth: 1
-            }}>
-              <Text style={{ color: '#DC2626', fontSize: 14, textAlign: 'center' }}>
-                ⚠️ {errorMessage}
-                {isLockedOut && lockoutRemaining > 0 && (
-                  `\n\n⏱ Time remaining: ${lockoutRemaining}s`
-                )}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={[styles.modalContainer, { backgroundColor: theme.white }]}>
+              <Text style={[styles.modalTitle, { color: theme.primary }]}>
+                🔐 Parent Menu
               </Text>
+              <Text style={[styles.modalDescription, { color: theme.text }]}>
+                Enter the password to access the configuration menu:
+              </Text>
+              <TextInput
+                style={[
+                  styles.modalInput,
+                  {
+                    borderColor: errorMessage ? '#EF4444' : theme.primary,
+                    color: theme.text
+                  }
+                ]}
+                placeholder="Password"
+                placeholderTextColor={theme.textSecondary}
+                value={passwordInput}
+                onChangeText={onPasswordChange}
+                secureTextEntry
+                autoFocus
+                onSubmitEditing={onSubmit}
+                editable={!isLockedOut}
+              />
+
+              {/* Inline error message with lockout countdown */}
+              {errorMessage && (
+                <View style={{
+                  backgroundColor: '#FEE2E2',
+                  padding: 12,
+                  borderRadius: 8,
+                  marginTop: 8,
+                  marginBottom: 8,
+                  borderColor: '#EF4444',
+                  borderWidth: 1
+                }}>
+                  <Text style={{ color: '#DC2626', fontSize: 14, textAlign: 'center' }}>
+                    ⚠️ {errorMessage}
+                    {isLockedOut && lockoutRemaining > 0 && (
+                      `\n\n⏱ Time remaining: ${lockoutRemaining}s`
+                    )}
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalCancelButton, { borderColor: theme.textSecondary }]}
+                  onPress={onCancel}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.modalButtonText, { color: theme.textSecondary }]}>
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.modalButton,
+                    styles.modalConfirmButton,
+                    {
+                      backgroundColor: isLockedOut ? '#9CA3AF' : theme.primary,
+                      opacity: isLockedOut ? 0.5 : 1
+                    }
+                  ]}
+                  onPress={onSubmit}
+                  activeOpacity={0.7}
+                  disabled={isLockedOut}
+                >
+                  <Text style={[styles.modalButtonText, { color: theme.white }]}>
+                    {isLockedOut ? 'Locked' : 'Enter'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          )}
-
-          <View style={styles.modalButtons}>
-            <TouchableOpacity
-              style={[styles.modalButton, styles.modalCancelButton, { borderColor: theme.textSecondary }]}
-              onPress={onCancel}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.modalButtonText, { color: theme.textSecondary }]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.modalButton,
-                styles.modalConfirmButton,
-                {
-                  backgroundColor: isLockedOut ? '#9CA3AF' : theme.primary,
-                  opacity: isLockedOut ? 0.5 : 1
-                }
-              ]}
-              onPress={onSubmit}
-              activeOpacity={0.7}
-              disabled={isLockedOut}
-            >
-              <Text style={[styles.modalButtonText, { color: theme.white }]}>
-                {isLockedOut ? 'Locked' : 'Enter'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 });

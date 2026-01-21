@@ -179,18 +179,6 @@ export const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.5,
   },
-  errorContainer: {
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 30,
-  },
-  errorSubtext: {
-    fontSize: 10,
-    marginTop: 4,
-  },
   loadingMoreContainer: {
     width: '100%',
     paddingVertical: 20,
@@ -312,4 +300,3 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-

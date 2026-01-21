@@ -212,9 +212,10 @@ function AppNavigator() {
 function RootNavigator() {
   const { isAuthenticated, isLoading, user } = useUser();
 
-  // Show loading screen while verifying authentication
+  // While loading, show nothing (blank screen)
+  // The loading screen for symbols will only appear in PCSScreen
   if (isLoading) {
-    return <LoadingScreen message="Loading symbols..." />;
+    return null;
   }
 
   // Not authenticated: show login/register screens

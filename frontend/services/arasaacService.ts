@@ -1,7 +1,7 @@
 // ARASAAC Service - Frontend
 // Service for interacting with ARASAAC pictogram API through backend
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+import { getCategoryPictogramIds, PCSSymbol, API_BASE_URL } from './api';
 
 /**
  * ARASAAC pictogram type
@@ -250,4 +250,76 @@ export async function getPictogramsByIds(
     console.error('Error getting pictograms by IDs:', error);
     throw new Error(error.message || 'Error getting pictograms.');
   }
+}
+
+/**
+ * Result from loading category symbols
+ */
+export interface LoadCategorySymbolsResult {
+  symbols: PCSSymbol[];
+  totalCount: number;
+  loadedCount: number;
+}
+
+/**
+ * Loads symbols (pictograms) for a specific category from the backend
+ * Converts ARASAAC pictogram data into PCSSymbol format for UI display
+ * 
+ * @param categoryName Name of the category
+ * @param startIndex Starting index for pagination
+ * @param count Number of pictograms to load
+ * @param userId User ID (for custom categories)
+ * @param language Language code - defaults to 'en'
+ * @returns Object with loaded symbols, total count, and loaded count
+ */
+export async function loadCategorySymbols(
+  categoryName: string,
+  startIndex: number = 0,
+  count: number = 15,
+  userId?: string,
+  language: string = 'en'
+): Promise<LoadCategorySymbolsResult> {
+  console.log(`Starting load of pictograms for "${categoryName}" (index ${startIndex}, count ${count})`);
+
+  // Get pictogram IDs for this category
+  const pictogramIds = await getCategoryPictogramIds(categoryName, userId);
+
+  if (pictogramIds.length === 0) {
+    console.warn(`No pictogram IDs found for "${categoryName}"`);
+    return { symbols: [], totalCount: 0, loadedCount: 0 };
+  }
+
+  // Get range of IDs to load
+  const idsToLoad = pictogramIds.slice(startIndex, startIndex + count);
+
+  if (idsToLoad.length === 0) {
+    console.log(`All pictograms already loaded for "${categoryName}"`);
+    return { symbols: [], totalCount: pictogramIds.length, loadedCount: startIndex };
+  }
+
+  console.log(`Loading ${idsToLoad.length} pictograms from ARASAAC...`);
+
+  // Get pictogram information from ARASAAC
+  const pictogramsData = await getPictogramsByIds(idsToLoad, language);
+
+  // Convert to PCSSymbol format
+  const symbols: PCSSymbol[] = pictogramsData
+    .filter(item => item.pictogram !== null)
+    .map((item, index) => ({
+      // Use unique ID combining arasaacId with index to handle color variants
+      id: `pictogram_${item.id}_${startIndex + index}`,
+      text: item.text,
+      arasaacId: item.id,
+      imageUrl: getPictogramImageUrl(item.id, { color: true, backgroundColor: 'white' }),
+      isCustom: false,
+    }));
+
+  console.log(`Converted ${symbols.length} pictograms to symbols for "${categoryName}"`);
+  console.log(`Loaded ${symbols.length} pictograms for "${categoryName}" (${startIndex + count}/${pictogramIds.length})`);
+
+  return {
+    symbols,
+    totalCount: pictogramIds.length,
+    loadedCount: Math.min(startIndex + count, pictogramIds.length),
+  };
 }

@@ -3,7 +3,7 @@
 
 import { auth } from './firebase';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 /**
  * Gets Firebase authentication token
@@ -276,6 +276,37 @@ export async function getUserAvatarUrl(user: {
 // ============================================================================
 
 /**
+ * Default categories with emojis
+ */
+export const DEFAULT_CATEGORIES = [
+  { name: 'Food', emoji: '🍕' },
+  { name: 'Games', emoji: '🎮' },
+  { name: 'School', emoji: '🏫' },
+  { name: 'Family', emoji: '👨‍👩‍👧‍👦' },
+  { name: 'Sports', emoji: '⚽' },
+  { name: 'Music', emoji: '🎵' },
+  { name: 'Animals', emoji: '🐾' },
+  { name: 'Transport', emoji: '🚗' },
+];
+
+/**
+ * Pagination constants for loading pictograms
+ */
+export const INITIAL_PAGE_SIZE = 15; // First 15 pictograms (5 rows of 3x3)
+export const LOAD_MORE_SIZE = 15; // Load 15 more on scroll (5 rows of 3x3)
+
+/**
+ * Symbol type used for displaying pictograms
+ */
+export interface PCSSymbol {
+  id: string;
+  text: string;
+  arasaacId: number | null;
+  imageUrl: string;
+  isCustom: boolean;
+}
+
+/**
  * Gets all categories (predefined + custom)
  * If userId is provided, returns only the user's categories
  */
@@ -405,6 +436,53 @@ export async function createCategoryWithPictograms(
   } catch (error: any) {
     console.error('Error creating category with pictograms:', error);
     throw new Error(error.message || 'Error creating category with pictograms. Verify that the backend server is running.');
+  }
+}
+
+/**
+ * Creates an empty category (without AI-generated pictograms)
+ * Used when creating a category without standard symbols
+ * @param categoryName Category name
+ * @param userId User ID (optional, obtained automatically if not provided)
+ */
+export async function createEmptyCategory(
+  categoryName: string,
+  userId?: string
+): Promise<void> {
+  try {
+    // Get userId if not provided
+    const finalUserId = userId || getCurrentUserId();
+    if (!finalUserId) {
+      throw new Error('User not authenticated. Please log in.');
+    }
+
+    // Get authentication token
+    const token = await getAuthToken();
+    if (!token) {
+      throw new Error('Could not get authentication token.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/categories/empty`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${finalUserId}`,
+      },
+      body: JSON.stringify({
+        categoryName,
+        userId: finalUserId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `Error ${response.status}`);
+    }
+
+    console.log(`Empty category "${categoryName}" created successfully in backend`);
+  } catch (error: any) {
+    console.error('Error creating empty category:', error);
+    throw new Error(error.message || 'Error creating empty category. Verify that the backend server is running.');
   }
 }
 

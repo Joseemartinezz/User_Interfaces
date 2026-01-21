@@ -6,188 +6,30 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  InteractionManager,
   FlatList,
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { generatePhrases, getAllCategories, getCategoryPictogramIds } from '../services/api';
-import { getPictogramImageUrl, getPictogramsByIds } from '../services/arasaacService';
+import {
+  generatePhrases,
+  getAllCategories,
+  DEFAULT_CATEGORIES,
+  INITIAL_PAGE_SIZE,
+  LOAD_MORE_SIZE,
+  PCSSymbol,
+} from '../services/api';
+import { loadCategorySymbols } from '../services/arasaacService';
 import Header from '../components/Header';
 import LoadingScreen from '../components/LoadingScreen';
+import { PictogramImage, CustomSymbolImage } from '../components/PictogramImage';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
 import { RootStackParamList } from '../types/navigation';
 import { styles } from './PCSScreen.styles';
-
-// Component to display pictograms with error handling and loading
-// Memoized to avoid unnecessary re-renders
-interface PictogramImageProps {
-  arasaacId: number;
-  style?: any;
-}
-
-const PictogramImage: React.FC<PictogramImageProps> = React.memo(({ arasaacId, style }) => {
-  const [imageError, setImageError] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Memoize pictogram URL
-  const imageUrl = useMemo(() =>
-    getPictogramImageUrl(arasaacId, {
-      color: true,
-      backgroundColor: 'white'
-    }),
-    [arasaacId]
-  );
-
-  // Optimize useEffect with InteractionManager
-  // CRITICAL: Do not block render during back navigation
-  useEffect(() => {
-    // Reset states immediately (does not block UI)
-    setImageError(false);
-    setErrorMessage(null);
-    // DO NOT set imageLoading to true here - causes layout shift
-    // Image will be displayed directly without ActivityIndicator
-
-    // Execute logs after interactions to avoid blocking UI
-    const task = InteractionManager.runAfterInteractions(() => {
-      console.log(`Pictogram ID ${arasaacId} - URL: ${imageUrl}`);
-    });
-
-    // Optimized cleanup - does not block during unmount
-    return () => {
-      // Cancel async tasks to avoid blocking
-      task.cancel();
-    };
-  }, [arasaacId, imageUrl]);
-
-  // Removed handleLoadStart - not needed since we don't show ActivityIndicator
-  const handleLoad = useCallback(() => {
-    // Image loaded successfully
-  }, []);
-
-  const handleError = useCallback((error: any) => {
-    const errorDetails = error.nativeEvent || error;
-    console.error(`Error loading pictogram ID ${arasaacId}`);
-
-    let finalErrorMessage = 'Error loading';
-    if (errorDetails.error) {
-      finalErrorMessage = String(errorDetails.error);
-    } else if (typeof errorDetails === 'string') {
-      finalErrorMessage = errorDetails;
-    }
-
-    setErrorMessage(finalErrorMessage);
-    setImageError(true);
-  }, [arasaacId]);
-
-  const { theme } = useTheme();
-
-  if (imageError) {
-    // Show a placeholder if there's an error with debug information
-    return (
-      <View style={[style, styles.errorContainer]}>
-        <Text style={[styles.errorText, { color: theme.textSecondary }]}>❓</Text>
-        <Text style={[styles.errorSubtext, { color: theme.textSecondary }]}>ID: {arasaacId}</Text>
-        {errorMessage && (
-          <Text style={[styles.errorSubtext, { color: theme.textSecondary }]} numberOfLines={2}>
-            {errorMessage.substring(0, 50)}...
-          </Text>
-        )}
-      </View>
-    );
-  }
-
-  return (
-    <View style={[style, { overflow: 'hidden', backgroundColor: '#f5f5f5' }]}>
-      {/* CRITICAL: Do not show ActivityIndicator - causes layout shift and white flash */}
-      <Image
-        source={{
-          uri: imageUrl,
-          cache: 'default'
-        }}
-        style={style}
-        resizeMode="contain"
-        onLoad={handleLoad}
-        onLoadEnd={handleLoad}
-        onError={handleError}
-        // CRITICAL: Smooth fade in without blocking initial render
-        fadeDuration={150}
-      />
-    </View>
-  );
-});
-
-// Component to display custom symbols
-interface CustomSymbolImageProps {
-  imageUrl: string;
-  style?: any;
-}
-
-const CustomSymbolImage: React.FC<CustomSymbolImageProps> = React.memo(({ imageUrl, style }) => {
-  const [imageError, setImageError] = useState(false);
-  const { theme } = useTheme();
-
-  const handleError = useCallback(() => {
-    setImageError(true);
-  }, []);
-
-  if (imageError) {
-    return (
-      <View style={[style, styles.errorContainer]}>
-        <Text style={[styles.errorText, { color: theme.textSecondary }]}>❓</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={[style, { overflow: 'hidden', backgroundColor: '#f5f5f5' }]}>
-      <Image
-        source={{ uri: imageUrl }}
-        style={style}
-        resizeMode="contain"
-        onError={handleError}
-        fadeDuration={150}
-      />
-    </View>
-  );
-});
-
-// Default categories (same as CategoriesScreen)
-const DEFAULT_CATEGORIES = [
-  { name: 'Food', emoji: '🍕' },
-  { name: 'Games', emoji: '🎮' },
-  { name: 'School', emoji: '🏫' },
-  { name: 'Family', emoji: '👨‍👩‍👧‍👦' },
-  { name: 'Sports', emoji: '⚽' },
-  { name: 'Music', emoji: '🎵' },
-  { name: 'Animals', emoji: '🐾' },
-  { name: 'Transport', emoji: '🚗' },
-];
-
-// Pagination constants
-const INITIAL_PAGE_SIZE = 15; // First 15 pictograms (5 rows of 3x3)
-const LOAD_MORE_SIZE = 15; // Load 15 more on scroll (5 rows of 3x3)
-
-// Common symbols (for "All" category or default)
-const COMMON_SYMBOLS = [
-  { id: 100, text: 'I', arasaacId: 6632 },
-  { id: 101, text: 'You', arasaacId: 6625 },
-  { id: 102, text: 'Not', arasaacId: 32308 },
-  { id: 103, text: 'Like', arasaacId: 37826 },
-  { id: 104, text: 'Want', arasaacId: 5441 },
-  { id: 105, text: 'Yes', arasaacId: 32309 },
-  { id: 106, text: 'No', arasaacId: 32310 },
-  { id: 107, text: 'More', arasaacId: 32311 },
-  { id: 108, text: 'Less', arasaacId: 32312 },
-  { id: 109, text: 'Help', arasaacId: 32313 },
-  { id: 110, text: 'Please', arasaacId: 32314 },
-  { id: 111, text: 'Thank', arasaacId: 32315 },
-];
 
 type PCSScreenParams = {
   topic?: string;
@@ -211,25 +53,14 @@ const PCSScreen: React.FC = () => {
   const topic = params?.topic;
 
   // Changed from string[] to store unique symbol IDs to fix duplicate selection bug
-  const [selectedSymbols, setSelectedSymbols] = useState<Array<{
-    id: string;
-    text: string;
-    arasaacId: number | null;
-    imageUrl: string;
-    isCustom: boolean;
-  }>>([]);
+  const [selectedSymbols, setSelectedSymbols] = useState<PCSSymbol[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // State for categories and pictograms loaded from the backend
   const [backendCategories, setBackendCategories] = useState<Record<string, number[]>>({});
-  const [categorySymbolsCache, setCategorySymbolsCache] = useState<Record<string, Array<{
-    id: string;
-    text: string;
-    arasaacId: number | null;
-    imageUrl: string;
-    isCustom: boolean;
-  }>>>({});
+  const [categorySymbolsCache, setCategorySymbolsCache] = useState<Record<string, PCSSymbol[]>>({});
   const [categoryLoadProgress, setCategoryLoadProgress] = useState<Record<string, number>>({}); // How many pictograms have been loaded per category
+  const [categoryTotalCounts, setCategoryTotalCounts] = useState<Record<string, number>>({}); // Total pictograms per category
   const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0); // Current category index for indicators
   const [isInitialLoading, setIsInitialLoading] = useState(true); // Track initial loading state
@@ -244,24 +75,32 @@ const PCSScreen: React.FC = () => {
 
   // Load categories from backend
   // Reloads when user changes or when user preferences change (to detect deleted categories)
-  useEffect(() => {
-    const loadCategories = async () => {
-      if (!user?.id) {
-        console.log('User not authenticated, cannot load custom categories');
-        // Fallback to default categories
-        const fallbackCategories: Record<string, number[]> = {};
-        DEFAULT_CATEGORIES.forEach(cat => {
-          fallbackCategories[cat.name] = [];
-        });
-        setBackendCategories(fallbackCategories);
-        return;
-      }
+  // ALSO reloads when screen gains focus (using useFocusEffect below)
+  const loadCategories = useCallback(async (resetCache: boolean = false) => {
+    if (!user?.id) {
+      console.log('User not authenticated, cannot load custom categories');
+      // Fallback to default categories
+      const fallbackCategories: Record<string, number[]> = {};
+      DEFAULT_CATEGORIES.forEach(cat => {
+        fallbackCategories[cat.name] = [];
+      });
+      setBackendCategories(fallbackCategories);
+      return;
+    }
 
-      try {
-        const categories = await getAllCategories(user.id);
-        setBackendCategories(categories);
-        console.log(`Categories loaded from backend for user ${user.id}:`, Object.keys(categories));
-        
+    try {
+      const categories = await getAllCategories(user.id);
+      setBackendCategories(categories);
+      console.log(`Categories loaded from backend for user ${user.id}:`, Object.keys(categories));
+      
+      // If resetCache is true, clear ALL cache to force reload
+      if (resetCache) {
+        console.log('Resetting all category caches...');
+        setCategorySymbolsCache({});
+        setCategoryLoadProgress({});
+        setCategoryTotalCounts({});
+        setHasCompletedInitialLoad(false);
+      } else {
         // Clean up cache: remove symbols from categories that no longer exist
         setCategorySymbolsCache(prevCache => {
           const newCache = { ...prevCache };
@@ -291,20 +130,46 @@ const PCSScreen: React.FC = () => {
           
           return newProgress;
         });
-        
-      } catch (error) {
-        console.error('Error loading categories:', error);
-        // Fallback to default categories if failed
-        const fallbackCategories: Record<string, number[]> = {};
-        DEFAULT_CATEGORIES.forEach(cat => {
-          fallbackCategories[cat.name] = [];
-        });
-        setBackendCategories(fallbackCategories);
-      }
-    };
 
-    loadCategories();
-  }, [user?.id, user?.preferences.categories]);
+        // Also reset total counts for deleted categories
+        setCategoryTotalCounts(prevCounts => {
+          const newCounts = { ...prevCounts };
+          const categoryNames = Object.keys(categories);
+          
+          Object.keys(newCounts).forEach(cachedCategory => {
+            if (!categoryNames.includes(cachedCategory)) {
+              delete newCounts[cachedCategory];
+            }
+          });
+          
+          return newCounts;
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      // Fallback to default categories if failed
+      const fallbackCategories: Record<string, number[]> = {};
+      DEFAULT_CATEGORIES.forEach(cat => {
+        fallbackCategories[cat.name] = [];
+      });
+      setBackendCategories(fallbackCategories);
+    }
+  }, [user?.id]);
+
+  // Load categories on mount and when user changes
+  useEffect(() => {
+    loadCategories(false);
+  }, [loadCategories, user?.preferences.categories]);
+
+  // Reload categories when screen gains focus (e.g., returning from CategoriesScreen)
+  // This ensures newly created categories are loaded
+  useFocusEffect(
+    useCallback(() => {
+      console.log('PCSScreen gained focus, reloading categories...');
+      loadCategories(true); // Force cache reset to reload all data
+    }, [loadCategories])
+  );
 
   // Build categories list combining backend and user preferences
   const allCategories = useMemo(() => {
@@ -354,7 +219,7 @@ const PCSScreen: React.FC = () => {
     return categoriesList;
   }, [backendCategories, user?.preferences.categories, hiddenCategories]);
 
-  // Load pictograms for a category from the backend
+  // Load pictograms for a category using the abstracted service function
   const loadCategoryPictograms = useCallback(async (
     categoryName: string,
     startIndex: number = 0,
@@ -367,69 +232,44 @@ const PCSScreen: React.FC = () => {
     }
 
     try {
-      console.log(`Starting load of pictograms for "${categoryName}" (index ${startIndex}, count ${count})`);
       setLoadingCategories(prev => new Set(prev).add(categoryName));
 
-      // Get pictogram IDs for this category
-      const pictogramIds = await getCategoryPictogramIds(categoryName, user?.id);
+      // Use the abstracted service function
+      const result = await loadCategorySymbols(categoryName, startIndex, count, user?.id, 'en');
 
-      if (pictogramIds.length === 0) {
-        console.warn(`No pictogram IDs found for "${categoryName}"`);
+      if (result.totalCount === 0) {
         setCategorySymbolsCache(prev => ({ ...prev, [categoryName]: [] }));
         setCategoryLoadProgress(prev => ({ ...prev, [categoryName]: 0 }));
+        setCategoryTotalCounts(prev => ({ ...prev, [categoryName]: 0 }));
         return;
       }
-
-      // Get range of IDs to load
-      const idsToLoad = pictogramIds.slice(startIndex, startIndex + count);
-
-      if (idsToLoad.length === 0) {
-        console.log(`All pictograms already loaded for "${categoryName}"`);
-        return;
-      }
-
-      console.log(`Loading ${idsToLoad.length} pictograms from ARASAAC...`);
-
-      // Get pictogram information from ARASAAC
-      const pictogramsData = await getPictogramsByIds(idsToLoad, 'en');
-
-      // Convert to symbol format
-      const newSymbols = pictogramsData
-        .filter(item => item.pictogram !== null)
-        .map((item, index) => ({
-          // Use unique ID combining arasaacId with index to handle color variants
-          id: `pictogram_${item.id}_${startIndex + index}`,
-          text: item.text,
-          arasaacId: item.id,
-          imageUrl: getPictogramImageUrl(item.id, { color: true, backgroundColor: 'white' }),
-          isCustom: false,
-        }));
-
-      console.log(`Converted ${newSymbols.length} pictograms to symbols for "${categoryName}"`);
 
       // Update cache combining with existing symbols
       setCategorySymbolsCache(prev => {
         const existing = prev[categoryName] || [];
-        // Avoid duplicates by unique ID (not just arasaacId to allow variants)
+        // Avoid duplicates by unique ID
         const existingIds = new Set(existing.map(s => s.id));
-        const uniqueNewSymbols = newSymbols.filter(s => !existingIds.has(s.id));
+        const uniqueNewSymbols = result.symbols.filter(s => !existingIds.has(s.id));
         return {
           ...prev,
           [categoryName]: [...existing, ...uniqueNewSymbols],
         };
       });
 
-      // Update progress
+      // Update progress and total counts
       setCategoryLoadProgress(prev => ({
         ...prev,
-        [categoryName]: Math.min(startIndex + count, pictogramIds.length),
+        [categoryName]: result.loadedCount,
+      }));
+      setCategoryTotalCounts(prev => ({
+        ...prev,
+        [categoryName]: result.totalCount,
       }));
 
-      console.log(`Loaded ${newSymbols.length} pictograms for "${categoryName}" (${startIndex + count}/${pictogramIds.length})`);
+      console.log(`Loaded ${result.symbols.length} pictograms for "${categoryName}" (${result.loadedCount}/${result.totalCount})`);
     } catch (error: any) {
       console.error(`Error loading pictograms for "${categoryName}":`, error);
       console.error(`   Message:`, error.message);
-      console.error(`   Stack:`, error.stack);
     } finally {
       setLoadingCategories(prev => {
         const newSet = new Set(prev);
@@ -442,7 +282,7 @@ const PCSScreen: React.FC = () => {
   // Load initial pictograms when a category is loaded
   useEffect(() => {
     if (Object.keys(backendCategories).length > 0) {
-      // Load first 16 pictograms for each visible category
+      // Load first pictograms for each visible category
       allCategories.forEach(category => {
         // If category exists in backend but has no cache and is not loading, load it
         if (backendCategories[category.name] !== undefined) {
@@ -455,6 +295,7 @@ const PCSScreen: React.FC = () => {
           if (!categorySymbolsCache[category.name] && categoryLoadProgress[category.name] === undefined) {
             setCategorySymbolsCache(prev => ({ ...prev, [category.name]: [] }));
             setCategoryLoadProgress(prev => ({ ...prev, [category.name]: 0 }));
+            setCategoryTotalCounts(prev => ({ ...prev, [category.name]: 0 }));
           }
         }
       });
@@ -520,11 +361,11 @@ const PCSScreen: React.FC = () => {
   }, [backendCategories, loadingCategories, categorySymbolsCache, categoryLoadProgress, allCategories, hiddenCategories, hasCompletedInitialLoad]);
 
   // Get symbols for a specific category (from cache)
-  const getSymbolsForCategory = useCallback((categoryName: string) => {
+  const getSymbolsForCategory = useCallback((categoryName: string): PCSSymbol[] => {
     const cached = categorySymbolsCache[categoryName] || [];
 
     // Add custom symbols belonging to this category
-    const custom = (user?.preferences.customPCSSymbols || [])
+    const custom: PCSSymbol[] = (user?.preferences.customPCSSymbols || [])
       .filter(symbol => symbol.category === categoryName)
       .map((symbol) => ({
         id: `custom_${symbol.id}`,
@@ -539,13 +380,7 @@ const PCSScreen: React.FC = () => {
 
   // Get all symbols (for search)
   const allSymbols = useMemo(() => {
-    const allSymbolsList: Array<{
-      id: string;
-      text: string;
-      arasaacId: number | null;
-      imageUrl: string;
-      isCustom: boolean;
-    }> = [];
+    const allSymbolsList: PCSSymbol[] = [];
 
     // Add symbols from all loaded categories
     Object.keys(categorySymbolsCache).forEach(category => {
@@ -554,7 +389,7 @@ const PCSScreen: React.FC = () => {
     });
 
     // Add custom symbols without category
-    const custom = (user?.preferences.customPCSSymbols || [])
+    const custom: PCSSymbol[] = (user?.preferences.customPCSSymbols || [])
       .filter(symbol => !symbol.category)
       .map((symbol) => ({
         id: `custom_${symbol.id}`,
@@ -570,7 +405,7 @@ const PCSScreen: React.FC = () => {
 
   // Create a fast lookup map for symbols by ID (O(1) instead of O(n))
   const symbolsById = useMemo(() => {
-    const map = new Map<string, typeof allSymbols[0]>();
+    const map = new Map<string, PCSSymbol>();
     allSymbols.forEach(symbol => {
       map.set(symbol.id, symbol);
     });
@@ -584,13 +419,7 @@ const PCSScreen: React.FC = () => {
 
   // Optimized function to select/deselect symbols by unique ID
   // Uses immediate state update for instant visual feedback
-  const handleSymbolPress = useCallback((symbol: {
-    id: string;
-    text: string;
-    arasaacId: number | null;
-    imageUrl: string;
-    isCustom: boolean;
-  }) => {
+  const handleSymbolPress = useCallback((symbol: PCSSymbol) => {
     // Use functional update for immediate state change
     setSelectedSymbols(prev => {
       const index = prev.findIndex(s => s.id === symbol.id);
@@ -629,7 +458,7 @@ const PCSScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWords, navigation, topic, user?.preferences.childAge]);
+  }, [selectedWords, navigation, topic, user?.preferences.childAge, showError]);
 
   // Clear selection
   const handleClear = useCallback(() => {
@@ -825,9 +654,9 @@ const PCSScreen: React.FC = () => {
                         {/* Button to load more pictograms */}
                         {(() => {
                           const currentProgress = categoryLoadProgress[category.name] || 0;
-                          const totalIds = backendCategories[category.name]?.length || 0;
+                          const totalIds = categoryTotalCounts[category.name] || 0;
                           const hasMore = currentProgress < totalIds;
-                          const isLoading = loadingCategories.has(category.name);
+                          const isCategoryLoading = loadingCategories.has(category.name);
 
                           if (hasMore) {
                             return (
@@ -838,17 +667,17 @@ const PCSScreen: React.FC = () => {
                                     backgroundColor: theme.accent,
                                     borderColor: theme.accent,
                                   },
-                                  isLoading && styles.buttonDisabled
+                                  isCategoryLoading && styles.buttonDisabled
                                 ]}
                                 onPress={() => {
-                                  if (!isLoading) {
+                                  if (!isCategoryLoading) {
                                     loadCategoryPictograms(category.name, currentProgress, LOAD_MORE_SIZE);
                                   }
                                 }}
-                                disabled={isLoading}
+                                disabled={isCategoryLoading}
                                 activeOpacity={0.7}
                               >
-                                {isLoading ? (
+                                {isCategoryLoading ? (
                                   <>
                                     <ActivityIndicator size="small" color="white" />
                                     <Text style={styles.loadMoreButtonText}>Loading...</Text>
@@ -1043,4 +872,3 @@ const PCSScreen: React.FC = () => {
 
 // Memoize component to avoid unnecessary re-renders
 export default React.memo(PCSScreen);
-

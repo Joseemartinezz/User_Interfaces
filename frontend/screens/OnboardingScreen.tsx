@@ -3,14 +3,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   TextInput,
   ActivityIndicator,
   Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
@@ -575,37 +574,39 @@ const OnboardingScreen: React.FC = () => {
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: theme.background }]}>
-      <StatusBar style="auto" />
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        {/* Header with progress */}
-        <View style={[
-          styles.header,
-          {
-            backgroundColor: theme.white,
-            paddingTop: Math.max(insets.top + 10, 40),
-          }
-        ]}>
-          <Text style={[styles.headerTitle, { color: theme.primary }]}>
-            Setup
-          </Text>
-          <View style={styles.progressContainer}>
-            <View style={[styles.progressBar, { backgroundColor: theme.secondary }]}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    backgroundColor: theme.primary,
-                    width: `${(currentStep / totalSteps) * 100}%`,
-                  },
-                ]}
-              />
-            </View>
-            <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-              Step {currentStep} of {totalSteps}
-            </Text>
+      <StatusBar style="light" />
+      
+      {/* Header with progress - outside SafeAreaView to extend to top edge */}
+      <View style={[
+        styles.header,
+        {
+          backgroundColor: theme.primary,
+          paddingTop: Math.max(insets.top, 44),
+        }
+      ]}>
+        <Text style={[styles.headerTitle, { color: theme.white }]}>
+          Setup
+        </Text>
+        <View style={styles.progressContainer}>
+          <View style={[styles.progressBar, { backgroundColor: 'rgba(255,255,255,0.3)' }]}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  backgroundColor: theme.white,
+                  width: `${(currentStep / totalSteps) * 100}%`,
+                },
+              ]}
+            />
           </View>
+          <Text style={[styles.progressText, { color: 'rgba(255,255,255,0.8)' }]}>
+            Step {currentStep} of {totalSteps}
+          </Text>
         </View>
+      </View>
 
+      {/* Content area */}
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Current step content */}
         <ScrollView
           style={[styles.content, { backgroundColor: theme.background }]}
@@ -614,69 +615,75 @@ const OnboardingScreen: React.FC = () => {
         >
           {renderStep()}
         </ScrollView>
+      </View>
 
-        {/* Navigation buttons */}
-        <View style={[styles.footer, { backgroundColor: theme.white }]}>
-          {currentStep > 1 && (
-            <TouchableOpacity
-              style={[
-                styles.backButton,
-                {
-                  borderColor: theme.primary,
-                  backgroundColor: theme.primary,
-                }
-              ]}
-              onPress={handleBack}
-              activeOpacity={0.7}
-              disabled={isLoading}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Image
-                  source={require('../assets/WhiteBackArrow.png')}
-                  style={{ width: 20, height: 20, marginRight: 8 }}
-                  resizeMode="contain"
-                />
-                <Text style={[styles.backButtonText, { color: theme.white }]}>
-                  Back
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
+      {/* Navigation buttons - outside SafeAreaView to extend to bottom edge */}
+      <View style={[
+        styles.footer,
+        {
+          backgroundColor: theme.white,
+          paddingBottom: Math.max(insets.bottom + 4, 34),
+        }
+      ]}>
+        {currentStep > 1 && (
           <TouchableOpacity
             style={[
-              styles.nextButton,
-              { backgroundColor: theme.primary },
-              currentStep === 1 && styles.nextButtonFull,
+              styles.backButton,
+              {
+                borderColor: theme.primary,
+                backgroundColor: theme.primary,
+              }
             ]}
-            onPress={handleNext}
+            onPress={handleBack}
             activeOpacity={0.7}
             disabled={isLoading}
           >
-            {isLoading ? (
-              <ActivityIndicator color={theme.white} />
-            ) : (
-              <>
-                {currentStep === totalSteps ? (
-                  <Text style={[styles.nextButtonText, { color: theme.white }]}>
-                    Finish! 🎉
-                  </Text>
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.nextButtonText, { color: theme.white }]}>
-                      Next
-                    </Text>
-                    <Image
-                      source={require('../assets/WhiteNextArrow.png')}
-                      style={{ width: 20, height: 20, marginLeft: 8 }}
-                      resizeMode="contain"
-                    />
-                  </View>
-                )}
-              </>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Image
+                source={require('../assets/WhiteBackArrow.png')}
+                style={{ width: 20, height: 20, marginRight: 8 }}
+                resizeMode="contain"
+              />
+              <Text style={[styles.backButtonText, { color: theme.white }]}>
+                Back
+              </Text>
+            </View>
           </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+        )}
+        <TouchableOpacity
+          style={[
+            styles.nextButton,
+            { backgroundColor: theme.primary },
+            currentStep === 1 && styles.nextButtonFull,
+          ]}
+          onPress={handleNext}
+          activeOpacity={0.7}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color={theme.white} />
+          ) : (
+            <>
+              {currentStep === totalSteps ? (
+                <Text style={[styles.nextButtonText, { color: theme.white }]}>
+                  Finish! 🎉
+                </Text>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={[styles.nextButtonText, { color: theme.white }]}>
+                    Next
+                  </Text>
+                  <Image
+                    source={require('../assets/WhiteNextArrow.png')}
+                    style={{ width: 20, height: 20, marginLeft: 8 }}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };

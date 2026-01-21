@@ -807,6 +807,46 @@ async function createUserCategory(
 }
 
 /**
+ * Create an empty user-specific category (without AI-generated pictograms)
+ * Used when creating a category without standard symbols
+ */
+async function createEmptyUserCategory(
+  userId: string,
+  categoryName: string
+): Promise<void> {
+  // Validate userId
+  if (!isValidUserId(userId)) {
+    throw new Error('Invalid user ID. Please log in again.');
+  }
+
+  // Sanitize and validate category name
+  const sanitizedName = sanitizeCategoryName(categoryName);
+  if (!sanitizedName) {
+    throw new Error('Invalid category name. Please use at least 2 characters with letters and numbers only.');
+  }
+
+  // Check if it's a predefined category
+  if (PREDEFINED_CATEGORIES.includes(sanitizedName)) {
+    throw new Error(`Category "${sanitizedName}" is a predefined category and cannot be recreated`);
+  }
+
+  // Load current user categories
+  const userCategories = await loadUserCategories(userId);
+  
+  // Check if category already exists
+  if (userCategories[sanitizedName]) {
+    console.log(`Category "${sanitizedName}" already exists for user ${userId}, skipping creation`);
+    return;
+  }
+
+  // Add empty category
+  userCategories[sanitizedName] = [];
+  await saveUserCategories(userId, userCategories);
+
+  console.log(`Empty category "${sanitizedName}" created for user ${userId}`);
+}
+
+/**
  * Delete a user-specific category
  * Cannot delete predefined categories
  */
@@ -877,6 +917,7 @@ module.exports = {
   saveUserCategories,
   initializePredefinedCategories,
   createUserCategory,
+  createEmptyUserCategory,
   deleteUserCategory,
   getUserCategories,
   getUserCategoryPictograms,

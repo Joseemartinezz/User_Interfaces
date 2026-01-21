@@ -9,6 +9,7 @@ const {
   getUserCategories,
   getUserCategoryPictograms,
   createUserCategory,
+  createEmptyUserCategory,
   deleteUserCategory,
   initializePredefinedCategories,
   isPredefinedCategory,
@@ -906,6 +907,59 @@ app.post('/api/categories', authenticateUser, async (req, res) => {
 
     res.status(500).json({
       error: 'Error creating category',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/categories/empty
+ * Create an empty custom category (without AI-generated pictograms)
+ * Used when creating a category without standard symbols
+ * Body: { categoryName: string, userId: string }
+ * Header: Authorization: Bearer <userId> (optional if provided in body)
+ */
+app.post('/api/categories/empty', authenticateUser, async (req, res) => {
+  try {
+    const { categoryName } = req.body;
+    const userId = req.userId; // Obtained from authenticateUser middleware
+
+    if (!categoryName || typeof categoryName !== 'string' || categoryName.trim() === '') {
+      return res.status(400).json({
+        error: 'A valid category name is required'
+      });
+    }
+
+    const trimmedName = categoryName.trim();
+
+    // Validate category name
+    if (isPredefinedCategory(trimmedName)) {
+      return res.status(400).json({
+        error: `Category "${trimmedName}" is a predefined category and cannot be recreated`
+      });
+    }
+
+    // Create empty category (user-specific)
+    await createEmptyUserCategory(userId, trimmedName);
+
+    res.json({
+      category: trimmedName,
+      pictogramIds: [],
+      count: 0,
+      message: `Empty category "${trimmedName}" created successfully for user ${userId}`
+    });
+  } catch (error) {
+    console.error('Error creating empty category:', error);
+    
+    // Check if it's a duplicate error
+    if (error.message.includes('already exists')) {
+      return res.status(409).json({
+        error: error.message
+      });
+    }
+
+    res.status(500).json({
+      error: 'Error creating empty category',
       message: error.message
     });
   }

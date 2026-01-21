@@ -10,15 +10,12 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: 40, // Base padding, will be overridden by SafeArea insets
     paddingBottom: 20,
     paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    elevation: 2,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
   },
   headerTitle: {
@@ -226,8 +223,8 @@ export const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
-    padding: 16,
-    paddingBottom: 20,
+    paddingTop: 16,
+    paddingHorizontal: 16,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     gap: 12,

@@ -258,6 +258,7 @@ const CategoryDetailScreen: React.FC = () => {
         title={categoryName}
         backgroundColor={selectedColor}
         showBackButton={true}
+        showProfile={false}
       />
 
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom', 'left', 'right']}>
