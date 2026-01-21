@@ -1,11 +1,10 @@
 // Category Service for Dynamic Pictogram Categories
 // Manages category-to-pictogram mappings using a JSON file
-// Uses Azure OpenAI (with Gemini fallback) to find relevant pictograms for new categories
+// Uses Azure OpenAI to find relevant pictograms for new categories
 
-
-const fs = require('fs').promises;
-const path = require('path');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+import { promises as fs } from 'fs';
+import path from 'path';
+import { getAzurePhraseConfig } from '../config';
 
 const PREDEFINED_CATEGORIES_FILE_PATH = path.join(__dirname, '../data/predefinedCategories.json');
 const USER_CATEGORIES_DIR = path.join(__dirname, '../data/user_categories');
@@ -31,18 +30,18 @@ const MAX_PICTOGRAM_RESULTS = 100;
 const MIN_RELEVANCE_SCORE = 3;
 
 /**
- * Score weights for different match types
- * Note: Only AI weights are used now (local search has been removed)
+ * Score weights for different match types in pictogram search
+ * Used by calculatePictogramScore() to rank results by relevance
  */
 const SCORE_WEIGHTS = {
-  EXACT_KEYWORD_MATCH: 15,      // Exact match in keywords (legacy, not used)
-  EXACT_TAG_MATCH: 12,          // Exact match in tags (legacy, not used)
-  PARTIAL_KEYWORD_MATCH: 6,     // Keyword contains search term or vice versa (legacy, not used)
-  PARTIAL_TAG_MATCH: 4,         // Tag contains search term or vice versa (legacy, not used)
-  WORD_IN_KEYWORD: 3,           // Individual word matches keyword (legacy, not used)
-  WORD_IN_TAG: 2,               // Individual word matches tag (legacy, not used)
-  AI_KEYWORD_MATCH: 8,          // AI-suggested keyword matches
-  AI_TAG_MATCH: 6,              // AI-suggested tag matches
+  // Primary weights for AI-generated search terms (exact match)
+  AI_KEYWORD_MATCH: 8,
+  AI_TAG_MATCH: 6,
+  // Secondary weights for partial/word matches
+  PARTIAL_KEYWORD_MATCH: 6,
+  PARTIAL_TAG_MATCH: 4,
+  WORD_IN_KEYWORD: 3,
+  WORD_IN_TAG: 2,
 };
 
 /**
@@ -115,8 +114,14 @@ const PREDEFINED_CATEGORIES = [
   'Transport'
 ];
 
+// Interface for category mapping
+interface CategoryMapping {
+  tags: string[];
+  keywords: string[];
+}
+
 // Category-to-tag/keyword mappings for initialization
-const CATEGORY_MAPPINGS = {
+const CATEGORY_MAPPINGS: Record<string, CategoryMapping> = {
   'Food': {
     tags: ['food', 'beverage', 'feeding', 'meal', 'eating', 'drink'],
     keywords: ['food', 'eat', 'drink', 'meal', 'snack', 'breakfast', 'lunch', 'dinner', 'pizza', 'apple', 'bread', 'water', 'milk', 'banana', 'orange', 'cake', 'soup', 'rice', 'meat', 'fish', 'egg', 'cheese', 'cookie', 'juice']
@@ -282,14 +287,13 @@ interface ScoredPictogram {
 }
 
 /**
- * Calculate relevance score for a pictogram against search terms
+ * Calculate relevance score for a pictogram against AI-generated search terms
  * Returns detailed scoring with reasons for debugging
  */
 function calculatePictogramScore(
   pictogram: { id: number; keywords: string[]; tags: string[] },
   searchTerms: { keywords: Set<string>; tags: Set<string> },
-  categoryWords: string[],
-  isAIMatch: boolean = false
+  categoryWords: string[]
 ): ScoredPictogram {
   let score = 0;
   const matchReasons: string[] = [];
@@ -297,16 +301,17 @@ function calculatePictogramScore(
   const keywords = pictogram.keywords || [];
   const tags = pictogram.tags || [];
 
-  // Check keywords
+  // Check keywords against AI-generated search keywords
   for (const keyword of keywords) {
     const keywordLower = keyword.toLowerCase();
 
-    // Check against search keywords
     for (const searchKeyword of searchTerms.keywords) {
       if (keywordLower === searchKeyword) {
-        score += isAIMatch ? SCORE_WEIGHTS.AI_KEYWORD_MATCH : SCORE_WEIGHTS.EXACT_KEYWORD_MATCH;
+        // Exact match with AI keyword
+        score += SCORE_WEIGHTS.AI_KEYWORD_MATCH;
         matchReasons.push(`exact_keyword:${keyword}`);
       } else if (keywordLower.includes(searchKeyword) || searchKeyword.includes(keywordLower)) {
+        // Partial match
         if (keywordLower.length > 2 && searchKeyword.length > 2) {
           score += SCORE_WEIGHTS.PARTIAL_KEYWORD_MATCH;
           matchReasons.push(`partial_keyword:${keyword}~${searchKeyword}`);
@@ -323,16 +328,17 @@ function calculatePictogramScore(
     }
   }
 
-  // Check tags
+  // Check tags against AI-generated search tags
   for (const tag of tags) {
     const tagLower = tag.toLowerCase();
 
-    // Check against search tags
     for (const searchTag of searchTerms.tags) {
       if (tagLower === searchTag) {
-        score += isAIMatch ? SCORE_WEIGHTS.AI_TAG_MATCH : SCORE_WEIGHTS.EXACT_TAG_MATCH;
+        // Exact match with AI tag
+        score += SCORE_WEIGHTS.AI_TAG_MATCH;
         matchReasons.push(`exact_tag:${tag}`);
       } else if (tagLower.includes(searchTag) || searchTag.includes(tagLower)) {
+        // Partial match
         if (tagLower.length > 3 && searchTag.length > 3) {
           score += SCORE_WEIGHTS.PARTIAL_TAG_MATCH;
           matchReasons.push(`partial_tag:${tag}~${searchTag}`);
@@ -448,7 +454,6 @@ async function initializePredefinedCategories(): Promise<Record<string, number[]
  * - Detailed scoring system
  * - Quality filtering (minimum score threshold)
  * - Ranking by relevance
- * - Fallback to Gemini if Azure fails
  * - Comprehensive logging for debugging
  */
 async function findPictogramsWithAI(
@@ -461,13 +466,9 @@ async function findPictogramsWithAI(
   if (description) console.log(`Description: "${description}"`);
   console.log('='.repeat(80));
 
-  const config = {
-    url: process.env.AZURE_OPENAI_PHRASE_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_URL || '',
-    key: process.env.AZURE_OPENAI_PHRASE_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_KEY || '',
-    model: process.env.AZURE_OPENAI_PHRASE_DEPLOYMENT || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_DEPLOYMENT || 'gpt-5-mini'
-  };
+  const config = getAzurePhraseConfig();
 
-  if (!config.url || !config.key) {
+  if (!config.isConfigured) {
     throw new Error('Azure OpenAI is not configured. Verify environment variables AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY.');
   }
 
@@ -601,82 +602,8 @@ Return ONLY valid JSON (no markdown, no explanation):
     console.log(`   AI generated ${aiSearchTerms.tags.length} tags: [${aiSearchTerms.tags.join(', ')}]`);
 
   } catch (aiError: any) {
-    console.warn(`   Azure OpenAI failed: ${aiError.message}`);
-    console.log('   Attempting fallback to Gemini...');
-    
-    // Try Gemini as fallback (same pattern as index.js)
-    try {
-      const geminiApiKey = process.env.GEMINI_API_KEY;
-      if (!geminiApiKey) {
-        console.log('   Gemini API key not configured, continuing with local search only...');
-      } else {
-        const genAI = new GoogleGenerativeAI(geminiApiKey);
-        
-        // Simplified prompt for Gemini
-        const geminiPrompt = `You are an expert at categorizing pictograms for AAC systems.
-
-CATEGORY: "${categoryName}"
-${description ? `DESCRIPTION: "${description}"` : ''}
-
-Generate keywords and tags that will match pictograms in this category.
-
-Return ONLY valid JSON (no markdown, no explanation):
-{"keywords": ["word1", "word2", ...], "tags": ["tag1", "tag2", ...]}`;
-
-        // Try different Gemini models
-        const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro'];
-        let geminiOutput = null;
-        
-        for (const modelName of modelsToTry) {
-          try {
-            console.log(`   Trying Gemini model: ${modelName}...`);
-            const model = genAI.getGenerativeModel({ model: modelName });
-            const result = await model.generateContent(geminiPrompt);
-            const response = await result.response;
-            geminiOutput = response.text();
-            console.log(`   Gemini response received from ${modelName}`);
-            break;
-          } catch (modelError: any) {
-            console.log(`   ${modelName} failed: ${modelError.message?.substring(0, 100)}`);
-            continue;
-          }
-        }
-        
-        if (geminiOutput) {
-          console.log(`   Gemini raw response: ${geminiOutput.substring(0, 200)}...`);
-          
-          // Parse Gemini response (same as Azure)
-          try {
-            const cleaned = geminiOutput.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            const parsed = JSON.parse(cleaned);
-            
-            if (parsed.keywords && Array.isArray(parsed.keywords)) {
-              aiSearchTerms.keywords = parsed.keywords
-                .map((k: any) => String(k).toLowerCase().trim())
-                .filter((k: string) => k.length >= 2);
-              console.log(`   Gemini generated ${aiSearchTerms.keywords.length} keywords`);
-            }
-            if (parsed.tags && Array.isArray(parsed.tags)) {
-              aiSearchTerms.tags = parsed.tags
-                .map((t: any) => String(t).toLowerCase().trim())
-                .filter((t: string) => t.length >= 2);
-              console.log(`   Gemini generated ${aiSearchTerms.tags.length} tags`);
-            }
-            
-            console.log(`   Gemini keywords: [${aiSearchTerms.keywords.slice(0, 10).join(', ')}${aiSearchTerms.keywords.length > 10 ? '...' : ''}]`);
-            console.log(`   Gemini tags: [${aiSearchTerms.tags.join(', ')}]`);
-          } catch (parseError: any) {
-            console.error(`   Failed to parse Gemini response: ${parseError.message}`);
-            console.log('   Continuing with local search results only...');
-          }
-        } else {
-          console.log('   All Gemini models failed, continuing with local search only...');
-        }
-      }
-    } catch (geminiError: any) {
-      console.error(`   Gemini fallback also failed: ${geminiError.message}`);
-      console.log('   Continuing with local search results only...');
-    }
+    console.error(`   Azure OpenAI failed: ${aiError.message}`);
+    console.log('   No AI keywords/tags generated, returning empty results');
   }
 
   // ============================================================================
@@ -693,7 +620,7 @@ Return ONLY valid JSON (no markdown, no explanation):
     };
 
     for (const pictogram of pictograms) {
-      const scored = calculatePictogramScore(pictogram, aiTerms, [], true);
+      const scored = calculatePictogramScore(pictogram, aiTerms, []);
       if (scored.score >= MIN_RELEVANCE_SCORE) {
         scoredPictograms.push(scored);
       }
@@ -911,7 +838,7 @@ function isPredefinedCategory(categoryName: string): boolean {
   return PREDEFINED_CATEGORIES.includes(categoryName);
 }
 
-module.exports = {
+export {
   loadPredefinedCategories,
   loadUserCategories,
   saveUserCategories,

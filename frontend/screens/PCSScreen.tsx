@@ -435,7 +435,7 @@ const PCSScreen: React.FC = () => {
     });
   }, []);
 
-  // Generate phrases with Gemini
+  // Generate phrases with Azure OpenAI
   const handleGeneratePhrases = useCallback(async () => {
     if (selectedWords.length === 0) {
       showError('Please select at least one word');
@@ -453,7 +453,7 @@ const PCSScreen: React.FC = () => {
         topic,
       });
     } catch (error: any) {
-      showError(error.message || 'Could not generate phrases. Check your Gemini API key.');
+      showError(error.message || 'Could not generate phrases. Check your Azure OpenAI configuration.');
       console.error('Error generating phrases:', error);
     } finally {
       setIsLoading(false);

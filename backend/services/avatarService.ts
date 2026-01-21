@@ -232,7 +232,7 @@ function getCacheStats(): { svgCount: number; pngCount: number } {
   };
 }
 
-module.exports = {
+export {
   generateUserAvatar,
   generateAvatarDataUrl,
   createUserSeed,

@@ -120,6 +120,42 @@ const FlashcardSelectionScreen: React.FC = () => {
     return phrase.trim().replace(/^\d+\.\s*/, "");
   }, []);
 
+  // Adaptive font size for normal flashcard view
+  // Reduces font size for longer phrases to ensure the Select button stays within the card
+  const getAdaptiveFontSize = useCallback((text: string): { fontSize: number; lineHeight: number } => {
+    const length = text.length;
+    
+    if (length <= 40) {
+      return { fontSize: 22, lineHeight: 32 };
+    } else if (length <= 60) {
+      return { fontSize: 20, lineHeight: 28 };
+    } else if (length <= 80) {
+      return { fontSize: 18, lineHeight: 26 };
+    } else if (length <= 100) {
+      return { fontSize: 16, lineHeight: 24 };
+    } else {
+      return { fontSize: 14, lineHeight: 22 };
+    }
+  }, []);
+
+  // Adaptive font size for selected (larger) flashcard view
+  // Slightly larger sizes than normal view while still adapting to text length
+  const getAdaptiveFontSizeLarge = useCallback((text: string): { fontSize: number; lineHeight: number } => {
+    const length = text.length;
+    
+    if (length <= 40) {
+      return { fontSize: 26, lineHeight: 36 };
+    } else if (length <= 60) {
+      return { fontSize: 24, lineHeight: 32 };
+    } else if (length <= 80) {
+      return { fontSize: 20, lineHeight: 28 };
+    } else if (length <= 100) {
+      return { fontSize: 18, lineHeight: 26 };
+    } else {
+      return { fontSize: 16, lineHeight: 24 };
+    }
+  }, []);
+
   const resetHeaderAnimation = useCallback(() => {
     headerTranslateY.setValue(0);
     headerOpacity.setValue(1);
@@ -474,7 +510,13 @@ const FlashcardSelectionScreen: React.FC = () => {
 
             {/* Phrase text */}
             <View style={styles.phraseTextContainer}>
-              <Text style={[styles.phraseText, { color: theme.primary }]}>
+              <Text style={[
+                styles.phraseText, 
+                { 
+                  color: theme.primary,
+                  ...getAdaptiveFontSize(cleanPhrase(item.phrase))
+                }
+              ]}>
                 {cleanPhrase(item.phrase)}
               </Text>
             </View>
@@ -615,7 +657,14 @@ const FlashcardSelectionScreen: React.FC = () => {
                   </View>
 
                   <View style={[styles.phraseTextContainer, { flex: 1, justifyContent: 'center' }]}>
-                    <Text style={[styles.phraseText, styles.phraseTextLarge, { color: theme.primary }]}>
+                    <Text style={[
+                      styles.phraseText, 
+                      styles.phraseTextLarge, 
+                      { 
+                        color: theme.primary,
+                        ...getAdaptiveFontSizeLarge(cleanPhrase(selectedPhrase.phrase))
+                      }
+                    ]}>
                       {cleanPhrase(selectedPhrase.phrase)}
                     </Text>
                   </View>

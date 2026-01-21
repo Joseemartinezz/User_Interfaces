@@ -1,20 +1,14 @@
 // Azure OpenAI API service for generating phrases
 // Backend service that proxies Azure OpenAI API calls
 
-function getAzureConfig() {
-  return {
-    url: process.env.AZURE_OPENAI_PHRASE_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_URL || '',
-    key: process.env.AZURE_OPENAI_PHRASE_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_KEY || '',
-    model: process.env.AZURE_OPENAI_PHRASE_DEPLOYMENT || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_DEPLOYMENT || 'gpt-5-mini'
-  };
-}
+import { getAzurePhraseConfig } from '../config';
 
 /**
  * Checks connectivity to Azure OpenAI deployment endpoint.
  */
 function testAzureConnection() {
-  const config = getAzureConfig();
-  if (!config.url || !config.key) {
+  const config = getAzurePhraseConfig();
+  if (!config.isConfigured) {
     return false;
   }
 
@@ -44,11 +38,11 @@ function testAzureConnection() {
 /**
  * Generates natural phrases from selected words using Azure OpenAI
  */
-async function generateAzurePhrases(words, childAge) {
+async function generateAzurePhrases(words: string[], childAge?: number): Promise<string[]> {
   if (!words || words.length === 0) return [];
 
-  const config = getAzureConfig();
-  if (!config.url || !config.key) {
+  const config = getAzurePhraseConfig();
+  if (!config.isConfigured) {
     throw new Error('Azure OpenAI is not configured. Verify environment variables AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY.');
   }
 
@@ -121,12 +115,10 @@ async function generateAzurePhrases(words, childAge) {
 
     // Extract phrases from numbered list
     const lines = output.split('\n');
-    /** @type {string[]} */
-    const phrases = [];
+    const phrases: string[] = [];
     for (const line of lines) {
       const cleaned = String(line).replace(/^\d+[\.\)]\s*/, '').trim();
       if (cleaned && cleaned.length > 0) {
-        // @ts-ignore - phrases is typed as string[] via JSDoc
         phrases.push(cleaned);
       }
     }
@@ -134,7 +126,8 @@ async function generateAzurePhrases(words, childAge) {
     const extractedPhrases = phrases.length > 0 ? phrases : [output.trim()];
     // Limit to exactly 3 phrases for initial generation
     return extractedPhrases.slice(0, 3);
-  } catch (error) {
+  } catch (err) {
+    const error = err as Error;
     console.error('Error generating phrases with Azure OpenAI:', error);
     throw new Error(error.message || 'Error generating phrases with Azure OpenAI.');
   }
@@ -143,11 +136,11 @@ async function generateAzurePhrases(words, childAge) {
 /**
  * Generate more Azure phrases not repeating existing ones
  */
-async function generateMoreAzurePhrases(words, existingPhrases, childAge) {
+async function generateMoreAzurePhrases(words: string[], existingPhrases: string[], childAge?: number): Promise<string[]> {
   if (!words || words.length === 0) return [];
 
-  const config = getAzureConfig();
-  if (!config.url || !config.key) {
+  const config = getAzurePhraseConfig();
+  if (!config.isConfigured) {
     throw new Error('Azure OpenAI is not configured. Verify environment variables AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY.');
   }
 
@@ -224,12 +217,10 @@ async function generateMoreAzurePhrases(words, existingPhrases, childAge) {
 
     // Extract phrases from numbered list
     const lines = output.split('\n');
-    /** @type {string[]} */
-    const phrases = [];
+    const phrases: string[] = [];
     for (const line of lines) {
       const cleaned = String(line).replace(/^\d+[\.\)]\s*/, '').trim();
       if (cleaned && cleaned.length > 0) {
-        // @ts-ignore - phrases is typed as string[] via JSDoc
         phrases.push(cleaned);
       }
     }
@@ -237,13 +228,14 @@ async function generateMoreAzurePhrases(words, existingPhrases, childAge) {
     const extractedPhrases = phrases.length > 0 ? phrases : [output.trim()];
     // Limit to exactly 1 phrase for "Generate More"
     return extractedPhrases.slice(0, 1);
-  } catch (error) {
+  } catch (err) {
+    const error = err as Error;
     console.error('Error generating more phrases with Azure OpenAI:', error);
     throw new Error(error.message || 'Error generating more phrases with Azure OpenAI.');
   }
 }
 
-module.exports = {
+export {
   testAzureConnection,
   generateAzurePhrases,
   generateMoreAzurePhrases

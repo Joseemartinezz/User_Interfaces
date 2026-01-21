@@ -31,8 +31,7 @@ SYSTEM_CONTEXT:
 
   The system integrates:
   - ARASAAC pictogram library for PCS symbols
-  - Google Gemini AI for natural language generation
-  - OpenAI API (GPT-4o) as alternative AI provider
+  - Azure OpenAI API for natural language generation
   - Firebase (planned) for user profiles and data storage
   - React Native/Expo for cross-platform mobile app
 
@@ -83,13 +82,11 @@ TECH_STACK:
     - CORS enabled for cross-origin requests
     - dotenv for environment variable management
     - node-fetch for HTTP requests
-    - Google Gemini AI (@google/generative-ai)
-    - OpenAI API (openai package) as alternative
+    - Azure OpenAI API for AI features
 
   External Services:
     - ARASAAC API for pictogram library
-    - Google Gemini 1.5 Flash/Pro for language generation
-    - OpenAI GPT-4o/GPT-4o-mini as alternative AI
+    - Azure OpenAI (GPT-5-mini) for language generation
     - Firebase (planned) for database and authentication
 
   Development:
@@ -106,8 +103,8 @@ READ_ARCHITECTURE: |
   2. Extract and understand:
      - Frontend layer (React Native + Expo)
      - API Gateway layer (Express.js + CORS middleware)
-     - Services layer (Gemini, OpenAI, ARASAAC services)
-     - External integrations (ARASAAC API, AI APIs)
+     - Services layer (Azure OpenAI, ARASAAC services)
+     - External integrations (ARASAAC API, Azure OpenAI API)
      - Data flow: PCS selection → AI processing → Natural language output
   3. Validate any changes against architectural constraints
   4. Ensure proper separation of concerns across layers
@@ -148,13 +145,9 @@ TASK_WORKFLOW: |
 # AI Integration Guidelines
 
 AI_INTEGRATION:
-  - Use environment variables for API keys (GEMINI_API_KEY, OPENAI_API_KEY)
+  - Use environment variables for API keys (AZURE_OPENAI_PHRASE_URL, AZURE_OPENAI_PHRASE_KEY)
   - Implement proper error handling for API failures
-  - Use appropriate models based on use case:
-    - Gemini 1.5 Flash: Fast and cost-effective for general use
-    - Gemini 1.5 Pro: More powerful for complex tasks
-    - GPT-4o-mini: Cost-effective OpenAI alternative
-    - GPT-4o: Most powerful but more expensive
+  - Use Azure OpenAI GPT-5-mini for phrase generation
   - Implement retry logic for failed requests
   - Follow rate limiting best practices
   - Cache responses when appropriate
@@ -162,19 +155,7 @@ AI_INTEGRATION:
 
   Code patterns:
   ```typescript
-  // Backend pattern
-  const generateContent = async (prompt: string, options = {}) => {
-    try {
-      const model = options.model || 'gemini-1.5-flash';
-      const response = await genAI.getGenerativeModel({ model }).generateContent(prompt);
-      return response.response.text();
-    } catch (error) {
-      console.error('AI API error:', error);
-      throw new Error('Content generation failed');
-    }
-  };
-
-  // Frontend pattern
+  // Frontend pattern - calls backend which handles Azure OpenAI
   const generatePhrases = async (words: string[]) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/generate-phrases`, {
@@ -273,11 +254,9 @@ API_CONVENTIONS:
   ```
 
   RESTful endpoints:
-  - POST /api/generate-phrases - Generate phrases from words
-  - POST /api/generate-more-phrases - Generate more phrases
-  - POST /api/openai/generate-phrases - OpenAI phrase generation
-  - POST /api/openai/text-to-pcs - Convert text to PCS symbols
-  - POST /api/openai/pcs-to-text - Convert PCS symbols to text
+  - POST /api/generate-phrases - Generate phrases from words (Azure OpenAI)
+  - POST /api/generate-more-phrases - Generate more phrases (Azure OpenAI)
+  - POST /api/azure/generate-phrases - Direct Azure OpenAI phrase generation
   - GET /api/arasaac/search/:language/:searchTerm - Search pictograms
   - GET /api/arasaac/pictogram/:language/:idPictogram - Get pictogram
   - GET /api/arasaac/image/:idPictogram - Get pictogram image
@@ -303,8 +282,9 @@ VALIDATION_RULES: |
 
 ENV_CONFIGURATION:
   Backend (.env):
-    - GEMINI_API_KEY: Google Gemini API key
-    - OPENAI_API_KEY: OpenAI API key (optional)
+    - AZURE_OPENAI_PHRASE_URL: Azure OpenAI endpoint URL (required)
+    - AZURE_OPENAI_PHRASE_KEY: Azure OpenAI API key (required)
+    - AZURE_OPENAI_PHRASE_DEPLOYMENT: Model deployment name (default: gpt-5-mini)
     - PORT: Server port (default: 3000)
 
   Frontend (.env):

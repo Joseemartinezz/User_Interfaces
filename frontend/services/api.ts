@@ -63,7 +63,7 @@ export async function testConnection(): Promise<boolean> {
 }
 
 /**
- * Generates natural phrases from selected words using Gemini
+ * Generates natural phrases from selected words using Azure OpenAI
  */
 export async function generatePhrases(words: string[], childAge?: number): Promise<string[]> {
   if (!words || words.length === 0) {

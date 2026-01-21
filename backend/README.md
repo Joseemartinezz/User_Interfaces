@@ -1,6 +1,6 @@
 # Backend Proxy for AAC App
 
-This server acts as a proxy between the React Native app and the Gemini API, avoiding CORS issues.
+This server acts as a proxy between the React Native app and the Azure OpenAI API, avoiding CORS issues.
 
 ## 🚀 Installation
 
@@ -12,12 +12,16 @@ npm install
 
 ## ⚙️ Configuration
 
-1. Copy `.env` and configure your Gemini API key:
+1. Copy `.env` and configure your Azure OpenAI API:
 ```bash
 # The .env file should already exist with the configuration
 # If not, create one with:
-GEMINI_API_KEY=your_api_key_here
 PORT=3000
+
+# Azure OpenAI (Required for AI features)
+AZURE_OPENAI_PHRASE_URL=https://your-resource.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview
+AZURE_OPENAI_PHRASE_KEY=your_azure_key
+AZURE_OPENAI_PHRASE_DEPLOYMENT=gpt-5-mini
 ```
 
 ## ▶️ Execution
@@ -36,7 +40,7 @@ The server will run on `http://localhost:3000`
 
 ## 📡 Endpoints
 
-### Gemini AI
+### Azure OpenAI
 - `POST /api/generate-phrases` - Generate phrases from words
 - `POST /api/generate-more-phrases` - Generate more phrases without repeating
 
@@ -94,7 +98,7 @@ curl -X POST http://localhost:3000/api/arasaac/search-multiple \
   -d '{"words": ["casa", "perro", "comer"], "language": "es"}'
 ```
 
-### Generate phrases with Gemini
+### Generate phrases with Azure OpenAI
 
 ```bash
 curl -X POST http://localhost:3000/api/generate-phrases \

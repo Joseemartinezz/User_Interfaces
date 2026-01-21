@@ -1,11 +1,21 @@
-// Load environment variables FIRST, before any other require
-require('dotenv').config();
+/**
+ * AAC Backend Server - TypeScript Version
+ * 
+ * This is the main entry point for the AAC backend server.
+ * Converted to TypeScript with strict mode enabled for better type safety.
+ */
 
-const express = require('express');
-const cors = require('cors');
-const { generateAzurePhrases, generateMoreAzurePhrases, testAzureConnection } = require('./services/azureService.ts');
-const { generateAacImage, generateAacImagesForPhrases } = require('./services/imageService.ts');
-const {
+// Load environment variables FIRST, before any other imports
+import dotenv from 'dotenv';
+dotenv.config();
+
+import express, { Request, Response, NextFunction, Application } from 'express';
+import cors from 'cors';
+
+// Import services
+import { generateAzurePhrases, generateMoreAzurePhrases } from './services/azureService';
+import { generateAacImage, generateAacImagesForPhrases } from './services/imageService';
+import {
   getUserCategories,
   getUserCategoryPictograms,
   createUserCategory,
@@ -14,38 +24,124 @@ const {
   initializePredefinedCategories,
   isPredefinedCategory,
   PREDEFINED_CATEGORIES
-} = require('./services/categoryService.ts');
-const {
+} from './services/categoryService';
+import {
   searchPictograms,
   getPictogramById,
   getPictogramImage,
   searchMultiplePictograms
-} = require('./services/arasaacService.ts');
-const {
-  isGeminiConfigured,
-  generateGeminiPhrases,
-  generateMoreGeminiPhrases,
-  formatGeminiError
-} = require('./services/geminiService.ts');
-const {
-  generateUserAvatar,
+} from './services/arasaacService';
+import {
   generateAvatarDataUrl,
   createUserSeed,
   getInitials
-} = require('./services/avatarService.ts');
+} from './services/avatarService';
+import {
+  getUserData,
+  updateUserData,
+  resetUserData,
+  getCacheStats,
+  UserPreferences
+} from './services/userService';
+import { getAzurePhraseConfig, getServerConfig } from './config';
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
-    // Middleware that runs on all requests
-    // 1. CORS - Allows requests from frontend
-    app.use(cors());
+/**
+ * Extended Request interface with userId from authentication
+ */
+interface AuthenticatedRequest extends Request {
+  userId: string;
+}
 
-    // 2. JSON Parser - Converts JSON body to JavaScript object
-    app.use(express.json());
+/**
+ * Error with additional properties for API error handling
+ */
+interface ApiError extends Error {
+  status?: number;
+  statusText?: string;
+}
+
+/**
+ * Request body types
+ */
+interface GeneratePhrasesBody {
+  words: string[];
+  childAge?: number;
+}
+
+interface GenerateMorePhrasesBody {
+  words: string[];
+  existingPhrases: string[];
+  childAge?: number;
+}
+
+interface GenerateImageBody {
+  phrase: string;
+}
+
+interface GenerateImagesBody {
+  phrases: string[];
+}
+
+interface SearchMultipleBody {
+  words: string[];
+  language?: string;
+}
+
+interface CreateCategoryBody {
+  categoryName: string;
+  maxResults?: number;
+  description?: string;
+  userId?: string;
+}
+
+interface CreateEmptyCategoryBody {
+  categoryName: string;
+  userId?: string;
+}
+
+interface AvatarBody {
+  userId?: string;
+  email?: string;
+  fullName?: string;
+}
+
+interface UpdateUserBody {
+  email?: string;
+  fullName?: string;
+  preferences?: Partial<UserPreferences>;
+  userId?: string;
+}
+
+interface PictogramImageOptions {
+  color?: boolean;
+  backgroundColor?: string;
+  plural?: boolean;
+  skin?: string;
+  hair?: string;
+  action?: string;
+}
+
+// ============================================================================
+// Express App Setup
+// ============================================================================
+
+const app: Application = express();
+const serverConfig = getServerConfig();
+const PORT: number = serverConfig.port;
+
+// Middleware that runs on all requests
+// 1. CORS - Allows requests from frontend
+app.use(cors());
+
+// 2. JSON Parser - Converts JSON body to JavaScript object
+app.use(express.json());
 
 // Middleware logging for all requests
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction): void => {
   const timestamp = new Date().toISOString();
   console.log(`\n[${timestamp}] ${req.method} ${req.path}`);
   console.log(`   Origin: ${req.headers.origin || 'N/A'}`);
@@ -53,29 +149,33 @@ app.use((req, res, next) => {
   if (Object.keys(req.query).length > 0) {
     console.log(`   Query:`, req.query);
   }
-  if (Object.keys(req.body).length > 0 && req.method !== 'GET') {
+  if (Object.keys(req.body as object).length > 0 && req.method !== 'GET') {
     console.log(`   Body:`, JSON.stringify(req.body).substring(0, 200));
   }
   
   // Intercept response to log status
-  const originalSend = res.send;
-  res.send = function(data) {
+  const originalSend = res.send.bind(res);
+  res.send = function(data: unknown): Response {
     console.log(`[${timestamp}] ${req.method} ${req.path} -> ${res.statusCode}`);
-    return originalSend.call(this, data);
+    return originalSend(data);
   };
   
   next();
 });
+
+// ============================================================================
+// Authentication Middleware
+// ============================================================================
 
 /**
  * Simple authentication middleware
  * Extracts userId from Authorization header or body
  * In production, should verify Firebase token with Admin SDK
  */
-const authenticateUser = (req, res, next) => {
+const authenticateUser = (req: Request, res: Response, next: NextFunction): void => {
   // Try to get userId from Authorization header (format: "Bearer userId" or just "userId")
   const authHeader = req.headers.authorization;
-  let userId = null;
+  let userId: string | null = null;
   
   if (authHeader) {
     // If it comes as "Bearer userId", extract userId
@@ -84,92 +184,94 @@ const authenticateUser = (req, res, next) => {
   }
   
   // If not in header, try from body
-  if (!userId && req.body && req.body.userId) {
-    userId = req.body.userId;
+  const body = req.body as { userId?: string };
+  if (!userId && body?.userId) {
+    userId = body.userId;
   }
   
   // If still no userId, try from query (for GET requests)
-  if (!userId && req.query && req.query.userId) {
-    userId = req.query.userId;
+  if (!userId && req.query?.userId) {
+    userId = req.query.userId as string;
   }
   
   if (!userId) {
-    return res.status(401).json({
+    res.status(401).json({
       error: 'Unauthorized',
       message: 'userId is required for this operation. Include userId in Authorization header, body or query.'
     });
+    return;
   }
   
   // Add userId to request for use in handlers
-  req.userId = userId;
+  (req as AuthenticatedRequest).userId = userId;
   next();
 };
 
-// Azure OpenAI Configuration (Primary Provider) - For phrase generation
-const AZURE_OPENAI_PHRASE_URL = process.env.AZURE_OPENAI_PHRASE_URL || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_URL;
-const AZURE_OPENAI_PHRASE_KEY = process.env.AZURE_OPENAI_PHRASE_KEY || process.env.EXPO_PUBLIC_AZURE_OPENAI_PHRASE_KEY;
+// ============================================================================
+// Azure OpenAI Configuration (using centralized config)
+// ============================================================================
 
-if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
+const azurePhraseConfig = getAzurePhraseConfig();
+
+if (!azurePhraseConfig.isConfigured) {
   console.warn('WARNING: Azure OpenAI for phrases is not configured in environment variables');
   console.warn('   Add AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY to backend/.env file');
-  console.warn('   Azure OpenAI is the primary AI provider');
+  console.warn('   Azure OpenAI is required for AI features');
 } else {
-  console.log('Azure OpenAI configured (Primary Provider)');
+  console.log('Azure OpenAI configured');
 }
 
-// Gemini Configuration (Secondary Provider/Fallback)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
-if (!GEMINI_API_KEY) {
-  console.warn('WARNING: GEMINI_API_KEY is not configured in environment variables');
-  console.warn('   Add GEMINI_API_KEY=your_key_here to backend/.env file');
-  console.warn('   Gemini will be used as fallback if Azure OpenAI fails');
-} else {
-  console.log('Gemini configured (Secondary Provider/Fallback)');
+/**
+ * Formats error messages for Azure OpenAI errors
+ */
+function formatAzureErrorMessage(error: ApiError): string {
+  let errorMessage = error.message || 'Unknown error';
+  if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+    errorMessage = 'Azure OpenAI API Key invalid. Verify your API key.';
+  } else if (error.message?.includes('429') || error.message?.includes('rate limit')) {
+    errorMessage = 'Azure OpenAI API quota exceeded. Verify your plan.';
+  } else if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+    errorMessage = 'Azure OpenAI deployment is not available. Verify the configuration.';
+  }
+  return errorMessage;
 }
+
+// ============================================================================
+// Phrase Generation Endpoints
+// ============================================================================
 
 /**
  * Endpoint to generate phrases
- * Uses Azure OpenAI as primary provider, Gemini as fallback
+ * Uses Azure OpenAI for phrase generation
  */
-app.post('/api/generate-phrases', async (req, res) => {
+app.post('/api/generate-phrases', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { words, childAge } = req.body;
+    const { words, childAge } = req.body as GeneratePhrasesBody;
 
     if (!words || !Array.isArray(words) || words.length === 0) {
-      return res.status(400).json({ error: 'An array of words is required' });
+      res.status(400).json({ error: 'An array of words is required' });
+      return;
     }
 
-    // Try first with Azure OpenAI (Primary Provider)
-    if (AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) {
-      try {
-        console.log('Attempting to generate phrases with Azure OpenAI (Primary Provider)...');
-        const phrases = await generateAzurePhrases(words, childAge);
-        console.log('Phrases generated successfully with Azure OpenAI');
-        return res.json({ phrases });
-      } catch (azureError) {
-        console.error('Azure OpenAI failed:', azureError.message);
-        console.log('Attempting with Gemini as fallback...');
-      }
-    } else {
-      console.log('Azure OpenAI is not configured, using Gemini as primary provider...');
-    }
-
-    // If Azure failed or is not configured, try with Gemini (Secondary Provider)
-    if (!isGeminiConfigured()) {
-      return res.status(500).json({ 
-        error: 'No AI provider is configured',
-        message: 'Configure AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY, or GEMINI_API_KEY in backend/.env'
+    // Check if Azure OpenAI is configured
+    if (!azurePhraseConfig.isConfigured) {
+      res.status(500).json({ 
+        error: 'Azure OpenAI is not configured',
+        message: 'Configure AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY in backend/.env'
       });
+      return;
     }
 
-    const phrases = await generateGeminiPhrases(words, childAge);
-    console.log(`Generated ${phrases.length} phrases with Gemini`);
-    if (phrases.length !== 3) {
-      console.warn(`Warning: Expected 3 phrases but got ${phrases.length}`);
-    }
+    console.log('Generating phrases with Azure OpenAI...');
+    const phrases = await generateAzurePhrases(words, childAge);
+    console.log('Phrases generated successfully with Azure OpenAI');
     res.json({ phrases });
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error generating phrases:', error);
     console.error('Error details:', {
       message: error.message,
@@ -179,12 +281,12 @@ app.post('/api/generate-phrases', async (req, res) => {
       stack: error.stack?.split('\n').slice(0, 5).join('\n')
     });
     
-    const errorMessage = formatGeminiError(error);
+    const errorMessage = formatAzureErrorMessage(error);
     
     res.status(500).json({ 
       error: 'Error generating phrases',
       message: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? {
+      details: serverConfig.isDevelopment ? {
         originalError: error.message,
         status: error.status
       } : undefined
@@ -194,56 +296,43 @@ app.post('/api/generate-phrases', async (req, res) => {
 
 /**
  * Endpoint to generate more phrases
- * Uses Azure OpenAI as primary provider, Gemini as fallback
+ * Uses Azure OpenAI for phrase generation
  */
-app.post('/api/generate-more-phrases', async (req, res) => {
+app.post('/api/generate-more-phrases', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { words, existingPhrases, childAge } = req.body;
+    const { words, existingPhrases, childAge } = req.body as GenerateMorePhrasesBody;
 
     if (!words || !Array.isArray(words) || words.length === 0) {
-      return res.status(400).json({ error: 'An array of words is required' });
+      res.status(400).json({ error: 'An array of words is required' });
+      return;
     }
 
     if (!existingPhrases || !Array.isArray(existingPhrases)) {
-      return res.status(400).json({ error: 'An array of existing phrases is required' });
+      res.status(400).json({ error: 'An array of existing phrases is required' });
+      return;
     }
 
-    // Try first with Azure OpenAI (Primary Provider)
-    if (AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) {
-      try {
-        console.log('Attempting to generate more phrases with Azure OpenAI (Primary Provider)...');
-        const phrases = await generateMoreAzurePhrases(words, existingPhrases, childAge);
-        // Limit to exactly 1 phrase for "Generate More" (one additional phrase)
-        const limitedPhrases = phrases.slice(0, 1);
-        console.log(`Azure phrases: ${phrases.length}, limited to: ${limitedPhrases.length}`);
-        if (limitedPhrases.length !== 1) {
-          console.warn(`Warning: Expected 1 phrase but got ${limitedPhrases.length}`);
-        }
-        console.log('Phrase generated successfully with Azure OpenAI');
-        return res.json({ phrases: limitedPhrases });
-      } catch (azureError) {
-        console.error('Azure OpenAI failed:', azureError.message);
-        console.log('Attempting with Gemini as fallback...');
-      }
-    } else {
-      console.log('Azure OpenAI is not configured, using Gemini as primary provider...');
-    }
-
-    // If Azure failed or is not configured, try with Gemini (Secondary Provider)
-    if (!isGeminiConfigured()) {
-      return res.status(500).json({ 
-        error: 'No AI provider is configured',
-        message: 'Configure AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY, or GEMINI_API_KEY in backend/.env'
+    // Check if Azure OpenAI is configured
+    if (!azurePhraseConfig.isConfigured) {
+      res.status(500).json({ 
+        error: 'Azure OpenAI is not configured',
+        message: 'Configure AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY in backend/.env'
       });
+      return;
     }
 
-    const phrases = await generateMoreGeminiPhrases(words, existingPhrases, childAge);
-    console.log(`Generated ${phrases.length} phrases with Gemini`);
-    if (phrases.length !== 1) {
-      console.warn(`Warning: Expected 1 phrase but got ${phrases.length}`);
+    console.log('Generating more phrases with Azure OpenAI...');
+    const phrases = await generateMoreAzurePhrases(words, existingPhrases, childAge);
+    // Limit to exactly 1 phrase for "Generate More" (one additional phrase)
+    const limitedPhrases = phrases.slice(0, 1);
+    console.log(`Azure phrases: ${phrases.length}, limited to: ${limitedPhrases.length}`);
+    if (limitedPhrases.length !== 1) {
+      console.warn(`Warning: Expected 1 phrase but got ${limitedPhrases.length}`);
     }
-    res.json({ phrases });
-  } catch (error) {
+    console.log('Phrase generated successfully with Azure OpenAI');
+    res.json({ phrases: limitedPhrases });
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error generating more phrases:', error);
     console.error('Error details:', {
       message: error.message,
@@ -253,12 +342,12 @@ app.post('/api/generate-more-phrases', async (req, res) => {
       stack: error.stack?.split('\n').slice(0, 5).join('\n')
     });
     
-    const errorMessage = formatGeminiError(error);
+    const errorMessage = formatAzureErrorMessage(error);
     
     res.status(500).json({ 
       error: 'Error generating more phrases',
       message: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? {
+      details: serverConfig.isDevelopment ? {
         originalError: error.message,
         status: error.status
       } : undefined
@@ -266,24 +355,25 @@ app.post('/api/generate-more-phrases', async (req, res) => {
   }
 });
 
-// ==========================================
-// IMAGE GENERATION ENDPOINT
-// ==========================================
+// ============================================================================
+// Image Generation Endpoints
+// ============================================================================
 
 /**
  * Endpoint to generate an image with DALL-E for an AAC phrase
  * POST /api/generate-image
  * Body: { phrase: string }
  */
-app.post('/api/generate-image', async (req, res) => {
+app.post('/api/generate-image', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { phrase } = req.body;
+    const { phrase } = req.body as GenerateImageBody;
 
     if (!phrase || typeof phrase !== 'string' || phrase.trim().length === 0) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         error: 'A valid phrase is required',
         message: 'The "phrase" field is required and must be a non-empty string'
       });
+      return;
     }
 
     const imageBase64 = await generateAacImage(phrase.trim());
@@ -292,7 +382,8 @@ app.post('/api/generate-image', async (req, res) => {
       imageBase64, 
       phrase: phrase.trim() 
     });
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error generating image:', error);
     
     let statusCode = 500;
@@ -309,7 +400,7 @@ app.post('/api/generate-image', async (req, res) => {
     res.status(statusCode).json({ 
       error: 'Error generating image',
       message: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? {
+      details: serverConfig.isDevelopment ? {
         originalError: error.message,
         stack: error.stack?.split('\n').slice(0, 3)
       } : undefined
@@ -322,27 +413,29 @@ app.post('/api/generate-image', async (req, res) => {
  * POST /api/generate-images
  * Body: { phrases: string[] }
  */
-app.post('/api/generate-images', async (req, res) => {
+app.post('/api/generate-images', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { phrases } = req.body;
+    const { phrases } = req.body as GenerateImagesBody;
 
     if (!phrases || !Array.isArray(phrases) || phrases.length === 0) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         error: 'An array of phrases is required',
         message: 'The "phrases" field must be a non-empty array'
       });
+      return;
     }
 
     // Validate that all phrases are strings
     const validPhrases = phrases
-      .filter(p => typeof p === 'string' && p.trim().length > 0)
+      .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
       .map(p => p.trim());
 
     if (validPhrases.length === 0) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         error: 'No valid phrases',
         message: 'All phrases must be non-empty strings'
       });
+      return;
     }
 
     const results = await generateAacImagesForPhrases(validPhrases);
@@ -352,142 +445,23 @@ app.post('/api/generate-images', async (req, res) => {
       total: results.length,
       successful: results.filter(r => r.imageBase64 !== '').length
     });
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error generating images:', error);
     
     res.status(500).json({ 
       error: 'Error generating images',
       message: error.message || 'Unknown error',
-      details: process.env.NODE_ENV === 'development' ? {
+      details: serverConfig.isDevelopment ? {
         originalError: error.message
       } : undefined
     });
   }
 });
 
-// ==========================================
-// ==========================================
-// AZURE OPENAI ENDPOINTS (Direct - not used by main endpoints)
-// ==========================================
-
-/**
- * Direct endpoint to generate phrases with Azure OpenAI
- * POST /api/azure/generate-phrases
- * Note: Main endpoints /api/generate-phrases already use Azure first
- */
-app.post('/api/azure/generate-phrases', async (req, res) => {
-  try {
-    const { words } = req.body;
-
-    if (!words || !Array.isArray(words) || words.length === 0) {
-      return res.status(400).json({ error: 'An array of words is required' });
-    }
-
-    if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
-      return res.status(500).json({
-        error: 'Azure OpenAI is not configured',
-        message: 'Add AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY to backend/.env file'
-      });
-    }
-
-    console.log('Calling Azure OpenAI API with words:', words);
-    
-    try {
-      const phrases = await generateAzurePhrases(words);
-      console.log(`Response received from Azure OpenAI`);
-      console.log('Generated phrases:', phrases);
-
-      res.json({ phrases });
-    } catch (azureError) {
-      console.error('Azure OpenAI error:', azureError);
-      
-      let errorMessage = azureError.message || 'Unknown error';
-      if (azureError.message?.includes('401') || azureError.message?.includes('Unauthorized')) {
-        errorMessage = 'Azure OpenAI API Key invalid. Verify your API key.';
-      } else if (azureError.message?.includes('429') || azureError.message?.includes('rate limit')) {
-        errorMessage = 'Azure OpenAI API quota exceeded. Verify your plan.';
-      } else if (azureError.message?.includes('404') || azureError.message?.includes('Not Found')) {
-        errorMessage = 'Azure OpenAI deployment is not available. Verify the configuration.';
-      }
-      
-      throw new Error(errorMessage);
-    }
-  } catch (error) {
-    console.error('Error generating phrases with Azure OpenAI:', error);
-    
-    res.status(500).json({ 
-      error: 'Error generating phrases',
-      message: error.message || 'Unknown error',
-      details: process.env.NODE_ENV === 'development' ? {
-        originalError: error.message
-      } : undefined
-    });
-  }
-});
-
-/**
- * Endpoint to generate more phrases with Azure OpenAI
- * POST /api/azure/generate-more-phrases
- */
-app.post('/api/azure/generate-more-phrases', async (req, res) => {
-  try {
-    const { words, existingPhrases } = req.body;
-
-    if (!words || !Array.isArray(words) || words.length === 0) {
-      return res.status(400).json({ error: 'An array of words is required' });
-    }
-
-    if (!existingPhrases || !Array.isArray(existingPhrases)) {
-      return res.status(400).json({ error: 'An array of existing phrases is required' });
-    }
-
-    if (!AZURE_OPENAI_PHRASE_URL || !AZURE_OPENAI_PHRASE_KEY) {
-      return res.status(500).json({
-        error: 'Azure OpenAI is not configured',
-        message: 'Add AZURE_OPENAI_PHRASE_URL and AZURE_OPENAI_PHRASE_KEY to backend/.env file'
-      });
-    }
-
-    console.log('Calling Azure OpenAI API to generate more phrases...');
-    console.log('   Words:', words);
-    console.log('   Existing phrases:', existingPhrases);
-    
-    try {
-      const phrases = await generateMoreAzurePhrases(words, existingPhrases);
-      console.log(`Response received from Azure OpenAI`);
-      console.log('Generated phrases:', phrases);
-
-      res.json({ phrases });
-    } catch (azureError) {
-      console.error('Azure OpenAI error:', azureError);
-      
-      let errorMessage = azureError.message || 'Unknown error';
-      if (azureError.message?.includes('401') || azureError.message?.includes('Unauthorized')) {
-        errorMessage = 'Azure OpenAI API Key invalid. Verify your API key.';
-      } else if (azureError.message?.includes('429') || azureError.message?.includes('rate limit')) {
-        errorMessage = 'Azure OpenAI API quota exceeded. Verify your plan.';
-      } else if (azureError.message?.includes('404') || azureError.message?.includes('Not Found')) {
-        errorMessage = 'Azure OpenAI deployment is not available. Verify the configuration.';
-      }
-      
-      throw new Error(errorMessage);
-    }
-  } catch (error) {
-    console.error('Error generating more phrases with Azure OpenAI:', error);
-    
-    res.status(500).json({ 
-      error: 'Error generating more phrases',
-      message: error.message || 'Unknown error',
-      details: process.env.NODE_ENV === 'development' ? {
-        originalError: error.message
-      } : undefined
-    });
-  }
-});
-
-// ==========================================
-// ARASAAC ENDPOINTS
-// ==========================================
+// ============================================================================
+// ARASAAC Endpoints
+// ============================================================================
 
 /**
  * Endpoint to serve pictogram images as proxy
@@ -496,27 +470,30 @@ app.post('/api/azure/generate-more-phrases', async (req, res) => {
  * IMPORTANT: This route must go BEFORE other ARASAAC routes
  * to avoid routing conflicts
  */
-app.get('/api/arasaac/image/:idPictogram', async (req, res) => {
+app.get('/api/arasaac/image/:idPictogram', async (req: Request, res: Response): Promise<void> => {
   try {
     const { idPictogram } = req.params;
-    const { color, backgroundColor, plural, skin, hair, action } = req.query;
+    const { color, backgroundColor, plural, skin, hair, action } = req.query as Record<string, string | undefined>;
 
     if (!idPictogram) {
-      return res.status(400).json({ error: 'Pictogram ID is required' });
+      res.status(400).json({ error: 'Pictogram ID is required' });
+      return;
     }
 
     console.log(`Serving pictogram image ID: ${idPictogram}`);
     console.log(`   Request from: ${req.headers['user-agent'] || 'Unknown'}`);
 
     // Use ARASAAC service to get image
-    const { buffer: imageBuffer, contentType } = await getPictogramImage(parseInt(idPictogram), {
+    const options: PictogramImageOptions = {
       color: color !== undefined ? color === 'true' : undefined,
       backgroundColor,
       plural: plural === 'true',
       skin,
       hair,
       action,
-    });
+    };
+    
+    const { buffer: imageBuffer, contentType } = await getPictogramImage(parseInt(idPictogram, 10), options);
 
     // Send image with correct headers for React Native
     res.setHeader('Content-Type', contentType);
@@ -526,14 +503,16 @@ app.get('/api/arasaac/image/:idPictogram', async (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.send(imageBuffer);
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error getting image from ARASAAC:', error);
     
     if (error.message?.includes('not found')) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         error: 'Pictogram not found',
         message: error.message
       });
+      return;
     }
     
     res.status(500).json({ 
@@ -547,19 +526,21 @@ app.get('/api/arasaac/image/:idPictogram', async (req, res) => {
  * Searches ARASAAC pictograms by search term
  * GET /api/arasaac/search/:language/:searchTerm
  */
-app.get('/api/arasaac/search/:language/:searchTerm', async (req, res) => {
+app.get('/api/arasaac/search/:language/:searchTerm', async (req: Request, res: Response): Promise<void> => {
   try {
     const { language, searchTerm } = req.params;
 
     if (!searchTerm || searchTerm.trim() === '') {
-      return res.status(400).json({ error: 'A search term is required' });
+      res.status(400).json({ error: 'A search term is required' });
+      return;
     }
 
     // Use ARASAAC service to search pictograms
     const pictograms = await searchPictograms(searchTerm, language);
 
     res.json(pictograms);
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error searching pictograms in ARASAAC:', error);
     res.status(500).json({ 
       error: 'Error searching pictograms',
@@ -572,26 +553,29 @@ app.get('/api/arasaac/search/:language/:searchTerm', async (req, res) => {
  * Gets information for a specific pictogram by ID
  * GET /api/arasaac/pictogram/:language/:idPictogram
  */
-app.get('/api/arasaac/pictogram/:language/:idPictogram', async (req, res) => {
+app.get('/api/arasaac/pictogram/:language/:idPictogram', async (req: Request, res: Response): Promise<void> => {
   try {
     const { language, idPictogram } = req.params;
 
     if (!idPictogram) {
-      return res.status(400).json({ error: 'A pictogram ID is required' });
+      res.status(400).json({ error: 'A pictogram ID is required' });
+      return;
     }
 
     // Use ARASAAC service to get pictogram
-    const pictogram = await getPictogramById(parseInt(idPictogram), language);
+    const pictogram = await getPictogramById(parseInt(idPictogram, 10), language);
 
     res.json(pictogram);
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error getting pictogram from ARASAAC:', error);
     
     if (error.message?.includes('not found')) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         error: 'Pictogram not found',
         message: error.message
       });
+      return;
     }
     
     res.status(500).json({ 
@@ -605,19 +589,21 @@ app.get('/api/arasaac/pictogram/:language/:idPictogram', async (req, res) => {
  * Endpoint to search pictograms for multiple words
  * POST /api/arasaac/search-multiple
  */
-app.post('/api/arasaac/search-multiple', async (req, res) => {
+app.post('/api/arasaac/search-multiple', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { words, language = 'en' } = req.body;
+    const { words, language = 'en' } = req.body as SearchMultipleBody;
 
     if (!words || !Array.isArray(words) || words.length === 0) {
-      return res.status(400).json({ error: 'An array of words is required' });
+      res.status(400).json({ error: 'An array of words is required' });
+      return;
     }
 
     // Use ARASAAC service to search multiple pictograms
     const resultsMap = await searchMultiplePictograms(words, language);
 
     res.json(resultsMap);
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error in multiple search:', error);
     res.status(500).json({ 
       error: 'Error searching multiple pictograms',
@@ -626,21 +612,22 @@ app.post('/api/arasaac/search-multiple', async (req, res) => {
   }
 });
 
+// ============================================================================
+// Server Information Endpoint
+// ============================================================================
+
 /**
  * Root route - Server information
  */
-app.get('/', (req, res) => {
+app.get('/', (_req: Request, res: Response): void => {
   res.json({ 
     message: 'AAC Backend Server is running correctly',
     status: 'ok',
     endpoints: {
       health: '/api/health',
-      // Gemini endpoints
+      // Phrase generation endpoints
       generatePhrases: 'POST /api/generate-phrases',
       generateMorePhrases: 'POST /api/generate-more-phrases',
-      // Azure OpenAI endpoints (direct)
-      azureGeneratePhrases: 'POST /api/azure/generate-phrases',
-      azureGenerateMorePhrases: 'POST /api/azure/generate-more-phrases',
       // ARASAAC endpoints
       arasaacSearch: 'GET /api/arasaac/search/:language/:searchTerm',
       arasaacPictogram: 'GET /api/arasaac/pictogram/:language/:idPictogram',
@@ -651,35 +638,32 @@ app.get('/', (req, res) => {
       userUpdate: 'PUT /api/user',
       userReset: 'POST /api/user/reset',
       avatar: 'POST /api/avatar',
-      userInitials: 'GET /api/user/initials'
+      userInitials: 'GET /api/user/initials',
+      userCacheStats: 'GET /api/user/cache-stats'
     },
-    hasGeminiApiKey: isGeminiConfigured(),
-    hasAzureOpenAI: !!(AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY)
+    hasAzureOpenAI: azurePhraseConfig.isConfigured
   });
 });
 
 // ============================================================================
-// USER & PROFILE MANAGEMENT API
+// User & Profile Management Endpoints
 // ============================================================================
 
-// In-memory user storage (for prototype - replace with database in production)
-let userData = {
-  id: 'default-user',
-  email: 'user@example.com',
-  fullName: 'User',
-  preferences: {
-    language: 'en',
-    theme: 1
-  }
-};
+// NOTE: Global mutable state has been eliminated!
+// User data is now managed by userService.ts with proper isolation per userId
+// using an LRU cache to prevent memory leaks.
 
 /**
  * GET /api/user - Gets current user data
+ * Requires userId via authenticateUser middleware
  */
-app.get('/api/user', (req, res) => {
+app.get('/api/user', authenticateUser, (req: Request, res: Response): void => {
   try {
+    const userId = (req as AuthenticatedRequest).userId;
+    const userData = getUserData(userId);
     res.json({ user: userData });
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error getting user:', error);
     res.status(500).json({ 
       error: 'Error getting user',
@@ -690,28 +674,28 @@ app.get('/api/user', (req, res) => {
 
 /**
  * PUT /api/user - Updates user data
+ * Requires userId via authenticateUser middleware
  */
-app.put('/api/user', (req, res) => {
+app.put('/api/user', authenticateUser, (req: Request, res: Response): void => {
   try {
-    const { email, fullName, preferences } = req.body;
+    const userId = (req as AuthenticatedRequest).userId;
+    const { email, fullName, preferences } = req.body as UpdateUserBody;
     
     // Validate data
-    if (!email && !fullName && !preferences) {
-      return res.status(400).json({ 
+    if (email === undefined && fullName === undefined && preferences === undefined) {
+      res.status(400).json({ 
         error: 'At least one field is required to update' 
       });
+      return;
     }
     
-    // Update data
-    if (email !== undefined) userData.email = email;
-    if (fullName !== undefined) userData.fullName = fullName;
-    if (preferences !== undefined) {
-      userData.preferences = { ...userData.preferences, ...preferences };
-    }
+    // Update user data using the service
+    const updatedUser = updateUserData(userId, { email, fullName, preferences });
     
-    console.log('User updated:', userData);
-    res.json({ user: userData });
-  } catch (error) {
+    console.log(`User ${userId} updated:`, updatedUser);
+    res.json({ user: updatedUser });
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error updating user:', error);
     res.status(500).json({ 
       error: 'Error updating user',
@@ -722,23 +706,17 @@ app.put('/api/user', (req, res) => {
 
 /**
  * POST /api/user/reset - Resets the user to default values
+ * Requires userId via authenticateUser middleware
  */
-app.post('/api/user/reset', (req, res) => {
+app.post('/api/user/reset', authenticateUser, (req: Request, res: Response): void => {
   try {
-    userData = {
-      id: 'default-user',
-      email: 'user@example.com',
-      fullName: 'User',
-      preferences: {
-        language: 'en',
-        theme: 1,
-        fontSize: 'medium'
-      }
-    };
+    const userId = (req as AuthenticatedRequest).userId;
+    const resetUser = resetUserData(userId);
     
-    console.log('User reset to default values');
-    res.json({ user: userData });
-  } catch (error) {
+    console.log(`User ${userId} reset to default values`);
+    res.json({ user: resetUser });
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error resetting user:', error);
     res.status(500).json({ 
       error: 'Error resetting user',
@@ -752,9 +730,9 @@ app.post('/api/user/reset', (req, res) => {
  * POST /api/avatar
  * Returns PNG base64 data URL (compatible with React Native)
  */
-app.post('/api/avatar', async (req, res) => {
+app.post('/api/avatar', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { userId, email, fullName } = req.body;
+    const { userId, email, fullName } = req.body as AvatarBody;
     
     // Create consistent seed
     const seed = createUserSeed(userId, email, fullName);
@@ -764,7 +742,8 @@ app.post('/api/avatar', async (req, res) => {
     
     console.log(`Avatar generated for seed: ${seed.substring(0, 10)}...`);
     res.json({ avatarUrl, seed });
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error generating avatar:', error);
     res.status(500).json({ 
       error: 'Error generating avatar',
@@ -775,13 +754,17 @@ app.post('/api/avatar', async (req, res) => {
 
 /**
  * GET /api/user/initials - Gets the initials of the user
+ * Requires userId via authenticateUser middleware
  */
-app.get('/api/user/initials', (req, res) => {
+app.get('/api/user/initials', authenticateUser, (req: Request, res: Response): void => {
   try {
+    const userId = (req as AuthenticatedRequest).userId;
+    const userData = getUserData(userId);
     const initials = getInitials(userData.fullName, userData.email);
     
     res.json({ initials });
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error getting initials:', error);
     res.status(500).json({ 
       error: 'Error getting initials',
@@ -791,32 +774,50 @@ app.get('/api/user/initials', (req, res) => {
 });
 
 /**
- * ========================================
- * CATEGORY MANAGEMENT ENDPOINTS
- * ========================================
+ * GET /api/user/cache-stats - Gets cache statistics (for debugging/monitoring)
+ * This endpoint is useful for monitoring the user cache state
  */
+app.get('/api/user/cache-stats', (_req: Request, res: Response): void => {
+  try {
+    const stats = getCacheStats();
+    res.json({ stats });
+  } catch (err) {
+    const error = err as ApiError;
+    console.error('Error getting cache stats:', error);
+    res.status(500).json({ 
+      error: 'Error getting cache stats',
+      message: error.message
+    });
+  }
+});
+
+// ============================================================================
+// Category Management Endpoints
+// ============================================================================
 
 /**
  * GET /api/categories
  * Get all categories with their pictogram IDs for a specific user
  * Requires userId query parameter
  */
-app.get('/api/categories', async (req, res) => {
+app.get('/api/categories', async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.query.userId;
+    const userId = req.query.userId as string | undefined;
     
     if (!userId) {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'Missing userId',
         message: 'userId query parameter is required'
       });
+      return;
     }
     
     const categories = await getUserCategories(userId);
     console.log(`Categories loaded for user ${userId}: ${Object.keys(categories).length} categories`);
     
     res.json({ categories });
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error getting categories:', error);
     res.status(500).json({
       error: 'Error getting categories',
@@ -830,16 +831,17 @@ app.get('/api/categories', async (req, res) => {
  * Get pictogram IDs for a specific category
  * Requires userId query parameter
  */
-app.get('/api/categories/:categoryName', async (req, res) => {
+app.get('/api/categories/:categoryName', async (req: Request, res: Response): Promise<void> => {
   try {
     const { categoryName } = req.params;
-    const userId = req.query.userId;
+    const userId = req.query.userId as string | undefined;
     
     if (!userId) {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'Missing userId',
         message: 'userId query parameter is required'
       });
+      return;
     }
     
     const pictogramIds = await getUserCategoryPictograms(userId, categoryName);
@@ -850,7 +852,8 @@ app.get('/api/categories/:categoryName', async (req, res) => {
       count: pictogramIds.length,
       isPredefined: isPredefinedCategory(categoryName)
     });
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error getting category pictograms:', error);
     res.status(500).json({
       error: 'Error getting category pictograms',
@@ -865,15 +868,16 @@ app.get('/api/categories/:categoryName', async (req, res) => {
  * Body: { categoryName: string, maxResults?: number, description?: string, userId: string }
  * Header: Authorization: Bearer <userId> (optional if provided in body)
  */
-app.post('/api/categories', authenticateUser, async (req, res) => {
+app.post('/api/categories', authenticateUser, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { categoryName, maxResults = 50, description } = req.body;
-    const userId = req.userId; // Obtained from authenticateUser middleware
+    const { categoryName, maxResults = 50, description } = req.body as CreateCategoryBody;
+    const userId = (req as AuthenticatedRequest).userId;
 
     if (!categoryName || typeof categoryName !== 'string' || categoryName.trim() === '') {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'A valid category name is required'
       });
+      return;
     }
 
     const trimmedName = categoryName.trim();
@@ -881,9 +885,10 @@ app.post('/api/categories', authenticateUser, async (req, res) => {
 
     // Validate category name
     if (isPredefinedCategory(trimmedName)) {
-      return res.status(400).json({
+      res.status(400).json({
         error: `Category "${trimmedName}" is a predefined category and cannot be recreated`
       });
+      return;
     }
 
     // Create category using AI (user-specific)
@@ -895,14 +900,16 @@ app.post('/api/categories', authenticateUser, async (req, res) => {
       count: pictogramIds.length,
       message: `Category "${trimmedName}" created successfully with ${pictogramIds.length} pictograms for user ${userId}`
     });
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error creating category:', error);
     
     // Check if it's a duplicate error
     if (error.message.includes('already exists')) {
-      return res.status(409).json({
+      res.status(409).json({
         error: error.message
       });
+      return;
     }
 
     res.status(500).json({
@@ -919,24 +926,26 @@ app.post('/api/categories', authenticateUser, async (req, res) => {
  * Body: { categoryName: string, userId: string }
  * Header: Authorization: Bearer <userId> (optional if provided in body)
  */
-app.post('/api/categories/empty', authenticateUser, async (req, res) => {
+app.post('/api/categories/empty', authenticateUser, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { categoryName } = req.body;
-    const userId = req.userId; // Obtained from authenticateUser middleware
+    const { categoryName } = req.body as CreateEmptyCategoryBody;
+    const userId = (req as AuthenticatedRequest).userId;
 
     if (!categoryName || typeof categoryName !== 'string' || categoryName.trim() === '') {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'A valid category name is required'
       });
+      return;
     }
 
     const trimmedName = categoryName.trim();
 
     // Validate category name
     if (isPredefinedCategory(trimmedName)) {
-      return res.status(400).json({
+      res.status(400).json({
         error: `Category "${trimmedName}" is a predefined category and cannot be recreated`
       });
+      return;
     }
 
     // Create empty category (user-specific)
@@ -948,14 +957,16 @@ app.post('/api/categories/empty', authenticateUser, async (req, res) => {
       count: 0,
       message: `Empty category "${trimmedName}" created successfully for user ${userId}`
     });
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error creating empty category:', error);
     
     // Check if it's a duplicate error
     if (error.message.includes('already exists')) {
-      return res.status(409).json({
+      res.status(409).json({
         error: error.message
       });
+      return;
     }
 
     res.status(500).json({
@@ -970,15 +981,16 @@ app.post('/api/categories/empty', authenticateUser, async (req, res) => {
  * Delete a custom category (cannot delete predefined categories)
  * Header: Authorization: Bearer <userId> (optional if coming in body)
  */
-app.delete('/api/categories/:categoryName', authenticateUser, async (req, res) => {
+app.delete('/api/categories/:categoryName', authenticateUser, async (req: Request, res: Response): Promise<void> => {
   try {
     const { categoryName } = req.params;
-    const userId = req.userId; // Obtained from authenticateUser middleware
+    const userId = (req as AuthenticatedRequest).userId;
 
     if (isPredefinedCategory(categoryName)) {
-      return res.status(400).json({
+      res.status(400).json({
         error: `Cannot delete predefined category "${categoryName}"`
       });
+      return;
     }
 
     await deleteUserCategory(userId, categoryName);
@@ -986,13 +998,15 @@ app.delete('/api/categories/:categoryName', authenticateUser, async (req, res) =
     res.json({
       message: `Category "${categoryName}" deleted successfully for user ${userId}`
     });
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error deleting category:', error);
     
     if (error.message.includes('does not exist')) {
-      return res.status(404).json({
+      res.status(404).json({
         error: error.message
       });
+      return;
     }
 
     res.status(500).json({
@@ -1006,7 +1020,7 @@ app.delete('/api/categories/:categoryName', authenticateUser, async (req, res) =
  * POST /api/categories/initialize
  * Initialize predefined categories (useful for first-time setup)
  */
-app.post('/api/categories/initialize', async (req, res) => {
+app.post('/api/categories/initialize', async (_req: Request, res: Response): Promise<void> => {
   try {
     const categories = await initializePredefinedCategories();
     
@@ -1015,7 +1029,8 @@ app.post('/api/categories/initialize', async (req, res) => {
       categories,
       predefinedCategories: PREDEFINED_CATEGORIES
     });
-  } catch (error) {
+  } catch (err) {
+    const error = err as ApiError;
     console.error('Error initializing categories:', error);
     res.status(500).json({
       error: 'Error initializing categories',
@@ -1024,25 +1039,31 @@ app.post('/api/categories/initialize', async (req, res) => {
   }
 });
 
+// ============================================================================
+// Health Check Endpoint
+// ============================================================================
+
 /**
  * Health check endpoint
  */
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req: Request, res: Response): void => {
   res.json({ 
     status: 'ok',
-    hasGeminiApiKey: isGeminiConfigured(),
-    hasAzureOpenAI: !!(AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY)
+    hasAzureOpenAI: azurePhraseConfig.isConfigured
   });
 });
 
+// ============================================================================
+// Server Startup
+// ============================================================================
+
 // Listen on all interfaces (0.0.0.0) to allow connections from emulators and devices
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', (): void => {
   console.log(`\n${'='.repeat(60)}`);
   console.log(`Backend server running at http://localhost:${PORT}`);
   console.log(`Also available at http://127.0.0.1:${PORT}`);
   console.log(`\nAPI Keys configured:`);
-  console.log(`   - Azure OpenAI (Primary): ${(AZURE_OPENAI_PHRASE_URL && AZURE_OPENAI_PHRASE_KEY) ? 'Yes' : 'No'}`);
-  console.log(`   - Gemini (Secondary/Fallback): ${GEMINI_API_KEY ? 'Yes' : 'No'}`);
+  console.log(`   - Azure OpenAI: ${azurePhraseConfig.isConfigured ? 'Yes' : 'No'}`);
   console.log(`\nTo connect from:`);
   console.log(`   - Web/Browser: http://localhost:${PORT} or http://127.0.0.1:${PORT}`);
   console.log(`   - Android Emulator: http://10.0.2.2:${PORT}`);
@@ -1060,4 +1081,3 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`\nLogging enabled: All requests will be logged here`);
   console.log(`${'='.repeat(60)}\n`);
 });
-

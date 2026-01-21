@@ -241,7 +241,7 @@ async function searchMultiplePictograms(
   }
 }
 
-module.exports = {
+export {
   searchPictograms,
   getPictogramById,
   getPictogramImage,

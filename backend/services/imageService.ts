@@ -1,6 +1,8 @@
 // Azure OpenAI DALL-E Image Generation Service for AAC Phrases
 // Backend service that handles image generation with DALL-E 3 via Azure OpenAI
 
+import { getAzureImageConfig } from '../config';
+
 interface AzureOpenAIImageResponse {
   data: Array<{
     url: string;
@@ -8,9 +10,26 @@ interface AzureOpenAIImageResponse {
 }
 
 /**
+ * Extended Error interface for network errors
+ */
+interface NetworkError extends Error {
+  code?: string;
+  errno?: number;
+  cause?: { code?: string };
+}
+
+/**
+ * Result type for image generation
+ */
+interface ImageGenerationResult {
+  phrase: string;
+  imageBase64: string;
+}
+
+/**
  * Cleans and sanitizes the phrase to avoid issues with API policies
  */
-function sanitizePhrase(phrase) {
+function sanitizePhrase(phrase: string): string {
   if (!phrase) return '';
   
   // Clean the phrase: remove numbers at the start, dots, and problematic special characters
@@ -29,7 +48,7 @@ function sanitizePhrase(phrase) {
  * Builds the optimized prompt for generating AAC child-friendly images
  * Uses a safe approach that complies with API policies
  */
-function buildAacImagePrompt(phrase) {
+function buildAacImagePrompt(phrase: string): string {
   // Sanitize the phrase
   const sanitizedPhrase = sanitizePhrase(phrase);
   
@@ -47,29 +66,28 @@ function buildAacImagePrompt(phrase) {
 }
 
 /**
- * Gets Azure OpenAI configuration for images from environment variables
- * The endpoint already comes complete with deploymentName and api-version
+ * Gets Azure OpenAI configuration for images from centralized config
+ * Throws if not configured
  */
 function getAzureOpenAIConfig() {
-  const endpoint = process.env.AZURE_OPENAI_IMAGE_ENDPOINT;
-  const apiKey = process.env.AZURE_OPENAI_IMAGE_API_KEY;
+  const config = getAzureImageConfig();
 
-  if (!endpoint) {
+  if (!config.endpoint) {
     throw new Error('AZURE_OPENAI_IMAGE_ENDPOINT is not configured in environment variables');
   }
-  if (!apiKey) {
+  if (!config.apiKey) {
     throw new Error('AZURE_OPENAI_IMAGE_API_KEY is not configured in environment variables');
   }
 
-  return { endpoint, apiKey };
+  return config;
 }
 
 /**
  * Converts an image from a URL to base64
- * @param {string} imageUrl Image URL
- * @returns {Promise<string>} Image in base64 format
+ * @param imageUrl Image URL
+ * @returns Image in base64 format
  */
-async function urlToBase64(imageUrl) {
+async function urlToBase64(imageUrl: string): Promise<string> {
   try {
     const response = await fetch(imageUrl);
     if (!response.ok) {
@@ -78,7 +96,8 @@ async function urlToBase64(imageUrl) {
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     return buffer.toString('base64');
-  } catch (error) {
+  } catch (err) {
+    const error = err as Error;
     throw new Error(`Error converting URL to base64: ${error.message}`);
   }
 }
@@ -86,11 +105,11 @@ async function urlToBase64(imageUrl) {
 /**
  * Generates an image for an AAC phrase using DALL-E 3 via Azure OpenAI
  * Includes retry logic with exponential backoff to handle connection errors
- * @param {string} phrase The phrase for which to generate the image
- * @param {number} retryAttempt Current attempt number (for retry)
- * @returns {Promise<string>} The image in base64 format
+ * @param phrase The phrase for which to generate the image
+ * @param retryAttempt Current attempt number (for retry)
+ * @returns The image in base64 format
  */
-async function generateAacImage(phrase, retryAttempt = 0) {
+async function generateAacImage(phrase: string, retryAttempt: number = 0): Promise<string> {
   if (!phrase || phrase.trim().length === 0) {
     throw new Error('The phrase cannot be empty');
   }
@@ -192,7 +211,8 @@ async function generateAacImage(phrase, retryAttempt = 0) {
       console.log(`Image generated successfully for: "${phrase}"`);
     }
     return imageBase64;
-  } catch (error) {
+  } catch (err) {
+    const error = err as NetworkError;
     // Detect connection errors that may be recoverable
     // Includes common Node.js error codes and numeric codes that may indicate network problems
     const errorCode = error.code || error.errno || error.cause?.code;
@@ -215,14 +235,14 @@ async function generateAacImage(phrase, retryAttempt = 0) {
       errorMessage.includes('connection') ||
       errorMessage.includes('timeout') ||
       errorName === 'AbortError' ||
-      errorName === 'TypeError' && errorMessage.includes('fetch');
+      (errorName === 'TypeError' && errorMessage.includes('fetch'));
 
     // If it's a connection error and we still have retries available, retry
     if (isConnectionError && retryAttempt < MAX_RETRIES) {
-      const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryAttempt); // Exponential backoff: 1s, 2s, 4s
+      const delayMs = INITIAL_RETRY_DELAY * Math.pow(2, retryAttempt); // Exponential backoff: 1s, 2s, 4s
       const errorInfo = errorCode || errorMessage || 'unknown';
-      console.log(`Transient connection error detected (${errorInfo}). Retrying automatically in ${delay}ms... (attempt ${retryAttempt + 1}/${MAX_RETRIES + 1})`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      console.log(`Transient connection error detected (${errorInfo}). Retrying automatically in ${delayMs}ms... (attempt ${retryAttempt + 1}/${MAX_RETRIES + 1})`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
       return generateAacImage(phrase, retryAttempt + 1);
     }
 
@@ -242,15 +262,16 @@ async function generateAacImage(phrase, retryAttempt = 0) {
 
 // Global variable to track the last request time (to avoid saturating Azure)
 let lastRequestTime = 0;
-const MIN_DELAY_BETWEEN_REQUESTS = 300; // 300ms minimum between requests
+const MIN_DELAY_BETWEEN_REQUESTS = 500; // 500ms minimum between requests
+const MIN_DELAY_AFTER_BATCH = 5000; // 5s minimum delay after a batch completes
 
 /**
  * Generates images for multiple phrases in parallel with staggered delays
  * (avoids Azure OpenAI rate limiting by using delays between calls)
- * @param {string[]} phrases Array of phrases for which to generate images
- * @returns {Promise<Array<{phrase: string, imageBase64: string}>>} Array of objects with phrase and base64 image
+ * @param phrases Array of phrases for which to generate images
+ * @returns Array of objects with phrase and base64 image
  */
-async function generateAacImagesForPhrases(phrases) {
+async function generateAacImagesForPhrases(phrases: string[]): Promise<ImageGenerationResult[]> {
   if (!phrases || phrases.length === 0) {
     return [];
   }
@@ -258,25 +279,28 @@ async function generateAacImagesForPhrases(phrases) {
   console.log(`Generating ${phrases.length} images in parallel with staggered delays...`);
 
   // Helper function for delay
-  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const delayMs = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
-  // Generate images in parallel with staggered delay to avoid rate limiting
-  // Each image starts with a 500ms delay relative to the previous one
-  // Additionally, we respect a minimum delay since the last request
-  const imagePromises = phrases.map(async (phrase, index) => {
+  // Check if there was a recent batch and add initial delay if needed
+  // This prevents the first image from failing when "Generate More" is clicked quickly
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  if (lastRequestTime > 0 && timeSinceLastRequest < MIN_DELAY_AFTER_BATCH) {
+    const initialDelay = MIN_DELAY_AFTER_BATCH - timeSinceLastRequest;
+    console.log(`Recent batch detected, waiting ${initialDelay}ms before starting new batch...`);
+    await delayMs(initialDelay);
+  }
+
+  // Generate images sequentially to avoid race conditions with rate limiting
+  // This ensures each image completes before the next one starts
+  const results: ImageGenerationResult[] = [];
+  
+  for (let index = 0; index < phrases.length; index++) {
+    const phrase = phrases[index];
     try {
-      // Calculate staggered delay: 500ms, 1000ms, 1500ms, etc.
-      const baseDelay = index * 500;
-      
-      // Ensure there's a minimum delay since the last request
-      const now = Date.now();
-      const timeSinceLastRequest = now - lastRequestTime;
-      const additionalDelay = Math.max(0, MIN_DELAY_BETWEEN_REQUESTS - timeSinceLastRequest);
-      
-      const totalDelay = baseDelay + additionalDelay;
-      
-      if (totalDelay > 0) {
-        await delay(totalDelay);
+      // Add delay between images (except for the first one after initial delay)
+      if (index > 0) {
+        await delayMs(MIN_DELAY_BETWEEN_REQUESTS);
       }
       
       lastRequestTime = Date.now();
@@ -284,15 +308,17 @@ async function generateAacImagesForPhrases(phrases) {
       console.log(`Starting image generation ${index + 1}/${phrases.length} for: "${phrase}"`);
       const imageBase64 = await generateAacImage(phrase);
       console.log(`Image ${index + 1}/${phrases.length} completed`);
-      return { phrase, imageBase64 };
+      results.push({ phrase, imageBase64 });
     } catch (error) {
       console.error(`Error generating image ${index + 1}/${phrases.length} for "${phrase}":`, error);
       // Return without image in case of error (after all retries)
-      return { phrase, imageBase64: '' };
+      results.push({ phrase, imageBase64: '' });
     }
-  });
+  }
 
-  const results = await Promise.all(imagePromises);
+  // Update last request time after batch completes
+  lastRequestTime = Date.now();
+  
   const successful = results.filter(r => r.imageBase64 !== '').length;
   console.log(`${successful}/${phrases.length} images generated successfully`);
 
@@ -335,7 +361,7 @@ async function testOpenAIConnection() {
   }
 }
 
-module.exports = {
+export {
   generateAacImage,
   generateAacImagesForPhrases,
   testOpenAIConnection

@@ -40,8 +40,7 @@
 - ✅ **Multi-language support** (es, en, fr, it, pt, de, ca)
 
 ### 🤖 Artificial Intelligence
-- ✅ **Natural phrase generation** using Google Gemini AI
-- ✅ **Azure OpenAI support** as alternative
+- ✅ **Natural phrase generation** using Azure OpenAI
 - ✅ **Bidirectional translation**: Symbols → Text and Text → Symbols
 - ✅ **Multiple phrase variants** generation
 
@@ -72,7 +71,7 @@
 - **Node.js** v18 or higher
 - **npm** or **yarn**
 - **Expo CLI** (installed automatically)
-- **Google Gemini API Key** ([get it here](https://makersuite.google.com/app/apikey))
+- **Azure OpenAI API** (required for AI features)
 - **Firebase** (optional, for authentication and storage)
 
 ### Quick Installation
@@ -93,7 +92,6 @@
    Create `frontend/.env` file:
    ```env
    EXPO_PUBLIC_API_URL=http://localhost:3000
-   EXPO_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
    
    # Firebase Configuration
    EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
@@ -107,9 +105,8 @@
    Create `backend/.env` file:
    ```env
    PORT=3000
-   GEMINI_API_KEY=your_gemini_api_key
    
-   # Azure OpenAI (Primary) - Optional
+   # Azure OpenAI (Required for AI features)
    AZURE_OPENAI_PHRASE_URL=https://your-resource.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview
    AZURE_OPENAI_PHRASE_KEY=your_azure_key
    AZURE_OPENAI_PHRASE_DEPLOYMENT=gpt-5-mini
@@ -149,20 +146,7 @@
 
 ## 🔧 API Configuration
 
-### Google Gemini API
-
-1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Sign in and create a new API key
-3. Add to `backend/.env`:
-   ```env
-   GEMINI_API_KEY=your_gemini_api_key
-   ```
-
-**Available Models:**
-- `gemini-1.5-flash`: Fast and cost-effective (default)
-- `gemini-1.5-pro`: More powerful for complex tasks
-
-### Azure OpenAI API (Optional)
+### Azure OpenAI API (Required)
 
 1. Go to [Azure Portal](https://portal.azure.com)
 2. Navigate to your Azure OpenAI resource
@@ -190,8 +174,7 @@ AZURE_OPENAI_IMAGE_API_KEY=your_key
 After starting the backend, you'll see:
 ```
 📡 API Keys configured:
-   - Azure OpenAI (Primary): ✅ Yes (or ❌ No)
-   - Gemini (Secondary/Fallback): ✅ Yes (or ❌ No)
+   - Azure OpenAI: ✅ Yes (or ❌ No)
 ```
 
 ---
@@ -370,8 +353,7 @@ wizzwords-aac-platform/
 - **CORS** middleware
 
 ### AI Services
-- **Google Gemini AI** (Gemini 1.5 Flash/Pro)
-- **Azure OpenAI** (GPT-5-mini as alternative)
+- **Azure OpenAI** (GPT-5-mini for phrase generation)
 - **Azure OpenAI DALL-E 3** for image generation
 - **ARASAAC API** for pictograms
 
@@ -408,7 +390,7 @@ npm run server:dev           # Start with auto-reload
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/health` | GET | Health check |
-| `/api/generate-phrases` | POST | Generate phrases (Azure primary, Gemini fallback) |
+| `/api/generate-phrases` | POST | Generate phrases with Azure OpenAI |
 | `/api/generate-more-phrases` | POST | Generate additional phrases |
 | `/api/azure/generate-phrases` | POST | Direct Azure OpenAI call |
 | `/api/generate-image` | POST | Generate image with DALL-E |

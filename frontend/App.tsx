@@ -1,5 +1,6 @@
 import 'react-native-gesture-handler';
 import React from 'react';
+import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { enableScreens } from 'react-native-screens';
@@ -15,10 +16,9 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import WelcomeOnboardingScreen from './screens/WelcomeOnboardingScreen';
-import LoadingScreen from './components/LoadingScreen';
 
 // Import Providers
-import { ThemeProvider } from './context/ThemeContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { UserProvider, useUser } from './context/UserContext';
 import { ToastProvider } from './context/ToastContext';
 
@@ -211,11 +211,11 @@ function AppNavigator() {
  */
 function RootNavigator() {
   const { isAuthenticated, isLoading, user } = useUser();
+  const { theme } = useTheme();
 
-  // While loading, show nothing (blank screen)
-  // The loading screen for symbols will only appear in PCSScreen
+  // While loading, show a simple blank screen with the theme background color
   if (isLoading) {
-    return null;
+    return <View style={{ flex: 1, backgroundColor: theme.background }} />;
   }
 
   // Not authenticated: show login/register screens
